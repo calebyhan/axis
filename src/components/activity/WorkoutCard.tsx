@@ -18,15 +18,15 @@ interface Props {
 
 export function WorkoutCard({ activity, coverage = {}, exerciseCount, totalVolume }: Props) {
   return (
-    <Link href={`/activity/${activity.id}`} className="card p-4 flex gap-4 hover:border-[#2A2A2A] transition-colors block">
+    <Link href={`/activity/${activity.id}`} className="card surface-hover p-4 sm:p-5 flex gap-4 block">
       <div className="shrink-0">
         <MiniHeatmap coverage={coverage} />
       </div>
 
       <div className="flex flex-col justify-between flex-1 min-w-0">
         <div>
-          <div className="text-xs text-muted uppercase tracking-wide">Workout</div>
-          <div className="text-sm text-muted mt-0.5">
+          <div className="text-xs text-white/45 uppercase tracking-[0.18em]">Workout</div>
+          <div className="text-sm text-white/58 mt-1">
             {new Date(activity.start_time).toLocaleDateString("en-US", {
               weekday: "short",
               month: "short",
@@ -36,19 +36,19 @@ export function WorkoutCard({ activity, coverage = {}, exerciseCount, totalVolum
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-sm">
-          <div>
-            <div className="text-muted text-xs">Time</div>
+          <div className="card-soft p-3">
+            <div className="text-white/38 text-[11px] uppercase tracking-[0.16em]">Time</div>
             <div className="font-medium">{formatDuration(activity.duration)}</div>
           </div>
           {exerciseCount !== undefined && (
-            <div>
-              <div className="text-muted text-xs">Exercises</div>
+            <div className="card-soft p-3">
+              <div className="text-white/38 text-[11px] uppercase tracking-[0.16em]">Exercises</div>
               <div className="font-medium">{exerciseCount}</div>
             </div>
           )}
           {totalVolume !== undefined && (
-            <div>
-              <div className="text-muted text-xs">Volume</div>
+            <div className="card-soft p-3">
+              <div className="text-white/38 text-[11px] uppercase tracking-[0.16em]">Volume</div>
               <div className="font-medium">
                 {totalVolume >= 1000
                   ? `${(totalVolume / 1000).toFixed(1)}k`

@@ -12,7 +12,7 @@ export function WeeklyStatsSummary({
   weightDelta,
 }: Props) {
   return (
-    <div className="grid grid-cols-4 gap-2">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <Stat
         value={runDistance > 0 ? `${runDistance.toFixed(1)}` : "—"}
         unit="km"
@@ -53,12 +53,12 @@ function Stat({
       : "text-white";
 
   return (
-    <div className="card p-3 text-center">
-      <div className={`text-base font-semibold ${valueClass}`}>
+    <div className="card-soft p-3.5 text-center">
+      <div className={`text-lg font-semibold tracking-[-0.04em] ${valueClass}`}>
         {value}
-        {unit && <span className="text-xs font-normal text-muted ml-0.5">{unit}</span>}
+        {unit && <span className="text-xs font-normal text-muted ml-1">{unit}</span>}
       </div>
-      <div className="text-[10px] text-muted mt-0.5">{label}</div>
+      <div className="text-[11px] text-white/45 mt-1 uppercase tracking-[0.18em]">{label}</div>
     </div>
   );
 }

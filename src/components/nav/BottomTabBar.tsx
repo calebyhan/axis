@@ -63,21 +63,23 @@ export function BottomTabBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border nav-safe-bottom z-50 md:hidden">
-      <div className="flex">
+    <nav className="fixed bottom-0 left-0 right-0 nav-safe-bottom z-50 px-3 pb-3 md:hidden">
+      <div className="card mx-auto flex max-w-xl items-stretch rounded-[2rem] px-1.5 py-1.5">
         {TABS.map((tab) => {
           const active = pathname.startsWith(tab.href);
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[56px] transition-colors ${
-                active ? "text-accent" : "text-muted"
+              className={`flex-1 flex flex-col items-center justify-center rounded-[1.35rem] py-2.5 min-h-[58px] transition-all ${
+                active
+                  ? "bg-white/[0.08] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                  : "text-white/48"
               }`}
               aria-label={tab.label}
             >
               {tab.icon(active)}
-              <span className="text-[10px] mt-0.5 font-medium">{tab.label}</span>
+              <span className="text-[10px] mt-1 font-medium tracking-[0.02em]">{tab.label}</span>
             </Link>
           );
         })}

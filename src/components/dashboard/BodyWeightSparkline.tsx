@@ -47,7 +47,7 @@ export function BodyWeightSparkline({ data }: Props) {
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-medium">Body Weight</span>
         {latest && (
-          <span className="text-sm font-semibold">{latest} kg</span>
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-sm font-semibold">{latest} kg</span>
         )}
       </div>
 
@@ -70,7 +70,7 @@ export function BodyWeightSparkline({ data }: Props) {
             <Line
               type="monotone"
               dataKey="body_weight"
-              stroke="#333"
+              stroke="rgba(255,255,255,0.18)"
               strokeWidth={1}
               dot={false}
               isAnimationActive={false}
@@ -86,7 +86,7 @@ export function BodyWeightSparkline({ data }: Props) {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <p className="text-[10px] text-muted mt-1 text-right">7-day avg overlaid</p>
+      <p className="text-[10px] text-white/38 mt-1 text-right">7-day avg overlaid</p>
     </div>
   );
 }

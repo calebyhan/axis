@@ -29,8 +29,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">Axis</h1>
-          <p className="text-muted text-sm mt-1">Personal athletic dashboard</p>
+          <div className="page-kicker">Axis</div>
+          <h1 className="text-[2.4rem] font-semibold tracking-[-0.06em]">Personal athletic dashboard</h1>
+          <p className="text-muted text-sm mt-3">Matte-black glass UI for training, recovery, and long-term progress.</p>
         </div>
 
         {sent ? (
@@ -50,7 +51,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                className="glass-input text-sm"
               />
             </div>
 
@@ -60,7 +61,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-full bg-accent py-2.5 rounded-lg text-sm font-medium text-white hover:opacity-90 transition-opacity"
+              className="glass-button glass-button-primary w-full text-sm font-medium"
             >
               Send magic link
             </button>

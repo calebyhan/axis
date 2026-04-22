@@ -9,11 +9,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#0A0A0A",
-        surface: "#141414",
-        border: "#1F1F1F",
-        "chart-axis": "#2A2A2A",
-        muted: "#666666",
+        background: "#050505",
+        surface: "rgba(18, 18, 18, 0.72)",
+        border: "rgba(255, 255, 255, 0.1)",
+        "chart-axis": "rgba(255, 255, 255, 0.14)",
+        muted: "#9A9A9A",
         accent: {
           blue: "#3B82F6",
           green: "#22C55E",

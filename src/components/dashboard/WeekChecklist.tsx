@@ -16,14 +16,14 @@ export function WeekChecklist({ items }: Props) {
   }
 
   return (
-    <div className="card divide-y divide-border">
+    <div className="card divide-y divide-white/5">
       {items.map((item, i) => (
         <div key={i} className="flex items-center gap-3 px-4 py-3">
           <div
             className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
               item.matched
-                ? "border-accent bg-accent"
-                : "border-border"
+                ? "border-accent bg-accent shadow-[0_8px_18px_rgba(59,130,246,0.28)]"
+                : "border-white/15 bg-white/[0.02]"
             }`}
           >
             {item.matched && (
@@ -33,11 +33,11 @@ export function WeekChecklist({ items }: Props) {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className={`text-sm font-medium ${item.matched ? "text-white" : "text-muted"}`}>
+            <div className={`text-sm font-medium ${item.matched ? "text-white" : "text-white/55"}`}>
               {item.planned.name}
             </div>
           </div>
-          <div className="text-xs text-muted shrink-0">{DAY_NAMES[item.dayOfWeek]}</div>
+          <div className="text-xs text-white/38 shrink-0">{DAY_NAMES[item.dayOfWeek]}</div>
         </div>
       ))}
     </div>

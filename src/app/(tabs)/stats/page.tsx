@@ -24,8 +24,14 @@ export default async function StatsPage({
   ]);
 
   return (
-    <div className="px-4 py-6 max-w-2xl mx-auto">
-      <h1 className="text-xl font-semibold mb-6">Stats</h1>
+    <div className="page-shell">
+      <div className="page-header">
+        <div>
+          <div className="page-kicker">Trends</div>
+          <h1 className="page-title">Stats</h1>
+          <p className="page-subtitle">Performance trends and body signals, framed with softer contrast and better readability.</p>
+        </div>
+      </div>
       <StatsClient
         timeRange={timeRange}
         initialVolumeData={volumeData}

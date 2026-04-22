@@ -19,8 +19,14 @@ export default async function ActivityPage() {
   );
 
   return (
-    <div className="px-4 py-6 max-w-2xl mx-auto">
-      <h1 className="text-xl font-semibold mb-6">Activity</h1>
+    <div className="page-shell">
+      <div className="page-header">
+        <div>
+          <div className="page-kicker">Feed</div>
+          <h1 className="page-title">Activity</h1>
+          <p className="page-subtitle">Every run and session, arranged in a cleaner timeline that stays comfortable on mobile.</p>
+        </div>
+      </div>
 
       {activities.length === 0 ? (
         <div className="card p-6 text-center">

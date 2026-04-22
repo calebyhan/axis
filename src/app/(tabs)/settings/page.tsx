@@ -22,8 +22,14 @@ export default async function SettingsPage() {
   const stravaConnected = !!profile?.strava_access_token;
 
   return (
-    <div className="px-4 py-6 max-w-2xl mx-auto">
-      <h1 className="text-xl font-semibold mb-6">Settings</h1>
+    <div className="page-shell">
+      <div className="page-header">
+        <div>
+          <div className="page-kicker">Preferences</div>
+          <h1 className="page-title">Settings</h1>
+          <p className="page-subtitle">Tune recovery colors, scheduling, and connected services inside the same glassy shell.</p>
+        </div>
+      </div>
       <SettingsClient
         profile={profile}
         schedule={schedule ?? []}

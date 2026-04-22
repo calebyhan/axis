@@ -32,7 +32,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
-      <body className="bg-background text-white antialiased">
+      <body className="bg-background text-white antialiased selection:bg-white/20">
         {children}
       </body>
     </html>

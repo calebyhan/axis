@@ -33,30 +33,39 @@ export default async function DashboardPage() {
   );
 
   return (
-    <div className="px-4 py-6 max-w-2xl mx-auto flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Dashboard</h1>
+    <div className="page-shell flex flex-col gap-5">
+      <div className="page-header">
+        <div>
+          <div className="page-kicker">Overview</div>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">
+            Your week at a glance, with the cleanest view of training momentum, streaks, and recovery trends.
+          </p>
+        </div>
         <Link
           href="/log"
-          className="bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
+          className="glass-button glass-button-primary text-sm font-medium"
         >
-          + Session
+          New session
         </Link>
       </div>
 
-      <WeeklyStatsSummary {...weeklyStats} />
+      <div className="card p-5 sm:p-6">
+        <div className="text-[11px] uppercase tracking-[0.24em] text-white/45 mb-3">This Week</div>
+        <WeeklyStatsSummary {...weeklyStats} />
+      </div>
 
       <CalendarStreak streak={streak} activeDays={activeDays} />
 
       {checklistItems.length > 0 && (
         <div>
-          <h2 className="text-sm font-medium text-muted mb-2 uppercase tracking-wide">This Week</h2>
+          <h2 className="section-label">Planned sessions</h2>
           <WeekChecklist items={checklistItems} />
         </div>
       )}
 
       <div>
-        <h2 className="text-sm font-medium text-muted mb-2 uppercase tracking-wide">Body Weight</h2>
+        <h2 className="section-label">Body weight</h2>
         <BodyWeightSparkline data={bodyWeightData} />
       </div>
     </div>

@@ -29,23 +29,25 @@ export function CalendarStreak({ streak, activeDays }: Props) {
   }
 
   return (
-    <div className="card p-4">
+    <div className="card p-5">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium">{monthLabel}</span>
+        <span className="text-sm font-medium tracking-[-0.02em]">{monthLabel}</span>
         {streak > 0 && (
-          <span className="text-xs text-accent font-medium">{streak} day streak</span>
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-accent font-medium">
+            {streak} day streak
+          </span>
         )}
       </div>
 
-      <div className="grid grid-cols-7 gap-1 mb-1">
+      <div className="grid grid-cols-7 gap-1.5 mb-1.5">
         {DAY_LABELS.map((l, i) => (
-          <div key={i} className="text-center text-[10px] text-muted">
+          <div key={i} className="text-center text-[10px] text-white/35">
             {l}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1.5">
         {cells.map((day, i) => {
           if (day === null) return <div key={i} />;
           const key = dateKey(day);
@@ -55,12 +57,12 @@ export function CalendarStreak({ streak, activeDays }: Props) {
           return (
             <div
               key={i}
-              className={`aspect-square flex items-center justify-center rounded-md text-[10px] font-medium transition-colors ${
+              className={`aspect-square flex items-center justify-center rounded-xl text-[10px] font-medium transition-colors ${
                 isActive
-                  ? "bg-accent text-white"
+                  ? "bg-accent text-white shadow-[0_10px_24px_rgba(59,130,246,0.26)]"
                   : isToday
-                  ? "border border-border text-white"
-                  : "text-muted"
+                  ? "border border-white/12 bg-white/[0.04] text-white"
+                  : "bg-white/[0.025] text-white/45"
               }`}
             >
               {day}
