@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --accent: #3B82F6;
+}
+
+[data-accent="green"] { --accent: #22C55E; }
+[data-accent="orange"] { --accent: #F97316; }
+[data-accent="purple"] { --accent: #A855F7; }
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  background-color: #0A0A0A;
+  color: #FFFFFF;
+  font-family: var(--font-geist-sans, Inter, system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #0A0A0A; }
+::-webkit-scrollbar-thumb { background: #1F1F1F; border-radius: 2px; }
+
+/* Bottom nav safe area on iOS */
+.nav-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Accent utility driven by CSS variable */
+.bg-accent { background-color: var(--accent); }
+.text-accent { color: var(--accent); }
+.border-accent { border-color: var(--accent); }
+.ring-accent { --tw-ring-color: var(--accent); }
+
+/* Card base */
+.card {
+  background-color: #141414;
+  border: 1px solid #1F1F1F;
+  border-radius: 0.75rem;
+}
