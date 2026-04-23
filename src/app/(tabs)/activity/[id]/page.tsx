@@ -8,6 +8,7 @@ import { formatWeight, formatDistance, weightUnit, distanceUnit } from "@/lib/un
 import type { MuscleGroup } from "@/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DeleteActivityButton } from "@/components/activity/DeleteActivityButton";
 
 function formatDuration(secs: number | null): string {
   if (!secs) return "—";
@@ -62,13 +63,16 @@ export default async function ActivityDetailPage({
 
   return (
     <div className="px-4 py-6 max-w-2xl mx-auto flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <Link href="/activity" className="text-muted hover:text-white transition-colors">
-          ← Back
-        </Link>
-        <h1 className="text-xl font-semibold">
-          {isWorkout ? "Workout" : isRun ? "Run" : "Activity"}
-        </h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/activity" className="text-muted hover:text-white transition-colors">
+            ← Back
+          </Link>
+          <h1 className="text-xl font-semibold">
+            {isWorkout ? "Workout" : isRun ? "Run" : "Activity"}
+          </h1>
+        </div>
+        <DeleteActivityButton activityId={activity.id} />
       </div>
 
       <div className="text-sm text-muted">

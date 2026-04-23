@@ -2,25 +2,43 @@
 
 import { useState } from "react";
 import { computeE1RM } from "@/lib/e1rm";
-import type { SessionSet } from "@/types";
+import { weightUnit } from "@/lib/units";
+import type { SessionSet, Units } from "@/types";
 
 interface Props {
   exerciseName: string;
   sets: SessionSet[];
-  weightIncrement: number;
-  onAddSet: (set: { reps: number; weight: number; rpe: number }) => void;
+  weightIncrement: number; // always kg
+  units: Units;
+  onAddSet: (set: { reps: number; weight: number; rpe: number }) => void; // weight always kg
 }
 
-export function SetLogger({ exerciseName, sets, weightIncrement, onAddSet }: Props) {
+export function SetLogger({ exerciseName, sets, weightIncrement, units, onAddSet }: Props) {
   const lastSet = sets[sets.length - 1];
-  const [reps, setReps] = useState(lastSet?.reps ?? 8);
-  const [weight, setWeight] = useState(lastSet?.weight ?? 0);
-  const [rpe, setRpe] = useState(lastSet?.rpe ?? 7);
+  const unit = weightUnit(units);
 
-  const e1rm = computeE1RM(weight, reps);
+  function kgToDisplay(kg: number) {
+    return units === "imperial" ? Math.round(kg * 2.20462 * 10) / 10 : kg;
+  }
+  function displayToKg(v: number) {
+    return units === "imperial" ? v / 2.20462 : v;
+  }
+  const dispIncrement = units === "imperial"
+    ? Math.round(weightIncrement * 2.20462 * 10) / 10
+    : weightIncrement;
+
+  const [repsStr, setRepsStr] = useState(String(lastSet?.reps ?? 8));
+  const [weightStr, setWeightStr] = useState(String(kgToDisplay(lastSet?.weight ?? 0)));
+  const [rpeStr, setRpeStr] = useState(String(lastSet?.rpe ?? 7));
+
+  const reps = Math.max(1, parseInt(repsStr) || 1);
+  const weightDisplay = parseFloat(weightStr) || 0;
+  const rpe = Math.min(10, Math.max(1, parseFloat(rpeStr) || 1));
+
+  const e1rmDisplay = kgToDisplay(computeE1RM(displayToKg(weightDisplay), reps));
 
   function handleAdd() {
-    onAddSet({ reps, weight, rpe });
+    onAddSet({ reps, weight: displayToKg(weightDisplay), rpe });
   }
 
   return (
@@ -29,36 +47,36 @@ export function SetLogger({ exerciseName, sets, weightIncrement, onAddSet }: Pro
         Set {sets.length + 1} · {exerciseName}
       </h3>
 
-      {/* Previous sets */}
       {sets.length > 0 && (
         <div className="flex flex-col gap-1">
           {sets.map((s, i) => (
             <div key={i} className="flex items-center justify-between text-xs text-muted px-1">
               <span>Set {i + 1}</span>
-              <span>{s.weight} kg × {s.reps} @ RPE {s.rpe}</span>
-              <span className="text-white">{computeE1RM(s.weight, s.reps).toFixed(1)} e1RM</span>
+              <span>{kgToDisplay(s.weight)} {unit} × {s.reps} @ RPE {s.rpe}</span>
+              <span className="text-white">{kgToDisplay(computeE1RM(s.weight, s.reps)).toFixed(1)} e1RM</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Inputs */}
       <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted">Weight (kg)</label>
+          <label className="text-xs text-muted">Weight ({unit})</label>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setWeight((w) => Math.max(0, w - weightIncrement))}
+              onClick={() => setWeightStr(String(Math.max(0, Math.round((weightDisplay - dispIncrement) * 10) / 10)))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >−</button>
             <input
               type="number"
-              value={weight}
-              onChange={(e) => setWeight(parseFloat(e.target.value) || 0)}
+              inputMode="decimal"
+              value={weightStr}
+              onChange={(e) => setWeightStr(e.target.value)}
+              onBlur={() => setWeightStr(String(Math.max(0, parseFloat(weightStr) || 0)))}
               className="flex-1 w-0 min-w-0 bg-surface border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:border-[var(--accent)]"
             />
             <button
-              onClick={() => setWeight((w) => w + weightIncrement)}
+              onClick={() => setWeightStr(String(Math.round((weightDisplay + dispIncrement) * 10) / 10))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >+</button>
           </div>
@@ -68,17 +86,19 @@ export function SetLogger({ exerciseName, sets, weightIncrement, onAddSet }: Pro
           <label className="text-xs text-muted">Reps</label>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setReps((r) => Math.max(1, r - 1))}
+              onClick={() => setRepsStr(String(Math.max(1, reps - 1)))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >−</button>
             <input
               type="number"
-              value={reps}
-              onChange={(e) => setReps(parseInt(e.target.value) || 1)}
+              inputMode="numeric"
+              value={repsStr}
+              onChange={(e) => setRepsStr(e.target.value)}
+              onBlur={() => setRepsStr(String(Math.max(1, parseInt(repsStr) || 1)))}
               className="flex-1 w-0 min-w-0 bg-surface border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:border-[var(--accent)]"
             />
             <button
-              onClick={() => setReps((r) => r + 1)}
+              onClick={() => setRepsStr(String(reps + 1))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >+</button>
           </div>
@@ -88,27 +108,28 @@ export function SetLogger({ exerciseName, sets, weightIncrement, onAddSet }: Pro
           <label className="text-xs text-muted">RPE</label>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setRpe((r) => Math.max(1, r - 0.5))}
+              onClick={() => setRpeStr(String(Math.max(1, Math.round((rpe - 0.5) * 10) / 10)))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >−</button>
             <input
               type="number"
+              inputMode="decimal"
               step="0.5"
-              value={rpe}
-              onChange={(e) => setRpe(parseFloat(e.target.value) || 1)}
+              value={rpeStr}
+              onChange={(e) => setRpeStr(e.target.value)}
+              onBlur={() => setRpeStr(String(Math.min(10, Math.max(1, parseFloat(rpeStr) || 1))))}
               className="flex-1 w-0 min-w-0 bg-surface border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:border-[var(--accent)]"
             />
             <button
-              onClick={() => setRpe((r) => Math.min(10, r + 0.5))}
+              onClick={() => setRpeStr(String(Math.min(10, Math.round((rpe + 0.5) * 10) / 10)))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >+</button>
           </div>
         </div>
       </div>
 
-      {/* e1RM preview */}
       <div className="text-center text-xs text-muted">
-        Estimated 1RM: <span className="text-white font-medium">{e1rm.toFixed(1)} kg</span>
+        Estimated 1RM: <span className="text-white font-medium">{e1rmDisplay.toFixed(1)} {unit}</span>
       </div>
 
       <button

@@ -14,7 +14,8 @@ export default async function SettingsPage() {
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase
       .from("weekly_schedule")
-      .select("*, day_type:day_types(*)")
+      .select("*")
+      .eq("user_id", user.id)
       .order("day_of_week"),
     supabase.from("day_types").select("*").order("name"),
   ]);

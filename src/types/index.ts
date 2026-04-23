@@ -136,7 +136,8 @@ export interface DailyCheckin {
 export interface WeeklyScheduleRow {
   id: string;
   day_of_week: ISODayOfWeek;
-  day_type_id: string;
+  day_type_id: string | null;
+  cardio_day_type_id: string | null;
   active: boolean;
   day_type?: DayType;
 }

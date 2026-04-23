@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { saveProfile } from "@/app/(tabs)/settings/actions";
+import { saveProfile, saveWeeklyScheduleDay } from "@/app/(tabs)/settings/actions";
 import { Select } from "@/components/ui/Select";
 import type { AccentColor, DayType, Profile, Units, WeeklyScheduleRow } from "@/types";
 
@@ -42,7 +42,13 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
 
   const [scheduleMap, setScheduleMap] = useState<Record<number, string>>(() => {
     const m: Record<number, string> = {};
-    for (const r of schedule) m[r.day_of_week] = r.day_type_id;
+    for (const r of schedule) if (r.day_type_id) m[r.day_of_week] = r.day_type_id;
+    return m;
+  });
+
+  const [cardioMap, setCardioMap] = useState<Record<number, string>>(() => {
+    const m: Record<number, string> = {};
+    for (const r of schedule) if (r.cardio_day_type_id) m[r.day_of_week] = r.cardio_day_type_id;
     return m;
   });
 
@@ -148,18 +154,48 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
     }
   }
 
-  async function handleScheduleChange(row: WeeklyScheduleRow | undefined, dayIndex: number, val: string) {
-    if (!val) {
-      if (row?.id) {
-        const { error } = await supabase.from("weekly_schedule").delete().eq("id", row.id);
-        if (error) console.error("[settings] schedule delete failed", error.message);
-      }
-    } else if (row?.id) {
-      const { error } = await supabase.from("weekly_schedule").update({ day_type_id: val }).eq("id", row.id);
-      if (error) console.error("[settings] schedule update failed", error.message);
-    } else {
-      const { error } = await supabase.from("weekly_schedule").insert({ day_of_week: dayIndex, day_type_id: val });
-      if (error) console.error("[settings] schedule insert failed", error.message);
+  async function persistScheduleRow(dayIndex: number, workoutVal: string | null, cardioVal: string | null) {
+    setSaveError(null);
+
+    const { error } = await saveWeeklyScheduleDay({
+      day_of_week: dayIndex,
+      day_type_id: workoutVal,
+      cardio_day_type_id: cardioVal,
+    });
+
+    if (error) {
+      console.error("[settings] schedule save failed", error);
+      setSaveError("Failed to save schedule. Please try again.");
+      return false;
+    }
+
+    router.refresh();
+    return true;
+  }
+
+  async function handleScheduleChange(dayIndex: number, val: string) {
+    const previousWorkout = scheduleMap[dayIndex] ?? "";
+    const workoutVal = val || null;
+    const cardioVal = cardioMap[dayIndex] ?? null;
+
+    setScheduleMap((prev) => ({ ...prev, [dayIndex]: val }));
+
+    const ok = await persistScheduleRow(dayIndex, workoutVal, cardioVal);
+    if (!ok) {
+      setScheduleMap((prev) => ({ ...prev, [dayIndex]: previousWorkout }));
+    }
+  }
+
+  async function handleCardioChange(dayIndex: number, val: string) {
+    const previousCardio = cardioMap[dayIndex] ?? "";
+    const workoutVal = scheduleMap[dayIndex] ?? null;
+    const cardioVal = val || null;
+
+    setCardioMap((prev) => ({ ...prev, [dayIndex]: val }));
+
+    const ok = await persistScheduleRow(dayIndex, workoutVal, cardioVal);
+    if (!ok) {
+      setCardioMap((prev) => ({ ...prev, [dayIndex]: previousCardio }));
     }
   }
 
@@ -180,6 +216,9 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  const strengthTypes = dayTypes.filter((dt) => dt.category === "strength" || dt.name === "Rest");
+  const runTypes = dayTypes.filter((dt) => dt.category === "run");
 
   return (
     <div className="flex flex-col gap-8">
@@ -288,22 +327,30 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
 
       <Section title="Weekly Schedule">
         <div className="card divide-y divide-border">
-          {DAY_NAMES.map((day, i) => {
-            const row = schedule.find((s) => s.day_of_week === i);
-            return (
-              <div key={i} className="flex items-center justify-between px-4 py-3">
-                <span className="text-sm">{day}</span>
-                <Select
-                  value={scheduleMap[i] ?? ""}
-                  options={dayTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
-                  onChange={(val) => {
-                    setScheduleMap((prev) => ({ ...prev, [i]: val }));
-                    handleScheduleChange(row, i, val);
-                  }}
-                />
-              </div>
-            );
-          })}
+          <div className="flex items-center px-4 py-2 gap-4">
+            <span className="text-xs text-muted flex-1" />
+            <span className="text-xs text-muted w-[120px] text-center">Workout</span>
+            <span className="text-xs text-muted w-[120px] text-center">Cardio</span>
+          </div>
+          {DAY_NAMES.map((day, i) => (
+            <div key={i} className="flex items-center gap-4 px-4 py-3">
+              <span className="text-sm flex-1">{day}</span>
+              <Select
+                value={scheduleMap[i] ?? ""}
+                options={strengthTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
+                onChange={(val) => {
+                  void handleScheduleChange(i, val);
+                }}
+              />
+              <Select
+                value={cardioMap[i] ?? ""}
+                options={runTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
+                onChange={(val) => {
+                  void handleCardioChange(i, val);
+                }}
+              />
+            </div>
+          ))}
         </div>
       </Section>
 

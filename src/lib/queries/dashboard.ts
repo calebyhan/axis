@@ -132,7 +132,7 @@ export async function getWeekChecklistData() {
   const [scheduleRes, activitiesRes] = await Promise.all([
     supabase
       .from("weekly_schedule")
-      .select("*, day_type:day_types(*)")
+      .select("*, day_type:day_types!weekly_schedule_day_type_id_fkey(*)")
       .eq("active", true),
     supabase
       .from("activities")

@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { clearDraft, saveDraft } from "@/lib/idb/session-draft";
-import { computeE1RM } from "@/lib/e1rm";
-import type { Exercise, MuscleGroup, SessionState } from "@/types";
+import type { Exercise, MuscleGroup, SessionState, Units } from "@/types";
 import { useSession } from "@/context/SessionContext";
 import { ExerciseSearch } from "./ExerciseSearch";
 import { SetLogger } from "./SetLogger";
@@ -29,6 +28,8 @@ export function SessionFlow({ onClose, onComplete }: Props) {
   const [finalSession, setFinalSession] = useState<SessionState | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [units, setUnits] = useState<Units>("metric");
+  const [todayMuscles, setTodayMuscles] = useState<MuscleGroup[] | undefined>(undefined);
 
   // Derive activeExercise from live session state — never stale
   const activeExercise = session?.exercises.find((e) => e.exerciseId === activeExerciseId) ?? null;
@@ -45,15 +46,33 @@ export function SessionFlow({ onClose, onComplete }: Props) {
     return c;
   }, [session]);
 
-  // Load exercises
+  // Load exercises, user units, and today's scheduled day type in parallel
   useEffect(() => {
     const supabase = createClient();
     supabase.from("exercises").select("*").then(({ data, error }) => {
-      if (error) {
-        console.error("[SessionFlow] Failed to load exercises", error.message);
-      }
+      if (error) console.error("[SessionFlow] Failed to load exercises", error.message);
       if (data) setExercises(data as Exercise[]);
     });
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("profiles").select("units").eq("id", user.id).single().then(({ data }) => {
+        if (data?.units) setUnits(data.units as Units);
+      });
+    });
+    // ISO day: 0 = Monday … 6 = Sunday
+    const isoDay = (new Date().getDay() + 6) % 7;
+    supabase
+      .from("weekly_schedule")
+      .select("day_type:day_types!weekly_schedule_day_type_id_fkey(muscle_focus)")
+      .eq("day_of_week", isoDay)
+      .eq("active", true)
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        const dt = data?.day_type;
+        const muscles = (Array.isArray(dt) ? dt[0] : dt)?.muscle_focus as MuscleGroup[] | null | undefined;
+        if (muscles && muscles.length > 0) setTodayMuscles(muscles);
+      });
   }, []);
 
   // Start session if no active session and no draft
@@ -123,7 +142,6 @@ export function SessionFlow({ onClose, onComplete }: Props) {
         reps: s.reps,
         weight: s.weight,
         rpe: s.rpe,
-        e1rm: computeE1RM(s.weight, s.reps),
       }))
     );
 
@@ -233,6 +251,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
               exerciseName={activeExercise.name}
               sets={activeExercise.sets}
               weightIncrement={2.5}
+              units={units}
               onAddSet={(s) => addSet(activeExercise.exerciseId, s)}
             />
           </div>
@@ -250,7 +269,11 @@ export function SessionFlow({ onClose, onComplete }: Props) {
         {step === "exercise_search" && (
           <div>
             <p className="text-xs text-muted mb-2 uppercase tracking-wide">Choose exercise</p>
-            <ExerciseSearch exercises={exercises} onSelect={handleExerciseSelect} />
+            <ExerciseSearch
+              exercises={exercises}
+              onSelect={handleExerciseSelect}
+              defaultMuscles={todayMuscles}
+            />
           </div>
         )}
 
@@ -261,6 +284,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
             <ExerciseSearch
               exercises={exercises}
               onSelect={handleExerciseSelect}
+              defaultMuscles={todayMuscles}
               autoFocus={false}
               collapseUntilTyped
             />
@@ -295,6 +319,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
         <RecentStatsPanel
           exercise={exercises.find((e) => e.id === activeExerciseId)!}
           weightIncrement={2.5}
+          units={units}
           onAcceptSuggestion={(_w, _r) => setShowRecentStats(false)}
           onDismiss={() => setShowRecentStats(false)}
         />

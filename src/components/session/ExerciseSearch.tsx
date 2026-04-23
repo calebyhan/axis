@@ -2,19 +2,41 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Fuse from "fuse.js";
-import type { Exercise } from "@/types";
+import type { Exercise, MuscleGroup } from "@/types";
 
 interface Props {
   exercises: Exercise[];
   onSelect: (exercise: Exercise) => void;
   scoredOrder?: string[];
+  defaultMuscles?: MuscleGroup[];
   autoFocus?: boolean;
   collapseUntilTyped?: boolean;
 }
 
-export function ExerciseSearch({ exercises, onSelect, scoredOrder, autoFocus = true, collapseUntilTyped = false }: Props) {
+function muscleLabel(m: MuscleGroup): string {
+  return m.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function ExerciseSearch({
+  exercises,
+  onSelect,
+  scoredOrder,
+  defaultMuscles,
+  autoFocus = true,
+  collapseUntilTyped = false,
+}: Props) {
   const [query, setQuery] = useState("");
+  const [activeMuscs, setActiveMuscs] = useState<MuscleGroup[] | null>(
+    defaultMuscles && defaultMuscles.length > 0 ? defaultMuscles : null
+  );
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync when defaultMuscles arrives after mount (async fetch in parent)
+  useEffect(() => {
+    if (defaultMuscles && defaultMuscles.length > 0) {
+      setActiveMuscs((prev) => (prev === null ? defaultMuscles : prev));
+    }
+  }, [defaultMuscles]);
 
   useEffect(() => {
     if (autoFocus) inputRef.current?.focus();
@@ -30,21 +52,76 @@ export function ExerciseSearch({ exercises, onSelect, scoredOrder, autoFocus = t
     [exercises]
   );
 
+  const filtered = useMemo(() => {
+    if (!activeMuscs) return exercises;
+    return exercises.filter((e) =>
+      e.primary_muscles.some((m) => activeMuscs.includes(m)) ||
+      e.secondary_muscles.some((m) => activeMuscs.includes(m))
+    );
+  }, [exercises, activeMuscs]);
+
   const results = useMemo(() => {
+    const pool = filtered;
     if (!query.trim()) {
       if (scoredOrder && scoredOrder.length > 0) {
-        const idMap = new Map(exercises.map((e) => [e.id, e]));
+        const idMap = new Map(pool.map((e) => [e.id, e]));
         const ordered = scoredOrder.flatMap((id) => (idMap.has(id) ? [idMap.get(id)!] : []));
-        const rest = exercises.filter((e) => !scoredOrder.includes(e.id));
+        const rest = pool.filter((e) => !scoredOrder.includes(e.id));
         return [...ordered, ...rest].slice(0, 40);
       }
-      return exercises.slice(0, 40);
+      return pool.slice(0, 40);
     }
-    return fuse.search(query).map((r) => r.item).slice(0, 20);
-  }, [query, fuse, exercises, scoredOrder]);
+    return new Fuse(pool, { keys: ["name", "category"], threshold: 0.35, distance: 80 })
+      .search(query)
+      .map((r) => r.item)
+      .slice(0, 20);
+  }, [query, filtered, scoredOrder]);
+
+  function toggleMuscle(m: MuscleGroup) {
+    setActiveMuscs((prev) => {
+      if (!prev) return [m];
+      if (prev.includes(m)) {
+        const next = prev.filter((x) => x !== m);
+        return next.length === 0 ? null : next;
+      }
+      return [...prev, m];
+    });
+  }
+
+  // Chips: only show when there's a default set to use as a starting point
+  const chipMuscs = defaultMuscles && defaultMuscles.length > 0 ? defaultMuscles : null;
 
   return (
     <div className="flex flex-col gap-3">
+      {chipMuscs && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setActiveMuscs(null)}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+              activeMuscs === null
+                ? "bg-accent text-white"
+                : "bg-border text-muted hover:text-white"
+            }`}
+          >
+            All
+          </button>
+          {chipMuscs.map((m) => {
+            const on = activeMuscs?.includes(m) ?? false;
+            return (
+              <button
+                key={m}
+                onClick={() => toggleMuscle(m)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                  on ? "bg-accent text-white" : "bg-border text-muted hover:text-white"
+                }`}
+              >
+                {muscleLabel(m)}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <input
         ref={inputRef}
         type="text"
@@ -54,24 +131,26 @@ export function ExerciseSearch({ exercises, onSelect, scoredOrder, autoFocus = t
         className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[var(--accent)] transition-colors"
       />
 
-      {(!collapseUntilTyped || query.trim()) && <ul className="flex flex-col gap-1 max-h-[40vh] overflow-y-auto">
-        {results.map((ex) => (
-          <li key={ex.id}>
-            <button
-              onClick={() => onSelect(ex)}
-              className="w-full text-left px-3 py-3 rounded-lg hover:bg-surface border border-transparent hover:border-border transition-all"
-            >
-              <div className="text-sm font-medium">{ex.name}</div>
-              <div className="text-xs text-muted mt-0.5 capitalize">
-                {ex.equipment} · {ex.movement_pattern.replace(/_/g, " ")}
-              </div>
-            </button>
-          </li>
-        ))}
-        {results.length === 0 && (
-          <li className="text-muted text-sm text-center py-6">No exercises found</li>
-        )}
-      </ul>}
+      {(!collapseUntilTyped || query.trim()) && (
+        <ul className="flex flex-col gap-1 max-h-[40vh] overflow-y-auto">
+          {results.map((ex) => (
+            <li key={ex.id}>
+              <button
+                onClick={() => onSelect(ex)}
+                className="w-full text-left px-3 py-3 rounded-lg hover:bg-surface border border-transparent hover:border-border transition-all"
+              >
+                <div className="text-sm font-medium">{ex.name}</div>
+                <div className="text-xs text-muted mt-0.5 capitalize">
+                  {ex.equipment} · {ex.movement_pattern.replace(/_/g, " ")}
+                </div>
+              </button>
+            </li>
+          ))}
+          {results.length === 0 && (
+            <li className="text-muted text-sm text-center py-6">No exercises found</li>
+          )}
+        </ul>
+      )}
     </div>
   );
 }

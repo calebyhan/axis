@@ -19,6 +19,7 @@ export function Select({ value, options, onChange, placeholder = "—" }: Props)
   const [open, setOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const selected = options.find((o) => o.value === value);
 
@@ -38,7 +39,10 @@ export function Select({ value, options, onChange, placeholder = "—" }: Props)
   useEffect(() => {
     if (!open) return;
     function onPointerDown(e: PointerEvent) {
-      if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const clickedTrigger = triggerRef.current?.contains(target);
+      const clickedDropdown = dropdownRef.current?.contains(target);
+      if (!clickedTrigger && !clickedDropdown) {
         setOpen(false);
       }
     }
@@ -59,6 +63,7 @@ export function Select({ value, options, onChange, placeholder = "—" }: Props)
   const dropdown = open
     ? createPortal(
         <div
+          ref={dropdownRef}
           style={dropdownStyle}
           className="rounded-2xl border border-border bg-[#161616] shadow-[0_16px_48px_rgba(0,0,0,0.6)] backdrop-blur-xl overflow-hidden animate-select-open"
         >

@@ -94,6 +94,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setSession(draftData);
       setHasDraft(false);
       setDraftData(null);
+      autosaveFailCount.current = 0;
+      setAutosaveFailed(false);
       // Keep draftKey so SessionFlow can clear it after successful save
     }
   }, [draftData]);

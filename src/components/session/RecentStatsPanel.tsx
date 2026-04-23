@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { computeE1RM } from "@/lib/e1rm";
-import type { Exercise } from "@/types";
+import { weightUnit } from "@/lib/units";
+import type { Exercise, Units } from "@/types";
 
 interface SetRecord {
   session_date: string;
@@ -16,12 +17,13 @@ interface SetRecord {
 
 interface Props {
   exercise: Exercise;
-  weightIncrement: number;
+  weightIncrement: number; // kg
+  units: Units;
   onAcceptSuggestion: (weight: number, reps: number) => void;
   onDismiss: () => void;
 }
 
-export function RecentStatsPanel({ exercise, weightIncrement, onAcceptSuggestion, onDismiss }: Props) {
+export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSuggestion, onDismiss }: Props) {
   const [sets, setSets] = useState<SetRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -71,6 +73,12 @@ export function RecentStatsPanel({ exercise, weightIncrement, onAcceptSuggestion
   // Suggestion
   const suggestion = computeSuggestion(sessions, weightIncrement);
 
+  const unit = weightUnit(units);
+  function d(kg: number) {
+    const v = units === "imperial" ? kg * 2.20462 : kg;
+    return v % 1 === 0 ? Math.round(v) : Math.round(v * 10) / 10;
+  }
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-background/80 z-50 flex items-end">
@@ -104,8 +112,8 @@ export function RecentStatsPanel({ exercise, weightIncrement, onAcceptSuggestion
                 {lastSession.map((s, i) => (
                   <div key={i} className="flex justify-between text-sm">
                     <span className="text-muted">Set {s.set_number}</span>
-                    <span>{s.weight} kg × {s.reps} @ RPE {s.rpe}</span>
-                    <span className="text-muted">{s.e1rm.toFixed(1)}</span>
+                    <span>{d(s.weight)} {unit} × {s.reps} @ RPE {s.rpe}</span>
+                    <span className="text-muted">{d(s.e1rm).toFixed(1)}</span>
                   </div>
                 ))}
               </div>
@@ -116,8 +124,8 @@ export function RecentStatsPanel({ exercise, weightIncrement, onAcceptSuggestion
               <div>
                 <p className="text-xs text-muted mb-1 uppercase tracking-wide">All-Time Best</p>
                 <p className="text-sm">
-                  {allTimeMax.weight} kg × {allTimeMax.reps} ={" "}
-                  <span className="text-white font-medium">{allTimeMax.e1rm.toFixed(1)} kg e1RM</span>
+                  {d(allTimeMax.weight)} {unit} × {allTimeMax.reps} ={" "}
+                  <span className="text-white font-medium">{d(allTimeMax.e1rm).toFixed(1)} {unit} e1RM</span>
                 </p>
               </div>
             )}
@@ -129,7 +137,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, onAcceptSuggestion
                 <div className="flex gap-2">
                   {[...last5E1RMs].reverse().map((v, i) => (
                     <span key={i} className="text-sm text-white">
-                      {v.toFixed(0)}
+                      {d(v).toFixed(0)}
                       {i < last5E1RMs.length - 1 && <span className="text-muted"> →</span>}
                     </span>
                   ))}
@@ -143,7 +151,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, onAcceptSuggestion
                 onClick={() => onAcceptSuggestion(suggestion.weight, suggestion.reps)}
                 className="w-full border border-accent rounded-lg py-2.5 text-sm font-medium text-accent hover:bg-accent/10 transition-colors"
               >
-                Try {suggestion.weight} kg × {suggestion.reps}
+                Try {d(suggestion.weight)} {unit} × {suggestion.reps}
               </button>
             )}
           </div>
