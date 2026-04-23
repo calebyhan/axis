@@ -24,6 +24,11 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
 html, body {
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.12), transparent 28%),
@@ -36,6 +41,10 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100%;
+}
+
+button, a, [role="button"] {
+  touch-action: manipulation;
 }
 
 body {
@@ -110,7 +119,7 @@ body::after {
 .page-shell {
   width: min(100%, 56rem);
   margin: 0 auto;
-  padding: 1.25rem 1rem 6.5rem;
+  padding: max(1.25rem, env(safe-area-inset-top, 0px)) 1rem 6.5rem;
 }
 
 .page-header {
@@ -232,6 +241,36 @@ body::after {
   }
 
   .page-shell {
-    padding-top: 1rem;
+    padding-top: max(1rem, env(safe-area-inset-top, 0px));
   }
+}
+
+/* Tab slide transitions */
+@keyframes tab-slide-in-right {
+  from { transform: translateX(28px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes tab-slide-in-left {
+  from { transform: translateX(-28px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+.tab-slide-right {
+  animation: tab-slide-in-right 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.tab-slide-left {
+  animation: tab-slide-in-left 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Custom select dropdown open animation */
+@keyframes select-open {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+.animate-select-open {
+  animation: select-open 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top right;
 }

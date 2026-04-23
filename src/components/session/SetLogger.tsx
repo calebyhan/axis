@@ -36,7 +36,7 @@ export function SetLogger({ exerciseName, sets, weightIncrement, onAddSet }: Pro
             <div key={i} className="flex items-center justify-between text-xs text-muted px-1">
               <span>Set {i + 1}</span>
               <span>{s.weight} kg × {s.reps} @ RPE {s.rpe}</span>
-              <span className="text-white">{s.e1rm.toFixed(1)} e1RM</span>
+              <span className="text-white">{computeE1RM(s.weight, s.reps).toFixed(1)} e1RM</span>
             </div>
           ))}
         </div>

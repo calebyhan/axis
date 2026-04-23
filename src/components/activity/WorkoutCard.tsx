@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MiniHeatmap } from "@/components/heatmap/MiniHeatmap";
-import type { Activity, MuscleGroup } from "@/types";
+import type { Activity, MuscleGroup, Units } from "@/types";
+import { formatWeight, weightUnit } from "@/lib/units";
 
 function formatDuration(secs: number | null): string {
   if (!secs) return "—";
@@ -14,9 +15,10 @@ interface Props {
   coverage?: Partial<Record<MuscleGroup, number>>;
   exerciseCount?: number;
   totalVolume?: number;
+  units: Units;
 }
 
-export function WorkoutCard({ activity, coverage = {}, exerciseCount, totalVolume }: Props) {
+export function WorkoutCard({ activity, coverage = {}, exerciseCount, totalVolume, units }: Props) {
   return (
     <Link href={`/activity/${activity.id}`} className="card surface-hover p-4 sm:p-5 flex gap-4 block">
       <div className="shrink-0">
@@ -50,10 +52,8 @@ export function WorkoutCard({ activity, coverage = {}, exerciseCount, totalVolum
             <div className="card-soft p-3">
               <div className="text-white/38 text-[11px] uppercase tracking-[0.16em]">Volume</div>
               <div className="font-medium">
-                {totalVolume >= 1000
-                  ? `${(totalVolume / 1000).toFixed(1)}k`
-                  : Math.round(totalVolume)}{" "}
-                kg
+                {formatWeight(totalVolume, units)}{" "}
+                {weightUnit(units)}
               </div>
             </div>
           )}

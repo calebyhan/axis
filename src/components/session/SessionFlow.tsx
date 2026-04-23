@@ -226,25 +226,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
       )}
 
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-6">
-        {/* Live muscle heatmap */}
-        {session && session.exercises.length > 0 && (
-          <div>
-            <p className="text-xs text-muted mb-2 uppercase tracking-wide">Coverage</p>
-            <MiniHeatmap coverage={coverage} />
-          </div>
-        )}
-
-        {/* Exercise search */}
-        {(step === "exercise_search" || step === "logging") && (
-          <div>
-            <p className="text-xs text-muted mb-2 uppercase tracking-wide">
-              {step === "logging" ? "Add another exercise" : "Choose exercise"}
-            </p>
-            <ExerciseSearch exercises={exercises} onSelect={handleExerciseSelect} />
-          </div>
-        )}
-
-        {/* Active set logger — reads sets directly from live session state */}
+        {/* Active set logger — shown first so it's immediately visible after exercise selection */}
         {step === "logging" && activeExercise && session && (
           <div className="card p-4">
             <SetLogger
@@ -256,12 +238,41 @@ export function SessionFlow({ onClose, onComplete }: Props) {
           </div>
         )}
 
-        {/* Logged exercises */}
-        {session && session.exercises.length > 0 && (
+        {/* Live muscle heatmap — only once at least one set is logged */}
+        {session && session.exercises.some((e) => e.sets.length > 0) && (
+          <div>
+            <p className="text-xs text-muted mb-2 uppercase tracking-wide">Coverage</p>
+            <MiniHeatmap coverage={coverage} />
+          </div>
+        )}
+
+        {/* Exercise search */}
+        {step === "exercise_search" && (
+          <div>
+            <p className="text-xs text-muted mb-2 uppercase tracking-wide">Choose exercise</p>
+            <ExerciseSearch exercises={exercises} onSelect={handleExerciseSelect} />
+          </div>
+        )}
+
+        {/* Add another exercise — collapsed until user types */}
+        {step === "logging" && (
+          <div>
+            <p className="text-xs text-muted mb-2 uppercase tracking-wide">Add another exercise</p>
+            <ExerciseSearch
+              exercises={exercises}
+              onSelect={handleExerciseSelect}
+              autoFocus={false}
+              collapseUntilTyped
+            />
+          </div>
+        )}
+
+        {/* Logged exercises — only show exercises that have at least one set */}
+        {session && session.exercises.some((e) => e.sets.length > 0) && (
           <div>
             <p className="text-xs text-muted mb-2 uppercase tracking-wide">Logged</p>
             <div className="flex flex-col gap-2">
-              {session.exercises.map((ex) => (
+              {session.exercises.filter((ex) => ex.sets.length > 0).map((ex) => (
                 <button
                   key={ex.exerciseId}
                   onClick={() => {

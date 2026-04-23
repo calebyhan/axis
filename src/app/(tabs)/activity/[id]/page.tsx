@@ -1,8 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import { getActivityWithSets } from "@/lib/queries/activity";
+import { getUserUnits } from "@/lib/queries/profile";
 import { computeE1RM } from "@/lib/e1rm";
 import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
+import { formatWeight, formatDistance, weightUnit, distanceUnit } from "@/lib/units";
 import type { MuscleGroup } from "@/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -20,7 +22,10 @@ export default async function ActivityDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { activity, sets } = await getActivityWithSets(id);
+  const [{ activity, sets }, units] = await Promise.all([
+    getActivityWithSets(id),
+    getUserUnits(),
+  ]);
 
   if (!activity) notFound();
 
@@ -85,9 +90,9 @@ export default async function ActivityDetailPage({
           <>
             <div className="card p-3 text-center">
               <div className="text-lg font-semibold">
-                {activity.distance ? `${(activity.distance / 1000).toFixed(2)}` : "—"}
+                {activity.distance ? formatDistance(activity.distance / 1000, units) : "—"}
               </div>
-              <div className="text-xs text-muted mt-0.5">km</div>
+              <div className="text-xs text-muted mt-0.5">{distanceUnit(units)}</div>
             </div>
             <div className="card p-3 text-center">
               <div className="text-lg font-semibold">
@@ -135,7 +140,7 @@ export default async function ActivityDetailPage({
                       <span className="font-medium">{name}</span>
                       {bestE1RM > 0 && (
                         <span className="text-xs text-muted">
-                          Best e1RM: {bestE1RM.toFixed(1)} kg
+                          Best e1RM: {formatWeight(bestE1RM, units)} {weightUnit(units)}
                         </span>
                       )}
                     </div>
@@ -144,10 +149,10 @@ export default async function ActivityDetailPage({
                         <div key={i} className="flex justify-between text-sm">
                           <span className="text-muted">Set {s.set_number}</span>
                           <span>
-                            {s.weight} kg × {s.reps}
+                            {formatWeight(s.weight, units)} {weightUnit(units)} × {s.reps}
                           </span>
                           <span className="text-muted">
-                            RPE {s.rpe} · {computeE1RM(s.weight, s.reps).toFixed(0)} e1RM
+                            RPE {s.rpe} · {formatWeight(computeE1RM(s.weight, s.reps), units)} e1RM
                           </span>
                         </div>
                       ))}

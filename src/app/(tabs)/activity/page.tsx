@@ -1,12 +1,16 @@
 export const dynamic = "force-dynamic";
 
 import { getActivitiesFeed, getWorkoutMuscleCoverage } from "@/lib/queries/activity";
+import { getUserUnits } from "@/lib/queries/profile";
 import { RunCard } from "@/components/activity/RunCard";
 import { WorkoutCard } from "@/components/activity/WorkoutCard";
 import type { Activity, MuscleGroup } from "@/types";
 
 export default async function ActivityPage() {
-  const activities = await getActivitiesFeed(undefined, 40) as Activity[];
+  const [activities, units] = await Promise.all([
+    getActivitiesFeed(undefined, 40) as Promise<Activity[]>,
+    getUserUnits(),
+  ]);
 
   // Fetch muscle coverage for workouts
   const workoutActivities = activities.filter((a) => a.type === "workout");
@@ -41,10 +45,11 @@ export default async function ActivityPage() {
                   key={activity.id}
                   activity={activity}
                   coverage={coverageMap.get(activity.id) ?? {}}
+                  units={units}
                 />
               );
             }
-            return <RunCard key={activity.id} activity={activity} />;
+            return <RunCard key={activity.id} activity={activity} units={units} />;
           })}
         </div>
       )}

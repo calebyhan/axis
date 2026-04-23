@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { saveProfile } from "@/app/(tabs)/settings/actions";
+import { Select } from "@/components/ui/Select";
 import type { AccentColor, DayType, Profile, Units, WeeklyScheduleRow } from "@/types";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -31,12 +34,19 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }: Props) {
   const supabase = createClient();
+  const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
 
-  const [units, setUnits] = useState<Units>(profile?.units ?? "metric");
+  const [scheduleMap, setScheduleMap] = useState<Record<number, string>>(() => {
+    const m: Record<number, string> = {};
+    for (const r of schedule) m[r.day_of_week] = r.day_type_id;
+    return m;
+  });
+
+  const [units, setUnits] = useState<Units>(profile?.units ?? "imperial");
   const [accent, setAccent] = useState<AccentColor>(profile?.accent_color ?? "blue");
   const [incUpper, setIncUpper] = useState(profile?.weight_increment_upper ?? 2.5);
   const [incLower, setIncLower] = useState(profile?.weight_increment_lower ?? 5.0);
@@ -44,33 +54,83 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
   const [dlSquat, setDlSquat] = useState(profile?.dl_squat_ratio ?? 1.20);
   const [volCeiling, setVolCeiling] = useState(profile?.volume_ceiling ?? 10);
 
-  async function handleSave() {
-    if (!profile?.id) return;
+  async function persistProfile(next: {
+    units?: Units;
+    accent?: AccentColor;
+    incUpper?: number;
+    incLower?: number;
+    ohpBench?: number;
+    dlSquat?: number;
+    volCeiling?: number;
+  }) {
     setSaving(true);
     setSaveError(null);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        units,
-        accent_color: accent,
-        weight_increment_upper: incUpper,
-        weight_increment_lower: incLower,
-        ohp_bench_ratio: ohpBench,
-        dl_squat_ratio: dlSquat,
-        volume_ceiling: volCeiling,
-      })
-      .eq("id", profile.id);
+
+    const nextUnits = next.units ?? units;
+    const nextAccent = next.accent ?? accent;
+
+    const { error } = await saveProfile({
+      units: nextUnits,
+      accent_color: nextAccent,
+      weight_increment_upper: next.incUpper ?? incUpper,
+      weight_increment_lower: next.incLower ?? incLower,
+      ohp_bench_ratio: next.ohpBench ?? ohpBench,
+      dl_squat_ratio: next.dlSquat ?? dlSquat,
+      volume_ceiling: next.volCeiling ?? volCeiling,
+    });
+
     setSaving(false);
+
     if (error) {
       setSaveError("Failed to save settings. Please try again.");
-      return;
+      return false;
     }
+
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+    router.refresh();
     document.documentElement.style.setProperty(
       "--accent",
-      ACCENT_COLORS.find((c) => c.value === accent)?.hex ?? "#3B82F6"
+      ACCENT_COLORS.find((c) => c.value === nextAccent)?.hex ?? "#3B82F6"
     );
+
+    return true;
+  }
+
+  async function handleSave() {
+    await persistProfile({});
+  }
+
+  async function handleUnitsChange(nextUnits: Units) {
+    if (nextUnits === units || saving) return;
+
+    const previousUnits = units;
+    setUnits(nextUnits);
+
+    const ok = await persistProfile({ units: nextUnits });
+    if (!ok) {
+      setUnits(previousUnits);
+    }
+  }
+
+  async function handleAccentChange(nextAccent: AccentColor) {
+    if (nextAccent === accent || saving) return;
+
+    const previousAccent = accent;
+    setAccent(nextAccent);
+    document.documentElement.style.setProperty(
+      "--accent",
+      ACCENT_COLORS.find((c) => c.value === nextAccent)?.hex ?? "#3B82F6"
+    );
+
+    const ok = await persistProfile({ accent: nextAccent });
+    if (!ok) {
+      setAccent(previousAccent);
+      document.documentElement.style.setProperty(
+        "--accent",
+        ACCENT_COLORS.find((c) => c.value === previousAccent)?.hex ?? "#3B82F6"
+      );
+    }
   }
 
   async function handleDisconnectStrava() {
@@ -170,10 +230,11 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
           {(["metric", "imperial"] as const).map((u) => (
             <button
               key={u}
-              onClick={() => setUnits(u)}
+              onClick={() => void handleUnitsChange(u)}
+              disabled={saving}
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${
                 units === u ? "border-accent text-accent" : "border-border text-muted"
-              }`}
+              } disabled:opacity-50`}
             >
               {u}
             </button>
@@ -186,11 +247,12 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
           {ACCENT_COLORS.map((c) => (
             <button
               key={c.value}
-              onClick={() => setAccent(c.value)}
+              onClick={() => void handleAccentChange(c.value)}
+              disabled={saving}
               style={{ background: c.hex }}
               className={`w-10 h-10 rounded-full border-2 transition-all ${
                 accent === c.value ? "border-white scale-110" : "border-transparent"
-              }`}
+              } disabled:opacity-50`}
               title={c.label}
             />
           ))}
@@ -200,7 +262,7 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
       <Section title="Weight Increments">
         <div className="card p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <label className="text-sm">Upper body (kg)</label>
+            <label className="text-sm">Upper body ({units === "imperial" ? "lbs" : "kg"})</label>
             <input
               type="number"
               step="0.5"
@@ -211,7 +273,7 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
             />
           </div>
           <div className="flex items-center justify-between">
-            <label className="text-sm">Lower body (kg)</label>
+            <label className="text-sm">Lower body ({units === "imperial" ? "lbs" : "kg"})</label>
             <input
               type="number"
               step="0.5"
@@ -231,16 +293,14 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
             return (
               <div key={i} className="flex items-center justify-between px-4 py-3">
                 <span className="text-sm">{day}</span>
-                <select
-                  defaultValue={row?.day_type_id ?? ""}
-                  onChange={(e) => handleScheduleChange(row, i, e.target.value)}
-                  className="bg-surface border border-border rounded-lg px-2 py-1 text-sm text-muted focus:outline-none focus:border-accent"
-                >
-                  <option value="">—</option>
-                  {dayTypes.map((dt) => (
-                    <option key={dt.id} value={dt.id}>{dt.name}</option>
-                  ))}
-                </select>
+                <Select
+                  value={scheduleMap[i] ?? ""}
+                  options={dayTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
+                  onChange={(val) => {
+                    setScheduleMap((prev) => ({ ...prev, [i]: val }));
+                    handleScheduleChange(row, i, val);
+                  }}
+                />
               </div>
             );
           })}

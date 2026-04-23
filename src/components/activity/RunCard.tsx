@@ -1,12 +1,6 @@
 import Link from "next/link";
-import type { Activity } from "@/types";
-
-function formatPace(secondsPerKm: number | null): string {
-  if (!secondsPerKm) return "—";
-  const m = Math.floor(secondsPerKm / 60);
-  const s = Math.round(secondsPerKm % 60);
-  return `${m}:${String(s).padStart(2, "0")}/km`;
-}
+import type { Activity, Units } from "@/types";
+import { formatDistance, formatPace, distanceUnit } from "@/lib/units";
 
 function formatDuration(secs: number | null): string {
   if (!secs) return "—";
@@ -17,10 +11,12 @@ function formatDuration(secs: number | null): string {
 
 interface Props {
   activity: Activity;
+  units: Units;
 }
 
-export function RunCard({ activity }: Props) {
-  const distanceKm = activity.distance ? (activity.distance / 1000).toFixed(2) : null;
+export function RunCard({ activity, units }: Props) {
+  const distanceKm = activity.distance ? activity.distance / 1000 : null;
+  const distanceDisplay = distanceKm !== null ? formatDistance(distanceKm, units) : null;
 
   return (
     <Link href={`/activity/${activity.id}`} className="card surface-hover p-4 sm:p-5 flex flex-col gap-4 block">
@@ -44,10 +40,10 @@ export function RunCard({ activity }: Props) {
             })}
           </div>
         </div>
-        {distanceKm && (
+        {distanceDisplay && (
           <div className="text-right">
-            <div className="text-2xl font-semibold tracking-[-0.05em]">{distanceKm}</div>
-            <div className="text-xs text-white/40 uppercase tracking-[0.16em]">km</div>
+            <div className="text-2xl font-semibold tracking-[-0.05em]">{distanceDisplay}</div>
+            <div className="text-xs text-white/40 uppercase tracking-[0.16em]">{distanceUnit(units)}</div>
           </div>
         )}
       </div>
@@ -59,7 +55,7 @@ export function RunCard({ activity }: Props) {
         </div>
         <div className="card-soft p-3">
           <div className="text-white/38 text-[11px] uppercase tracking-[0.16em]">Pace</div>
-          <div className="font-medium">{formatPace(activity.avg_pace)}</div>
+          <div className="font-medium">{formatPace(activity.avg_pace, units)}</div>
         </div>
         <div className="card-soft p-3">
           <div className="text-white/38 text-[11px] uppercase tracking-[0.16em]">Avg HR</div>

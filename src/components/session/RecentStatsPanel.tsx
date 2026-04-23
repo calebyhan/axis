@@ -50,9 +50,14 @@ export function RecentStatsPanel({ exercise, weightIncrement, onAcceptSuggestion
           rpe: s.rpe as number,
           e1rm: computeE1RM(s.weight as number, s.reps as number),
         }));
+        if (mapped.length === 0) {
+          onDismiss();
+          return;
+        }
         setSets(mapped);
         setLoading(false);
       });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exercise.id]);
 
   // Group into sessions

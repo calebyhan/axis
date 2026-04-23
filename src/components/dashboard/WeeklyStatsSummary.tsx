@@ -1,8 +1,12 @@
+import type { Units } from "@/types";
+import { formatDistance, formatWeight, distanceUnit, weightUnit } from "@/lib/units";
+
 interface Props {
   runDistance: number;
   sessionCount: number;
   totalVolume: number;
   weightDelta: number | null;
+  units: Units;
 }
 
 export function WeeklyStatsSummary({
@@ -10,23 +14,28 @@ export function WeeklyStatsSummary({
   sessionCount,
   totalVolume,
   weightDelta,
+  units,
 }: Props) {
+  const wDeltaDisplay = weightDelta !== null
+    ? (weightDelta >= 0 ? `+${formatWeight(weightDelta, units)}` : `-${formatWeight(Math.abs(weightDelta), units)}`)
+    : "—";
+
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <Stat
-        value={runDistance > 0 ? `${runDistance.toFixed(1)}` : "—"}
-        unit="km"
+        value={runDistance > 0 ? formatDistance(runDistance, units) : "—"}
+        unit={distanceUnit(units)}
         label="Distance"
       />
       <Stat value={String(sessionCount)} label="Sessions" />
       <Stat
-        value={totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(0)}k` : String(Math.round(totalVolume))}
-        unit="kg"
+        value={formatWeight(totalVolume, units)}
+        unit={weightUnit(units)}
         label="Volume"
       />
       <Stat
-        value={weightDelta !== null ? (weightDelta >= 0 ? `+${weightDelta.toFixed(1)}` : weightDelta.toFixed(1)) : "—"}
-        unit={weightDelta !== null ? "kg" : ""}
+        value={wDeltaDisplay}
+        unit={weightDelta !== null ? weightUnit(units) : ""}
         label="Weight Δ"
         highlight={weightDelta !== null ? (weightDelta > 0 ? "green" : weightDelta < 0 ? "red" : undefined) : undefined}
       />

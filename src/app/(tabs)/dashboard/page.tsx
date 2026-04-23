@@ -6,20 +6,21 @@ import {
   getActivityStreak,
   getWeekChecklistData,
 } from "@/lib/queries/dashboard";
+import { getUserUnits } from "@/lib/queries/profile";
 import { matchChecklist } from "@/lib/checklist";
 import { WeeklyStatsSummary } from "@/components/dashboard/WeeklyStatsSummary";
 import { CalendarStreak } from "@/components/dashboard/CalendarStreak";
 import { WeekChecklist } from "@/components/dashboard/WeekChecklist";
 import { BodyWeightSparkline } from "@/components/dashboard/BodyWeightSparkline";
 import type { Activity, WeeklyScheduleRow } from "@/types";
-import Link from "next/link";
 
 export default async function DashboardPage() {
-  const [weeklyStats, bodyWeightData, streak, checklistData] = await Promise.all([
+  const [weeklyStats, bodyWeightData, streak, checklistData, units] = await Promise.all([
     getWeeklyStats(),
     getBodyWeightHistory(30),
     getActivityStreak(),
     getWeekChecklistData(),
+    getUserUnits(),
   ]);
 
   const checklistItems = matchChecklist(
@@ -42,17 +43,11 @@ export default async function DashboardPage() {
             Your week at a glance, with the cleanest view of training momentum, streaks, and recovery trends.
           </p>
         </div>
-        <Link
-          href="/log"
-          className="glass-button glass-button-primary text-sm font-medium"
-        >
-          New session
-        </Link>
       </div>
 
       <div className="card p-5 sm:p-6">
         <div className="text-[11px] uppercase tracking-[0.24em] text-white/45 mb-3">This Week</div>
-        <WeeklyStatsSummary {...weeklyStats} />
+        <WeeklyStatsSummary {...weeklyStats} units={units} />
       </div>
 
       <CalendarStreak streak={streak} activeDays={activeDays} />

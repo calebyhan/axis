@@ -7,16 +7,18 @@ import type { Exercise } from "@/types";
 interface Props {
   exercises: Exercise[];
   onSelect: (exercise: Exercise) => void;
-  scoredOrder?: string[]; // exercise IDs in suggested order
+  scoredOrder?: string[];
+  autoFocus?: boolean;
+  collapseUntilTyped?: boolean;
 }
 
-export function ExerciseSearch({ exercises, onSelect, scoredOrder }: Props) {
+export function ExerciseSearch({ exercises, onSelect, scoredOrder, autoFocus = true, collapseUntilTyped = false }: Props) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   const fuse = useMemo(
     () =>
@@ -52,7 +54,7 @@ export function ExerciseSearch({ exercises, onSelect, scoredOrder }: Props) {
         className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[var(--accent)] transition-colors"
       />
 
-      <ul className="flex flex-col gap-1 max-h-[60vh] overflow-y-auto">
+      {(!collapseUntilTyped || query.trim()) && <ul className="flex flex-col gap-1 max-h-[40vh] overflow-y-auto">
         {results.map((ex) => (
           <li key={ex.id}>
             <button
@@ -69,7 +71,7 @@ export function ExerciseSearch({ exercises, onSelect, scoredOrder }: Props) {
         {results.length === 0 && (
           <li className="text-muted text-sm text-center py-6">No exercises found</li>
         )}
-      </ul>
+      </ul>}
     </div>
   );
 }

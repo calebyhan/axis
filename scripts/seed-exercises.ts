@@ -57,7 +57,7 @@ const WGER_EQUIPMENT_MAP: Record<number, string> = {
 
 async function fetchAllExercises(): Promise<WgerExercise[]> {
   const results: WgerExercise[] = [];
-  let url: string | null = "https://wger.de/api/v2/exercise/?format=json&language=2&limit=100";
+  let url: string | null = "https://wger.de/api/v2/exerciseinfo/?format=json&language=2&limit=100";
 
   while (url) {
     const res: Response = await fetch(url);
