@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/env";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -32,13 +32,11 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Allow public routes
   const publicPaths = ["/login", "/auth/callback"];
   if (publicPaths.some((p) => pathname.startsWith(p))) {
     return supabaseResponse;
   }
 
-  // Allow API routes (webhook doesn't require auth)
   if (pathname.startsWith("/api/strava/webhook")) {
     return supabaseResponse;
   }

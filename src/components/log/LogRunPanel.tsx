@@ -80,6 +80,7 @@ export function LogRunPanel({ onSave }: { onSave: () => void }) {
   const [showHistory, setShowHistory] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [units, setUnits] = useState<Units>("imperial");
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     const supabase = createClient();
@@ -119,7 +120,6 @@ export function LogRunPanel({ onSave }: { onSave: () => void }) {
     }
   }
 
-  const now = Date.now();
   const recentActivities = activities.filter(
     (a) => now - new Date(a.start_date).getTime() < RECENT_MS
   );

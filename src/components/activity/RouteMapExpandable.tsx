@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 
@@ -11,11 +11,6 @@ const LeafletMap = dynamic(
 
 export function RouteMapExpandable({ polyline }: { polyline: string }) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -53,7 +48,7 @@ export function RouteMapExpandable({ polyline }: { polyline: string }) {
         />
       </div>
 
-      {mounted && open &&
+      {open && typeof document !== "undefined" &&
         createPortal(
           <div
             className="fixed inset-0 z-[2000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"

@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function SessionFlow({ onClose, onComplete }: Props) {
-  const { session, isActive, hasDraft, draftKey, autosaveFailed, startSession, resumeDraft, discardDraft, addExercise, addSet, endSession, cancelSession } = useSession();
+  const { session, isActive, hasDraft, autosaveFailed, startSession, resumeDraft, discardDraft, addExercise, addSet, endSession, cancelSession } = useSession();
 
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [step, setStep] = useState<Step>("exercise_search");
@@ -134,7 +134,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
       return;
     }
 
-    const sets = captured.exercises.flatMap((ex, _exIdx) =>
+    const sets = captured.exercises.flatMap((ex) =>
       ex.sets.map((s, setIdx) => ({
         activity_id: activityData.id,
         exercise_id: ex.exerciseId,
@@ -320,7 +320,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
           exercise={exercises.find((e) => e.id === activeExerciseId)!}
           weightIncrement={2.5}
           units={units}
-          onAcceptSuggestion={(_w, _r) => setShowRecentStats(false)}
+          onAcceptSuggestion={() => setShowRecentStats(false)}
           onDismiss={() => setShowRecentStats(false)}
         />
       )}

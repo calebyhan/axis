@@ -26,31 +26,18 @@ export function ExerciseSearch({
   collapseUntilTyped = false,
 }: Props) {
   const [query, setQuery] = useState("");
-  const [activeMuscs, setActiveMuscs] = useState<MuscleGroup[] | null>(
-    defaultMuscles && defaultMuscles.length > 0 ? defaultMuscles : null
-  );
+  const [selectedMuscles, setSelectedMuscles] = useState<MuscleGroup[] | "all" | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Sync when defaultMuscles arrives after mount (async fetch in parent)
-  useEffect(() => {
-    if (defaultMuscles && defaultMuscles.length > 0) {
-      setActiveMuscs((prev) => (prev === null ? defaultMuscles : prev));
-    }
-  }, [defaultMuscles]);
 
   useEffect(() => {
     if (autoFocus) inputRef.current?.focus();
   }, [autoFocus]);
 
-  const fuse = useMemo(
-    () =>
-      new Fuse(exercises, {
-        keys: ["name", "category"],
-        threshold: 0.35,
-        distance: 80,
-      }),
-    [exercises]
-  );
+  const activeMuscs = useMemo(() => {
+    if (selectedMuscles === "all") return null;
+    if (selectedMuscles) return selectedMuscles;
+    return defaultMuscles && defaultMuscles.length > 0 ? defaultMuscles : null;
+  }, [defaultMuscles, selectedMuscles]);
 
   const filtered = useMemo(() => {
     if (!activeMuscs) return exercises;
@@ -71,20 +58,29 @@ export function ExerciseSearch({
       }
       return pool.slice(0, 40);
     }
-    return new Fuse(pool, { keys: ["name", "category"], threshold: 0.35, distance: 80 })
+    return new Fuse(pool, {
+      keys: ["name", "category"],
+      threshold: 0.35,
+      distance: 80,
+    })
       .search(query)
       .map((r) => r.item)
       .slice(0, 20);
   }, [query, filtered, scoredOrder]);
 
   function toggleMuscle(m: MuscleGroup) {
-    setActiveMuscs((prev) => {
-      if (!prev) return [m];
-      if (prev.includes(m)) {
-        const next = prev.filter((x) => x !== m);
-        return next.length === 0 ? null : next;
+    setSelectedMuscles((prev) => {
+      const current =
+        prev === "all"
+          ? null
+          : prev ?? (defaultMuscles && defaultMuscles.length > 0 ? defaultMuscles : null);
+
+      if (!current) return [m];
+      if (current.includes(m)) {
+        const next = current.filter((x) => x !== m);
+        return next.length === 0 ? "all" : next;
       }
-      return [...prev, m];
+      return [...current, m];
     });
   }
 
@@ -96,7 +92,7 @@ export function ExerciseSearch({
       {chipMuscs && (
         <div className="flex flex-wrap gap-1.5">
           <button
-            onClick={() => setActiveMuscs(null)}
+            onClick={() => setSelectedMuscles("all")}
             className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
               activeMuscs === null
                 ? "bg-accent text-white"
