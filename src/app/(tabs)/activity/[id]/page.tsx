@@ -105,15 +105,18 @@ export default async function ActivityDetailPage({
   return (
     <div className="page-shell flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/activity" className="text-muted hover:text-white transition-colors">
-            ← Back
-          </Link>
-          <h1 className="text-xl font-semibold">
-            {activity.name ?? (isWorkout ? "Workout" : isRun ? "Run" : "Activity")}
-          </h1>
-        </div>
+      <div className="flex items-center gap-3">
+        <Link
+          href="/activity"
+          className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </Link>
+        <h1 className="flex-1 text-lg font-semibold truncate">
+          {activity.name ?? (isWorkout ? "Workout" : isRun ? "Run" : "Activity")}
+        </h1>
         <DeleteActivityButton activityId={activity.id} />
       </div>
 

@@ -101,6 +101,15 @@ body::after {
 /* Apply to any scroll container or bottom sheet card that needs clearance */
 .pb-nav { padding-bottom: var(--nav-h); }
 
+/* Top status-bar buffer — ensures content never overlaps the iOS clock/battery row.
+   Adds 0.75rem of breathing room on top of the device's safe-area inset.
+   On desktop / non-PWA the inset is 0 so we fall back to 1rem. */
+:root { --top-h: 1rem; }
+@media (max-width: 767px) {
+  :root { --top-h: max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem)); }
+}
+.pt-top { padding-top: var(--top-h); }
+
 /* Accent utility driven by CSS variable */
 .bg-accent { background-color: var(--accent); }
 .text-accent { color: var(--accent); }
@@ -130,7 +139,7 @@ body::after {
 .page-shell {
   width: min(100%, 56rem);
   margin: 0 auto;
-  padding: max(1.25rem, env(safe-area-inset-top, 0px)) 1rem var(--nav-h);
+  padding: var(--top-h) 1rem var(--nav-h);
 }
 
 .page-header {
@@ -241,7 +250,8 @@ body::after {
 
 @media (min-width: 768px) {
   .page-shell {
-    padding: 2rem 1.5rem 2.25rem;
+    padding: var(--top-h) 1.5rem 2.25rem;
+    --top-h: 2rem;
   }
 }
 
@@ -249,10 +259,6 @@ body::after {
   .page-header {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .page-shell {
-    padding-top: max(1rem, env(safe-area-inset-top, 0px));
   }
 }
 

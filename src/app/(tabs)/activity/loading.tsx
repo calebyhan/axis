@@ -3,9 +3,7 @@ export default function ActivityLoading() {
     <div className="page-shell">
       <div className="page-header">
         <div>
-          <div className="page-kicker">Feed</div>
           <h1 className="page-title">Activity</h1>
-          <p className="page-subtitle">Every run and session, arranged in a cleaner timeline that stays comfortable on mobile.</p>
         </div>
       </div>
       <div className="flex flex-col gap-3">

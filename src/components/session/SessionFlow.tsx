@@ -165,8 +165,10 @@ export function SessionFlow({ onClose, onComplete }: Props) {
   if (finalSession) {
     return (
       <div className="fixed inset-0 bg-background z-50 flex flex-col">
-        <div className="flex items-center justify-between px-4 py-4 border-b border-border">
-          <h2 className="font-semibold">Session Complete</h2>
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-border">
+          <div className="w-9 h-9 shrink-0" />
+          <h2 className="flex-1 font-semibold text-center">Session Complete</h2>
+          <div className="w-9 h-9 shrink-0" />
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav">
           {saveError && (
@@ -183,8 +185,16 @@ export function SessionFlow({ onClose, onComplete }: Props) {
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-border">
-        <div>
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-border">
+        <button
+          onClick={() => { cancelSession(); onClose(); }}
+          className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+        <div className="flex-1 min-w-0">
           <h2 className="font-semibold">Workout Session</h2>
           {session && (
             <p className="text-xs text-muted mt-0.5">
@@ -192,20 +202,15 @@ export function SessionFlow({ onClose, onComplete }: Props) {
             </p>
           )}
         </div>
-        <div className="flex gap-3">
-          {session && session.exercises.length > 0 && (
-            <button
-              onClick={handleEndSession}
-              disabled={saving}
-              className="text-sm font-medium text-accent disabled:opacity-50"
-            >
-              {saving ? "Saving…" : "End"}
-            </button>
-          )}
-          <button onClick={() => { cancelSession(); onClose(); }} className="text-muted text-sm">
-            Cancel
+        {session && session.exercises.length > 0 && (
+          <button
+            onClick={handleEndSession}
+            disabled={saving}
+            className="shrink-0 px-4 py-1.5 rounded-full bg-accent text-white text-sm font-medium disabled:opacity-50 transition-opacity"
+          >
+            {saving ? "Saving…" : "End"}
           </button>
-        </div>
+        )}
       </div>
 
       {/* Autosave failure warning */}

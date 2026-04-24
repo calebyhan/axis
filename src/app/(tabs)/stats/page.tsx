@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { getVolumeOverTime, getRunningStats, getBodyWeightStats, type TimeRange } from "@/lib/queries/stats";
+import { getVolumeOverTime, getRunningStats, getBodyWeightStats, getWorkoutSummary, getTrainingLoadHistory, type TimeRange } from "@/lib/queries/stats";
 import { getUserUnits } from "@/lib/queries/profile";
 import { StatsClient } from "@/components/stats/StatsClient";
 
@@ -18,10 +18,12 @@ export default async function StatsPage({
   const { range } = await searchParams;
   const timeRange = parseRange(range);
 
-  const [volumeData, runningData, bodyData, units] = await Promise.all([
+  const [volumeData, runningData, bodyData, workoutSummary, trainingLoad, units] = await Promise.all([
     getVolumeOverTime(timeRange),
     getRunningStats(timeRange),
     getBodyWeightStats(timeRange),
+    getWorkoutSummary(timeRange),
+    getTrainingLoadHistory(),
     getUserUnits(),
   ]);
 
@@ -29,9 +31,7 @@ export default async function StatsPage({
     <div className="page-shell">
       <div className="page-header">
         <div>
-          <div className="page-kicker">Trends</div>
           <h1 className="page-title">Stats</h1>
-          <p className="page-subtitle">Performance trends and body signals, framed with softer contrast and better readability.</p>
         </div>
       </div>
       <StatsClient
@@ -39,6 +39,8 @@ export default async function StatsPage({
         initialVolumeData={volumeData}
         initialRunningData={runningData}
         initialBodyData={bodyData}
+        workoutSummary={workoutSummary}
+        trainingLoad={trainingLoad}
         units={units}
       />
     </div>

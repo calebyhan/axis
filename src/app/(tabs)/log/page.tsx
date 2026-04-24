@@ -21,9 +21,7 @@ export default function LogPage() {
     <div className="page-shell">
       <div className="page-header">
         <div>
-          <div className="page-kicker">Capture</div>
           <h1 className="page-title">Log</h1>
-          <p className="page-subtitle">Fast, thumb-friendly inputs for workouts, runs, and daily body weight.</p>
         </div>
       </div>
 

@@ -35,11 +35,7 @@ export default async function DashboardPage() {
     <div className="page-shell flex flex-col gap-5">
       <div className="page-header">
         <div>
-          <div className="page-kicker">Overview</div>
           <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">
-            Your week at a glance, with the cleanest view of training momentum, streaks, and recovery trends.
-          </p>
         </div>
       </div>
 
