@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getStravaClientId, getStravaClientSecret } from "@/lib/env";
 
 export async function getValidStravaToken(userId: string): Promise<string> {
   const supabase = await createClient();
@@ -46,8 +47,8 @@ export async function refreshStravaToken(userId: string, supabase: SupabaseClien
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      client_id: process.env.STRAVA_CLIENT_ID,
-      client_secret: process.env.STRAVA_CLIENT_SECRET,
+      client_id: getStravaClientId(),
+      client_secret: getStravaClientSecret(),
       grant_type: "refresh_token",
       refresh_token: profile.strava_refresh_token,
     }),

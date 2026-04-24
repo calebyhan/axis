@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getActivities, getActivity } from "@/lib/strava/client";
 import { buildActivityRow } from "@/lib/strava/activity-row";
 
+export const runtime = "nodejs";
+
 export async function GET() {
   const supabase = await createClient();
   const {

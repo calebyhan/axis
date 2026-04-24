@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { getStravaClientId, getStravaClientSecret } from "@/lib/env";
+
+export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -24,8 +27,8 @@ export async function GET(request: NextRequest) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      client_id: process.env.STRAVA_CLIENT_ID,
-      client_secret: process.env.STRAVA_CLIENT_SECRET,
+      client_id: getStravaClientId(),
+      client_secret: getStravaClientSecret(),
       code,
       grant_type: "authorization_code",
     }),

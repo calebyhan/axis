@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
@@ -5,6 +6,14 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { refreshStravaToken } from "@/lib/strava/token";
 import { buildActivityRow } from "@/lib/strava/activity-row";
+import {
+  getStravaClientSecret,
+  getStravaWebhookVerifyToken,
+  getSupabaseSecretKey,
+  getSupabaseUrl,
+} from "@/lib/env";
+
+export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -14,7 +23,7 @@ export async function GET(request: NextRequest) {
 
   if (
     mode === "subscribe" &&
-    token === process.env.STRAVA_WEBHOOK_VERIFY_TOKEN
+    token === getStravaWebhookVerifyToken()
   ) {
     return NextResponse.json({ "hub.challenge": challenge });
   }
@@ -23,11 +32,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.STRAVA_CLIENT_SECRET;
-  if (!secret) {
-    console.error("[webhook] STRAVA_CLIENT_SECRET not set");
-    return new NextResponse("Server misconfiguration", { status: 500 });
-  }
+  const secret = getStravaClientSecret();
 
   const rawBody = await request.text();
   const signature = request.headers.get("x-hub-signature") ?? "";
@@ -43,10 +48,13 @@ export async function POST(request: NextRequest) {
     return new NextResponse("Bad Request", { status: 400 });
   }
 
-  // Respond immediately; process in background
-  processWebhookEvent(payload).catch((err) =>
-    console.error("[webhook] processWebhookEvent failed", String(err))
-  );
+  after(async () => {
+    try {
+      await processWebhookEvent(payload);
+    } catch (err) {
+      console.error("[webhook] processWebhookEvent failed", String(err));
+    }
+  });
 
   return NextResponse.json({ status: "ok" });
 }
@@ -71,15 +79,8 @@ async function processWebhookEvent(payload: {
     return;
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SECRET_KEY;
-  if (!supabaseUrl || !supabaseKey) {
-    console.error("[webhook] Supabase env vars not set");
-    return;
-  }
-
   const cookieStore = await cookies();
-  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+  const supabase = createServerClient(getSupabaseUrl(), getSupabaseSecretKey(), {
     cookies: {
       getAll() { return cookieStore.getAll(); },
       setAll() {},

@@ -1,6 +1,9 @@
 import { randomBytes } from "crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getAppUrl, getStravaClientId } from "@/lib/env";
+
+export const runtime = "nodejs";
 
 export async function GET() {
   const state = randomBytes(16).toString("hex");
@@ -15,8 +18,8 @@ export async function GET() {
   });
 
   const params = new URLSearchParams({
-    client_id: process.env.STRAVA_CLIENT_ID ?? "",
-    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/strava/callback`,
+    client_id: getStravaClientId(),
+    redirect_uri: `${getAppUrl()}/api/strava/callback`,
     response_type: "code",
     approval_prompt: "auto",
     scope: "activity:read_all,profile:read_all",

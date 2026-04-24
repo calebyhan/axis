@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getStreams } from "@/lib/strava/client";
 
+export const runtime = "nodejs";
+
 const STREAM_KEYS = ["time", "distance", "altitude", "heartrate", "cadence", "watts", "velocity_smooth", "grade_smooth"];
 
 // Downsample an array to at most maxPoints by taking every nth element.
