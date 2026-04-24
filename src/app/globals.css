@@ -96,7 +96,7 @@ body::after {
    On desktop the nav is hidden so --nav-h collapses to 0. */
 :root { --nav-h: 0px; }
 @media (max-width: 767px) {
-  :root { --nav-h: calc(6rem + env(safe-area-inset-bottom, 0px)); }
+  :root { --nav-h: calc(4.5rem + env(safe-area-inset-bottom, 0px)); }
 }
 /* Apply to any scroll container or bottom sheet card that needs clearance */
 .pb-nav { padding-bottom: var(--nav-h); }

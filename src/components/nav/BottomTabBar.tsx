@@ -63,17 +63,25 @@ export function BottomTabBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 nav-safe-bottom z-40 px-3 pb-3 md:hidden">
-      <div className="card mx-auto flex max-w-xl items-stretch rounded-[2rem] px-1.5 py-1.5">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t border-[#1F1F1F]"
+      style={{
+        background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)), #141414",
+        backdropFilter: "blur(24px) saturate(150%)",
+        WebkitBackdropFilter: "blur(24px) saturate(150%)",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      }}
+    >
+      <div className="flex items-stretch px-1 py-1">
         {TABS.map((tab) => {
           const active = pathname.startsWith(tab.href);
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex-1 flex flex-col items-center justify-center rounded-[1.35rem] py-2.5 min-h-[58px] transition-all ${
+              className={`flex-1 flex flex-col items-center justify-center py-2.5 min-h-[58px] rounded-2xl transition-all ${
                 active
-                  ? "bg-white/[0.08] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                  ? "bg-white/[0.08] text-white"
                   : "text-white/48"
               }`}
               aria-label={tab.label}
