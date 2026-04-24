@@ -5,6 +5,7 @@ import {
   getBodyWeightHistory,
   getActivityStreak,
   getWeekChecklistData,
+  getMonthActiveDays,
 } from "@/lib/queries/dashboard";
 import { getUserUnits } from "@/lib/queries/profile";
 import { matchChecklist } from "@/lib/checklist";
@@ -13,24 +14,21 @@ import { CalendarStreak } from "@/components/dashboard/CalendarStreak";
 import { WeekChecklist } from "@/components/dashboard/WeekChecklist";
 import { BodyWeightSparkline } from "@/components/dashboard/BodyWeightSparkline";
 import type { Activity, WeeklyScheduleRow } from "@/types";
+import type { ChecklistDay } from "@/lib/checklist";
 
 export default async function DashboardPage() {
-  const [weeklyStats, bodyWeightData, streak, checklistData, units] = await Promise.all([
+  const [weeklyStats, bodyWeightData, streak, checklistData, units, activeDays] = await Promise.all([
     getWeeklyStats(),
     getBodyWeightHistory(30),
     getActivityStreak(),
     getWeekChecklistData(),
     getUserUnits(),
+    getMonthActiveDays(),
   ]);
 
-  const checklistItems = matchChecklist(
+  const checklistItems: ChecklistDay[] = matchChecklist(
     checklistData.schedule as WeeklyScheduleRow[],
     checklistData.activities as Activity[]
-  );
-
-  // Build active days set for calendar (last 60 days of activities)
-  const activeDays = new Set<string>(
-    (checklistData.activities as Activity[]).map((a) => a.start_time.split("T")[0])
   );
 
   return (

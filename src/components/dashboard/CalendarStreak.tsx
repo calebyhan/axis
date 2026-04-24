@@ -1,11 +1,13 @@
 "use client";
 
+import type { CSSProperties } from "react";
+
 interface Props {
   streak: number;
-  activeDays: Set<string>; // ISO date strings yyyy-MM-dd
+  activeDays: Map<string, number>; // ISO date string → session count
 }
 
-const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
+const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
 export function CalendarStreak({ streak, activeDays }: Props) {
   const today = new Date();
@@ -14,11 +16,9 @@ export function CalendarStreak({ streak, activeDays }: Props) {
 
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
-  // ISO day of first: 0=Mon...6=Sun
-  const firstIsoDay = (firstDay.getDay() + 6) % 7;
 
   const cells: (number | null)[] = [
-    ...Array(firstIsoDay).fill(null),
+    ...Array(firstDay.getDay()).fill(null),
     ...Array.from({ length: lastDay.getDate() }, (_, i) => i + 1),
   ];
 
@@ -52,18 +52,34 @@ export function CalendarStreak({ streak, activeDays }: Props) {
           if (day === null) return <div key={i} />;
           const key = dateKey(day);
           const isToday = day === today.getDate();
-          const isActive = activeDays.has(key);
+          const count = activeDays.get(key) ?? 0;
+          let cellClass: string;
+          let cellStyle: CSSProperties | undefined;
+
+          if (count >= 2) {
+            cellClass = "border text-white";
+            cellStyle = {
+              borderColor: "rgba(var(--accent-rgb), 0.95)",
+              backgroundColor: "rgba(var(--accent-rgb), 0.22)",
+              boxShadow: "0 0 0 1px rgba(var(--accent-rgb), 0.18) inset",
+            };
+          } else if (count === 1) {
+            cellClass = "border text-white";
+            cellStyle = {
+              borderColor: "rgba(var(--accent-rgb), 0.5)",
+              backgroundColor: "rgba(var(--accent-rgb), 0.08)",
+            };
+          } else if (isToday) {
+            cellClass = "border border-white/12 bg-white/[0.04] text-white";
+          } else {
+            cellClass = "text-white/45";
+          }
 
           return (
             <div
               key={i}
-              className={`aspect-square flex items-center justify-center rounded-xl text-[10px] font-medium transition-colors ${
-                isActive
-                  ? "bg-accent text-white shadow-[0_10px_24px_rgba(59,130,246,0.26)]"
-                  : isToday
-                  ? "border border-white/12 bg-white/[0.04] text-white"
-                  : "bg-white/[0.025] text-white/45"
-              }`}
+              style={cellStyle}
+              className={`aspect-square flex items-center justify-center rounded-xl text-[10px] font-medium transition-colors ${cellClass}`}
             >
               {day}
             </div>

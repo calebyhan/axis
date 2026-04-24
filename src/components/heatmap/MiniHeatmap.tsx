@@ -8,7 +8,7 @@ interface Props {
 
 export function MiniHeatmap({ coverage, accent }: Props) {
   return (
-    <div className="flex gap-4">
+    <div className="flex gap-2">
       <MuscleHeatmap coverage={coverage} accent={accent} size="thumbnail" />
       <MuscleHeatmap coverage={coverage} accent={accent} size="thumbnail" showBack />
     </div>

@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { getVolumeOverTime, getRunningStats, getBodyWeightStats, type TimeRange } from "@/lib/queries/stats";
+import { getUserUnits } from "@/lib/queries/profile";
 import { StatsClient } from "@/components/stats/StatsClient";
 
 const VALID_RANGES: TimeRange[] = ["week", "month", "year", "all"];
@@ -17,10 +18,11 @@ export default async function StatsPage({
   const { range } = await searchParams;
   const timeRange = parseRange(range);
 
-  const [volumeData, runningData, bodyData] = await Promise.all([
+  const [volumeData, runningData, bodyData, units] = await Promise.all([
     getVolumeOverTime(timeRange),
     getRunningStats(timeRange),
     getBodyWeightStats(timeRange),
+    getUserUnits(),
   ]);
 
   return (
@@ -37,6 +39,7 @@ export default async function StatsPage({
         initialVolumeData={volumeData}
         initialRunningData={runningData}
         initialBodyData={bodyData}
+        units={units}
       />
     </div>
   );

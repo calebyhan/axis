@@ -168,7 +168,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
         <div className="flex items-center justify-between px-4 py-4 border-b border-border">
           <h2 className="font-semibold">Session Complete</h2>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav">
           {saveError && (
             <p className="text-yellow-400 text-xs mb-4 px-3 py-2 bg-yellow-400/10 rounded-lg border border-yellow-400/20">
               {saveError}
@@ -243,7 +243,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-6">
+      <div className="flex-1 overflow-y-auto px-4 py-4 pb-nav flex flex-col gap-6">
         {/* Active set logger — shown first so it's immediately visible after exercise selection */}
         {step === "logging" && activeExercise && session && (
           <div className="card p-4">

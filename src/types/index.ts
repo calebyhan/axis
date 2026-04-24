@@ -91,6 +91,25 @@ export interface SessionState {
   exercises: SessionExercise[];
 }
 
+export interface Split {
+  split: number;
+  distance: number;
+  elapsed_time: number;
+  moving_time: number;
+  elevation_difference: number;
+  average_speed: number;
+  average_grade_adjusted_speed: number | null;
+  average_heartrate: number | null;
+  pace_zone: number | null;
+}
+
+export interface BestEffort {
+  name: string;
+  elapsed_time: number;
+  distance: number;
+  pr_rank: number | null;
+}
+
 export interface Activity {
   id: string;
   user_id: string;
@@ -109,6 +128,16 @@ export interface Activity {
   avg_pace: number | null;
   tags: string[] | null;
   notes: string | null;
+  // enriched run fields
+  name: string | null;
+  summary_polyline: string | null;
+  splits: Split[] | null;
+  best_efforts: BestEffort[] | null;
+  avg_cadence: number | null;
+  avg_watts: number | null;
+  elapsed_time: number | null;
+  max_speed: number | null;
+  average_temp: number | null;
 }
 
 export interface Profile {
@@ -140,4 +169,5 @@ export interface WeeklyScheduleRow {
   cardio_day_type_id: string | null;
   active: boolean;
   day_type?: DayType;
+  cardio_day_type?: DayType;
 }

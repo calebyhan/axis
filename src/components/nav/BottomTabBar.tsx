@@ -63,7 +63,7 @@ export function BottomTabBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 nav-safe-bottom z-50 px-3 pb-3 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 nav-safe-bottom z-40 px-3 pb-3 md:hidden">
       <div className="card mx-auto flex max-w-xl items-stretch rounded-[2rem] px-1.5 py-1.5">
         {TABS.map((tab) => {
           const active = pathname.startsWith(tab.href);

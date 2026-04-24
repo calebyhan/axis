@@ -1,0 +1,2 @@
+ALTER TABLE activities
+  ADD COLUMN IF NOT EXISTS average_temp NUMERIC;

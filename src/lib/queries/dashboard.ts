@@ -5,12 +5,93 @@ function localDateStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function startOfCurrentWeek(today = new Date()): Date {
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+type ActivityKind = "workout" | "cardio";
+type DayPlan = {
+  hasWorkoutSlot: boolean;
+  hasCardioSlot: boolean;
+  workoutSatisfiedByRest: boolean;
+  cardioSatisfiedByRest: boolean;
+};
+
+function getActivityKind(type: string): ActivityKind | null {
+  if (type === "workout") return "workout";
+  if (type === "run" || type === "manual_run" || type === "ride") return "cardio";
+  return null;
+}
+
+function buildDailyKindMap(
+  activities: { start_time: string; type: string }[]
+): Map<string, Set<ActivityKind>> {
+  const days = new Map<string, Set<ActivityKind>>();
+
+  for (const activity of activities) {
+    const kind = getActivityKind(activity.type);
+    if (!kind) continue;
+    const key = activity.start_time.split("T")[0];
+    const kinds = days.get(key) ?? new Set<ActivityKind>();
+    kinds.add(kind);
+    days.set(key, kinds);
+  }
+
+  return days;
+}
+
+async function fetchDayPlans(): Promise<Map<number, DayPlan>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("weekly_schedule")
+    .select(
+      "day_of_week, day_type:day_types!weekly_schedule_day_type_id_fkey(name), cardio_day_type:day_types!weekly_schedule_cardio_day_type_id_fkey(name)"
+    )
+    .eq("active", true);
+
+  const plans = new Map<number, DayPlan>();
+
+  for (const row of data ?? []) {
+    const dt = row.day_type as { name: string } | { name: string }[] | null;
+    const cdt = row.cardio_day_type as { name: string } | { name: string }[] | null;
+    const workoutName = Array.isArray(dt) ? dt[0]?.name : dt?.name;
+    const cardioName = Array.isArray(cdt) ? cdt[0]?.name : cdt?.name;
+
+    plans.set(row.day_of_week, {
+      hasWorkoutSlot: !!workoutName,
+      hasCardioSlot: !!cardioName,
+      workoutSatisfiedByRest: workoutName === "Rest",
+      cardioSatisfiedByRest: cardioName === "Rest",
+    });
+  }
+
+  return plans;
+}
+
+function getDayCompletionCount(
+  kinds: Set<ActivityKind> | undefined,
+  plan?: DayPlan
+): number {
+  const workoutDone = !!plan?.workoutSatisfiedByRest || !!kinds?.has("workout");
+  const cardioDone = !!plan?.cardioSatisfiedByRest || !!kinds?.has("cardio");
+
+  if (plan?.hasWorkoutSlot && plan?.hasCardioSlot) {
+    return Number(workoutDone) + Number(cardioDone);
+  }
+
+  if (plan?.hasWorkoutSlot) return workoutDone ? 1 : 0;
+  if (plan?.hasCardioSlot) return cardioDone ? 1 : 0;
+
+  return kinds ? kinds.size : 0;
+}
+
 export async function getWeeklyStats() {
   const supabase = await createClient();
   const now = new Date();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-  monday.setHours(0, 0, 0, 0);
+  const monday = startOfCurrentWeek(now);
   const weekStart = monday.toISOString();
   const weekStartDate = localDateStr(monday);
 
@@ -92,27 +173,33 @@ export async function getBodyWeightHistory(days = 30) {
 
 export async function getActivityStreak() {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("activities")
-    .select("start_time")
-    .order("start_time", { ascending: false })
-    .limit(60);
+  const [{ data, error }, dayPlans] = await Promise.all([
+    supabase
+      .from("activities")
+      .select("start_time, type")
+      .order("start_time", { ascending: false })
+      .limit(120),
+    fetchDayPlans(),
+  ]);
 
   if (error) console.error("[query] getActivityStreak failed", error.message);
-  if (!data || data.length === 0) return 0;
 
-  const days = new Set(
-    data.map((a) => a.start_time.split("T")[0])
-  );
+  const activityDays = buildDailyKindMap(data ?? []);
 
-  let streak = 0;
   const today = new Date();
+  const weekStart = localDateStr(startOfCurrentWeek(today));
+  let streak = 0;
 
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 120; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const key = d.toISOString().split("T")[0];
-    if (days.has(key)) {
+    const key = localDateStr(d);
+    const kinds = activityDays.get(key);
+    const plan = key >= weekStart ? dayPlans.get((d.getDay() + 6) % 7) : undefined;
+    const completionCount = getDayCompletionCount(kinds, plan);
+    const requiredCount = plan?.hasWorkoutSlot && plan?.hasCardioSlot ? 2 : 1;
+
+    if (completionCount >= requiredCount && requiredCount > 0) {
       streak++;
     } else if (i > 0) {
       break;
@@ -122,17 +209,54 @@ export async function getActivityStreak() {
   return streak;
 }
 
-export async function getWeekChecklistData() {
+export async function getMonthActiveDays(): Promise<Map<string, number>> {
   const supabase = await createClient();
   const now = new Date();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-  monday.setHours(0, 0, 0, 0);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const [{ data, error }, dayPlans] = await Promise.all([
+    supabase
+      .from("activities")
+      .select("start_time, type")
+      .gte("start_time", monthStart.toISOString()),
+    fetchDayPlans(),
+  ]);
+
+  if (error) console.error("[query] getMonthActiveDays failed", error.message);
+
+  const counts = new Map<string, number>();
+  const dayKinds = buildDailyKindMap(data ?? []);
+  const today = localDateStr(now);
+  const weekStart = startOfCurrentWeek(now);
+  const weekStartKey = localDateStr(weekStart);
+
+  for (const [key, kinds] of dayKinds) {
+    counts.set(key, kinds.has("workout") && kinds.has("cardio") ? 2 : 1);
+  }
+
+  const cursor = new Date(weekStart);
+  while (localDateStr(cursor) <= today) {
+    const key = localDateStr(cursor);
+    if (key < weekStartKey) {
+      cursor.setDate(cursor.getDate() + 1);
+      continue;
+    }
+    const plan = dayPlans.get((cursor.getDay() + 6) % 7);
+    const completionCount = getDayCompletionCount(dayKinds.get(key), plan);
+    if (completionCount > 0) counts.set(key, completionCount);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return counts;
+}
+
+export async function getWeekChecklistData() {
+  const supabase = await createClient();
+  const monday = startOfCurrentWeek();
 
   const [scheduleRes, activitiesRes] = await Promise.all([
     supabase
       .from("weekly_schedule")
-      .select("*, day_type:day_types!weekly_schedule_day_type_id_fkey(*)")
+      .select("*, day_type:day_types!weekly_schedule_day_type_id_fkey(*), cardio_day_type:day_types!weekly_schedule_cardio_day_type_id_fkey(*)")
       .eq("active", true),
     supabase
       .from("activities")

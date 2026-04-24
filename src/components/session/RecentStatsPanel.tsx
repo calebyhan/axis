@@ -82,7 +82,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
   if (loading) {
     return (
       <div className="fixed inset-0 bg-background/80 z-50 flex items-end">
-        <div className="w-full card rounded-b-none p-6 animate-pulse">
+        <div className="w-full card rounded-b-none p-6 pb-nav animate-pulse">
           <div className="h-4 bg-border rounded w-1/2 mb-4" />
           <div className="h-4 bg-border rounded w-3/4" />
         </div>
@@ -93,7 +93,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
   return (
     <div className="fixed inset-0 bg-background/80 z-50 flex items-end" onClick={onDismiss}>
       <div
-        className="w-full card rounded-b-none p-5 max-h-[75vh] overflow-y-auto"
+        className="w-full card rounded-b-none p-5 pb-nav max-h-[75vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">

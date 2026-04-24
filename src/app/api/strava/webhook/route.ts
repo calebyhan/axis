@@ -2,7 +2,9 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { refreshStravaToken } from "@/lib/strava/token";
+import { buildActivityRow } from "@/lib/strava/activity-row";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -118,39 +120,20 @@ async function processWebhookEvent(payload: {
 
   const activity = await activityRes.json();
 
-  const type =
-    activity.sport_type === "Run" || activity.sport_type === "VirtualRun"
-      ? "run"
-      : activity.sport_type === "Ride" || activity.sport_type === "VirtualRide"
-      ? "ride"
-      : "run";
-
-  const { error: upsertError } = await supabase.from("activities").upsert(
-    {
-      user_id: profile.id,
-      strava_activity_id: payload.object_id,
-      type,
-      start_time: activity.start_date,
-      duration: activity.moving_time,
-      source: "strava",
-      distance: activity.distance,
-      avg_heartrate: activity.average_heartrate ?? null,
-      max_heartrate: activity.max_heartrate ?? null,
-      suffer_score: activity.suffer_score ?? null,
-      calories: activity.calories ?? null,
-      elevation_gain: activity.total_elevation_gain ?? null,
-      avg_pace:
-        activity.distance > 0
-          ? activity.moving_time / (activity.distance / 1000)
-          : null,
-    },
-    { onConflict: "strava_activity_id" }
-  );
+  const { error: upsertError } = await supabase
+    .from("activities")
+    .upsert(buildActivityRow(profile.id, payload.object_id, activity), {
+      onConflict: "strava_activity_id",
+    });
 
   if (upsertError) {
     console.error("[webhook] Activity upsert failed", {
       activityId: payload.object_id,
       error: upsertError.message,
     });
+    return;
   }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/activity");
 }

@@ -103,10 +103,6 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
     return true;
   }
 
-  async function handleSave() {
-    await persistProfile({});
-  }
-
   async function handleUnitsChange(nextUnits: Units) {
     if (nextUnits === units || saving) return;
 
@@ -308,6 +304,7 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
               min="0.5"
               value={incUpper}
               onChange={(e) => setIncUpper(parseFloat(e.target.value))}
+              onBlur={(e) => void persistProfile({ incUpper: parseFloat(e.target.value) })}
               className="w-20 bg-background border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:border-accent"
             />
           </div>
@@ -319,6 +316,7 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
               min="0.5"
               value={incLower}
               onChange={(e) => setIncLower(parseFloat(e.target.value))}
+              onBlur={(e) => void persistProfile({ incLower: parseFloat(e.target.value) })}
               className="w-20 bg-background border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:border-accent"
             />
           </div>
@@ -366,6 +364,7 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
                 max="1"
                 value={ohpBench}
                 onChange={(e) => setOhpBench(parseFloat(e.target.value))}
+                onBlur={(e) => void persistProfile({ ohpBench: parseFloat(e.target.value) })}
                 className="w-20 bg-background border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none"
               />
               <span className="text-muted text-xs">%</span>
@@ -380,6 +379,7 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
                 min="0"
                 value={dlSquat}
                 onChange={(e) => setDlSquat(parseFloat(e.target.value))}
+                onBlur={(e) => void persistProfile({ dlSquat: parseFloat(e.target.value) })}
                 className="w-20 bg-background border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none"
               />
               <span className="text-muted text-xs">×</span>
@@ -397,18 +397,11 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
             max="30"
             value={volCeiling}
             onChange={(e) => setVolCeiling(parseInt(e.target.value))}
+            onBlur={(e) => void persistProfile({ volCeiling: parseInt(e.target.value) })}
             className="w-16 bg-background border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none"
           />
         </div>
       </Section>
-
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="w-full bg-accent py-3 rounded-lg text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-      >
-        {saving ? "Saving…" : "Save Settings"}
-      </button>
 
       <Section title="Data">
         <button

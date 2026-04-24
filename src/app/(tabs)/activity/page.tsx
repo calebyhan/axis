@@ -1,24 +1,29 @@
 export const dynamic = "force-dynamic";
 
-import { getActivitiesFeed, getWorkoutMuscleCoverage } from "@/lib/queries/activity";
+import { getActivitiesFeed, getWorkoutCoverageAndStats } from "@/lib/queries/activity";
 import { getUserUnits } from "@/lib/queries/profile";
 import { RunCard } from "@/components/activity/RunCard";
 import { WorkoutCard } from "@/components/activity/WorkoutCard";
+import { createClient } from "@/lib/supabase/server";
 import type { Activity, MuscleGroup } from "@/types";
 
+type WorkoutData = { coverage: Partial<Record<MuscleGroup, number>>; exerciseCount: number; totalVolume: number };
+
 export default async function ActivityPage() {
-  const [activities, units] = await Promise.all([
+  const supabase = await createClient();
+  const [activities, units, { data: dayTypesRaw }] = await Promise.all([
     getActivitiesFeed(undefined, 40) as Promise<Activity[]>,
     getUserUnits(),
+    supabase.from("day_types").select("id, name"),
   ]);
+  const dayTypeNames = new Map((dayTypesRaw ?? []).map((d) => [d.id, d.name]));
 
-  // Fetch muscle coverage for workouts
   const workoutActivities = activities.filter((a) => a.type === "workout");
-  const coverageMap = new Map<string, Partial<Record<MuscleGroup, number>>>();
+  const workoutDataMap = new Map<string, WorkoutData>();
   await Promise.all(
     workoutActivities.slice(0, 10).map(async (a) => {
-      const coverage = await getWorkoutMuscleCoverage(a.id);
-      coverageMap.set(a.id, coverage as Partial<Record<MuscleGroup, number>>);
+      const data = await getWorkoutCoverageAndStats(a.id);
+      workoutDataMap.set(a.id, data);
     })
   );
 
@@ -40,11 +45,15 @@ export default async function ActivityPage() {
         <div className="flex flex-col gap-3">
           {activities.map((activity) => {
             if (activity.type === "workout") {
+              const wd = workoutDataMap.get(activity.id) ?? { coverage: {}, exerciseCount: 0, totalVolume: 0 };
               return (
                 <WorkoutCard
                   key={activity.id}
                   activity={activity}
-                  coverage={coverageMap.get(activity.id) ?? {}}
+                  coverage={wd.coverage}
+                  exerciseCount={wd.exerciseCount}
+                  totalVolume={wd.totalVolume}
+                  dayTypeName={activity.day_type_id ? dayTypeNames.get(activity.day_type_id) : undefined}
                   units={units}
                 />
               );

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { getUserAccentColor } from "@/lib/queries/profile";
 
 export const metadata: Metadata = {
   title: "Axis",
@@ -21,13 +22,15 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const accent = await getUserAccentColor();
+
   return (
-    <html lang="en">
+    <html lang="en" data-accent={accent}>
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

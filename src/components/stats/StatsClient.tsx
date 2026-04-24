@@ -13,8 +13,10 @@ import {
   CartesianGrid,
 } from "recharts";
 import { classifyTrend } from "@/lib/body-weight-trend";
+import { weightUnit, distanceUnit, formatWeight, formatPace } from "@/lib/units";
 import { useState } from "react";
 import type { TimeRange } from "@/lib/queries/stats";
+import type { Units } from "@/types";
 
 type Tab = "workout" | "running" | "body";
 
@@ -35,6 +37,7 @@ interface Props {
     suffer_score: number | null;
   }[];
   initialBodyData: { date: string; body_weight: number }[];
+  units: Units;
 }
 
 function computeRolling(
@@ -49,16 +52,15 @@ function computeRolling(
   });
 }
 
-function formatPace(s: number | null): string {
-  if (!s) return "—";
-  return `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
-}
-
-export function StatsClient({ timeRange, initialVolumeData, initialRunningData, initialBodyData }: Props) {
+export function StatsClient({ timeRange, initialVolumeData, initialRunningData, initialBodyData, units }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("workout");
 
-  const bodyChartData = computeRolling(initialBodyData);
+  const convertedBodyData = initialBodyData.map((d) => ({
+    ...d,
+    body_weight: units === "imperial" ? Math.round(d.body_weight * 2.20462 * 10) / 10 : d.body_weight,
+  }));
+  const bodyChartData = computeRolling(convertedBodyData);
   const trend = classifyTrend(
     initialBodyData.map((d) => ({ date: new Date(d.date), weight: d.body_weight }))
   );
@@ -107,13 +109,16 @@ export function StatsClient({ timeRange, initialVolumeData, initialRunningData, 
       {activeTab === "workout" && (
         <div className="flex flex-col gap-5">
           <div className="card p-4">
-            <h3 className="text-sm font-medium mb-4">Volume Over Time</h3>
+            <h3 className="text-sm font-medium mb-4">Volume Over Time ({weightUnit(units)})</h3>
             {initialVolumeData.length === 0 ? (
               <p className="text-muted text-sm">No data for this period.</p>
             ) : (
               <div className="h-40">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={initialVolumeData}>
+                  <BarChart data={initialVolumeData.map((d) => ({
+                    ...d,
+                    volume: units === "imperial" ? Math.round(d.volume * 2.20462) : d.volume,
+                  }))}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1F1F1F" />
                     <XAxis
                       dataKey="week"
@@ -129,6 +134,7 @@ export function StatsClient({ timeRange, initialVolumeData, initialRunningData, 
                     <Tooltip
                       contentStyle={{ background: "#141414", border: "1px solid #1F1F1F", borderRadius: 8, fontSize: 12 }}
                       labelStyle={{ color: "#666" }}
+                      formatter={(v) => [`${v} ${weightUnit(units)}`, "Volume"]}
                     />
                     <Bar dataKey="volume" fill="var(--accent, #3B82F6)" radius={[3, 3, 0, 0]} />
                   </BarChart>
@@ -143,25 +149,27 @@ export function StatsClient({ timeRange, initialVolumeData, initialRunningData, 
       {activeTab === "running" && (
         <div className="flex flex-col gap-5">
           <div className="card p-4">
-            <h3 className="text-sm font-medium mb-4">Weekly Distance (km)</h3>
+            <h3 className="text-sm font-medium mb-4">Distance ({distanceUnit(units)})</h3>
             {initialRunningData.length === 0 ? (
               <p className="text-muted text-sm">No runs for this period.</p>
             ) : (
               <div className="h-40">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={initialRunningData.map((r) => ({
-                      date: r.start_time.split("T")[0],
-                      km: r.distance ? +(r.distance / 1000).toFixed(2) : 0,
-                    }))}
+                    data={initialRunningData.map((r) => {
+                      const km = r.distance ? r.distance / 1000 : 0;
+                      const dist = units === "imperial" ? +(km * 0.621371).toFixed(2) : +km.toFixed(2);
+                      return { date: r.start_time.split("T")[0], dist };
+                    })}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#1F1F1F" />
                     <XAxis dataKey="date" tick={{ fill: "#666", fontSize: 10 }} tickLine={false} />
                     <YAxis tick={{ fill: "#666", fontSize: 10 }} tickLine={false} axisLine={false} />
                     <Tooltip
                       contentStyle={{ background: "#141414", border: "1px solid #1F1F1F", borderRadius: 8, fontSize: 12 }}
+                      formatter={(v) => [`${v} ${distanceUnit(units)}`, "Distance"]}
                     />
-                    <Bar dataKey="km" fill="var(--accent, #3B82F6)" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="dist" fill="var(--accent, #3B82F6)" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -187,11 +195,11 @@ export function StatsClient({ timeRange, initialVolumeData, initialRunningData, 
                       tickLine={false}
                       axisLine={false}
                       reversed
-                      tickFormatter={(v) => formatPace(v)}
+                      tickFormatter={(v) => formatPace(v, units)}
                     />
                     <Tooltip
                       contentStyle={{ background: "#141414", border: "1px solid #1F1F1F", borderRadius: 8, fontSize: 12 }}
-                      formatter={(v) => [formatPace(v as number), "Pace"]}
+                      formatter={(v) => [formatPace(v as number, units), "Pace"]}
                     />
                     <Line type="monotone" dataKey="pace" stroke="var(--accent, #3B82F6)" strokeWidth={2} dot={false} />
                   </LineChart>
@@ -207,7 +215,7 @@ export function StatsClient({ timeRange, initialVolumeData, initialRunningData, 
         <div className="flex flex-col gap-5">
           <div className="card p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium">Body Weight</h3>
+              <h3 className="text-sm font-medium">Body Weight ({weightUnit(units)})</h3>
               <span className={`text-xs font-medium ${trendBadge.color}`}>
                 {trendBadge.label}
               </span>
@@ -244,7 +252,7 @@ export function StatsClient({ timeRange, initialVolumeData, initialRunningData, 
                 {[...initialBodyData].reverse().slice(0, 10).map((d) => (
                   <div key={d.date} className="flex justify-between text-sm">
                     <span className="text-muted">{d.date}</span>
-                    <span className="font-medium">{d.body_weight} kg</span>
+                    <span className="font-medium">{formatWeight(d.body_weight, units)} {weightUnit(units)}</span>
                   </div>
                 ))}
               </div>

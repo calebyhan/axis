@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LogRunForm } from "@/components/log/LogRunForm";
+import { LogRunPanel } from "@/components/log/LogRunPanel";
 import { LogWeightForm } from "@/components/log/LogWeightForm";
 import { SessionFlow } from "@/components/session/SessionFlow";
 
@@ -53,7 +53,7 @@ export default function LogPage() {
         >
           <div>
             <div className="font-medium text-base">Log Run</div>
-            <div className="text-sm text-muted mt-1">Manual entry for distance, time, and perceived effort.</div>
+            <div className="text-sm text-muted mt-1">Import from Strava or enter manually.</div>
           </div>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-5 h-5 text-white/45 shrink-0">
             <path d="M9 18l6-6-6-6" />
@@ -81,7 +81,7 @@ export default function LogPage() {
 
       {(panel === "run" || panel === "weight") && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xl z-50 flex items-end">
-          <div className="w-full max-w-2xl mx-auto card rounded-b-none rounded-t-[2rem] p-5">
+          <div className="w-full max-w-2xl mx-auto card rounded-b-none rounded-t-[2rem] p-5 pb-nav">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-medium">
                 {panel === "run" ? "Log Run" : "Log Body Weight"}
@@ -91,7 +91,7 @@ export default function LogPage() {
               </button>
             </div>
             {panel === "run" ? (
-              <LogRunForm onSave={() => onSaved("Run saved!")} />
+              <LogRunPanel onSave={() => onSaved("Run saved!")} />
             ) : (
               <LogWeightForm onSave={() => onSaved("Weight logged!")} />
             )}

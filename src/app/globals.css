@@ -4,6 +4,7 @@
 
 :root {
   --accent: #3B82F6;
+  --accent-rgb: 59, 130, 246;
   --background: #050505;
   --background-elevated: rgba(255, 255, 255, 0.05);
   --surface: rgba(18, 18, 18, 0.72);
@@ -16,9 +17,9 @@
   --shadow-md: 0 20px 44px rgba(0, 0, 0, 0.28);
 }
 
-[data-accent="green"] { --accent: #22C55E; }
-[data-accent="orange"] { --accent: #F97316; }
-[data-accent="purple"] { --accent: #A855F7; }
+[data-accent="green"] { --accent: #22C55E; --accent-rgb: 34, 197, 94; }
+[data-accent="orange"] { --accent: #F97316; --accent-rgb: 249, 115, 22; }
+[data-accent="purple"] { --accent: #A855F7; --accent-rgb: 168, 85, 247; }
 
 * {
   box-sizing: border-box;
@@ -90,6 +91,16 @@ body::after {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
+/* Forbidden zone: nothing should render where the bottom nav lives.
+   --nav-h is the total height of the nav bar including safe area.
+   On desktop the nav is hidden so --nav-h collapses to 0. */
+:root { --nav-h: 0px; }
+@media (max-width: 767px) {
+  :root { --nav-h: calc(6rem + env(safe-area-inset-bottom, 0px)); }
+}
+/* Apply to any scroll container or bottom sheet card that needs clearance */
+.pb-nav { padding-bottom: var(--nav-h); }
+
 /* Accent utility driven by CSS variable */
 .bg-accent { background-color: var(--accent); }
 .text-accent { color: var(--accent); }
@@ -119,7 +130,7 @@ body::after {
 .page-shell {
   width: min(100%, 56rem);
   margin: 0 auto;
-  padding: max(1.25rem, env(safe-area-inset-top, 0px)) 1rem 6.5rem;
+  padding: max(1.25rem, env(safe-area-inset-top, 0px)) 1rem var(--nav-h);
 }
 
 .page-header {
@@ -273,4 +284,75 @@ body::after {
 .animate-select-open {
   animation: select-open 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: top right;
+}
+
+/* Leaflet tile seams can show up as hairline grid artifacts on dark basemaps. */
+.leaflet-container {
+  background: #050505;
+}
+
+.leaflet-container .leaflet-tile {
+  outline: 1px solid transparent;
+}
+
+.leaflet-container .leaflet-control-zoom {
+  border: 0;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 1rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+.leaflet-container .leaflet-control-zoom a {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
+    rgba(12, 12, 12, 0.82);
+  color: rgba(255, 255, 255, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 1.15rem;
+  font-weight: 500;
+  text-indent: 0;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.leaflet-container .leaflet-control-zoom a + a {
+  border-top: 0;
+}
+
+.leaflet-container .leaflet-control-zoom a:hover,
+.leaflet-container .leaflet-control-zoom a:focus {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06)),
+    rgba(18, 18, 18, 0.92);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.leaflet-container .leaflet-control-zoom a:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.leaflet-container .leaflet-control-zoom a:first-child {
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+}
+
+.leaflet-container .leaflet-control-zoom a:last-child {
+  border-bottom-left-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+}
+
+.leaflet-container .leaflet-control-zoom a.leaflet-disabled {
+  background: rgba(20, 20, 20, 0.7);
+  color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.06);
 }

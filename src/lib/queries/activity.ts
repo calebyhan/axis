@@ -59,3 +59,35 @@ export async function getWorkoutMuscleCoverage(activityId: string): Promise<Part
   }
   return coverage;
 }
+
+export async function getWorkoutCoverageAndStats(activityId: string): Promise<{
+  coverage: Partial<Record<MuscleGroup, number>>;
+  exerciseCount: number;
+  totalVolume: number;
+}> {
+  const supabase = await createClient();
+  const { data: sets, error } = await supabase
+    .from("session_sets")
+    .select("exercise_id, weight, reps, exercise:exercises(primary_muscles, secondary_muscles)")
+    .eq("activity_id", activityId);
+
+  if (error) console.error("[query] getWorkoutCoverageAndStats failed", error.message);
+
+  const coverage: Partial<Record<MuscleGroup, number>> = {};
+  const exerciseIds = new Set<string>();
+  let totalVolume = 0;
+
+  for (const s of sets ?? []) {
+    exerciseIds.add(s.exercise_id);
+    totalVolume += (s.weight ?? 0) * (s.reps ?? 0);
+
+    const exRaw = s.exercise as unknown;
+    const ex = (Array.isArray(exRaw) ? exRaw[0] : exRaw) as { primary_muscles: MuscleGroup[]; secondary_muscles: MuscleGroup[] } | null;
+    if (!ex) continue;
+    for (const m of ex.primary_muscles ?? []) {
+      coverage[m] = (coverage[m] ?? 0) + 1;
+    }
+  }
+
+  return { coverage, exerciseCount: exerciseIds.size, totalVolume };
+}
