@@ -316,6 +316,18 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
           Export all data as JSON
         </button>
       </Section>
+
+      <Section title="Account">
+        <button
+          onClick={async () => {
+            await supabase.auth.signOut();
+            router.push("/login");
+          }}
+          className="w-full border border-red-400/30 py-3 rounded-lg text-sm text-red-400 hover:border-red-400/60 transition-colors"
+        >
+          Sign out
+        </button>
+      </Section>
     </div>
   );
 }
