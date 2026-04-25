@@ -1,3 +1,5 @@
+"use client";
+
 import type { ChecklistDay, ChecklistSlot } from "@/lib/checklist";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
