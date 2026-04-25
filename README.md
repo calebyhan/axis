@@ -39,38 +39,3 @@ Single user. Own your data. No social features, no SaaS, no app review required.
 ## Quick Start
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for local dev setup.
-
-## Deploying To Vercel
-
-Axis is a standard Next.js app and can be deployed directly on Vercel.
-
-### Environment Variables
-
-Add these variables in the Vercel project settings for every production environment:
-
-- `NEXT_PUBLIC_APP_URL=https://your-project.vercel.app`
-- `NEXT_PUBLIC_SUPABASE_URL=...`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...`
-- `SUPABASE_SECRET_KEY=...`
-- `STRAVA_CLIENT_ID=...`
-- `STRAVA_CLIENT_SECRET=...`
-- `STRAVA_WEBHOOK_VERIFY_TOKEN=...`
-
-You can use [.env.local.example](.env.local.example) as the source of truth for required keys.
-
-### Strava Production Setup
-
-After the first Vercel deploy, update the Strava app configuration to use your production URLs:
-
-- Authorization Callback Domain: your deployed Vercel domain
-- OAuth redirect URI: `https://your-project.vercel.app/api/strava/callback`
-- Webhook callback URL: `https://your-project.vercel.app/api/strava/webhook`
-- Webhook verify token: match `STRAVA_WEBHOOK_VERIFY_TOKEN`
-
-If you use a custom domain, use that instead of the default `vercel.app` hostname and set `NEXT_PUBLIC_APP_URL` to the same origin.
-
-### Notes
-
-- The Strava routes are pinned to the Node.js runtime for Vercel compatibility.
-- The webhook uses Next.js `after()` so post-response activity imports keep working on serverless infrastructure.
-- Missing required environment variables now fail fast with explicit errors instead of vague runtime crashes.
