@@ -1,15 +1,73 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import type { DayPlanEntry } from "@/lib/queries/dashboard";
 
 interface Props {
   streak: number;
-  activeDays: Map<string, number>; // ISO date string → session count
+  activities: { start_time: string; type: string }[];
+  dayPlans: DayPlanEntry[];
 }
 
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
-export function CalendarStreak({ streak, activeDays }: Props) {
+function localDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function buildActiveDays(
+  activities: { start_time: string; type: string }[],
+  dayPlans: DayPlanEntry[],
+): Map<string, number> {
+  const dayKinds = new Map<string, Set<string>>();
+  for (const { start_time, type } of activities) {
+    const kind =
+      type === "workout" ? "workout"
+      : type === "run" || type === "manual_run" || type === "ride" ? "cardio"
+      : null;
+    if (!kind) continue;
+    const key = localDateKey(new Date(start_time));
+    const kinds = dayKinds.get(key) ?? new Set<string>();
+    kinds.add(kind);
+    dayKinds.set(key, kinds);
+  }
+
+  const map = new Map<string, number>();
+  for (const [key, kinds] of dayKinds) {
+    map.set(key, kinds.has("workout") && kinds.has("cardio") ? 2 : 1);
+  }
+
+  // Overlay plan completion for the current week up to today (local time)
+  const plansByDay = new Map(dayPlans.map((p) => [p.dayOfWeek, p]));
+  const today = new Date();
+  const todayKey = localDateKey(today);
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  monday.setHours(0, 0, 0, 0);
+
+  const cursor = new Date(monday);
+  while (localDateKey(cursor) <= todayKey) {
+    const key = localDateKey(cursor);
+    const plan = plansByDay.get((cursor.getDay() + 6) % 7);
+    if (plan) {
+      const kinds = dayKinds.get(key);
+      const workoutDone = plan.workoutSatisfiedByRest || !!kinds?.has("workout");
+      const cardioDone = plan.cardioSatisfiedByRest || !!kinds?.has("cardio");
+      let count = 0;
+      if (plan.hasWorkoutSlot && plan.hasCardioSlot) count = Number(workoutDone) + Number(cardioDone);
+      else if (plan.hasWorkoutSlot) count = workoutDone ? 1 : 0;
+      else if (plan.hasCardioSlot) count = cardioDone ? 1 : 0;
+      else count = kinds ? kinds.size : 0;
+      if (count > 0) map.set(key, count);
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return map;
+}
+
+export function CalendarStreak({ streak, activities, dayPlans }: Props) {
+  const activeDays = buildActiveDays(activities, dayPlans);
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth();

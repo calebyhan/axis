@@ -44,7 +44,7 @@ export default async function DashboardPage() {
         <WeeklyStatsSummary {...weeklyStats} units={units} />
       </div>
 
-      <CalendarStreak streak={streak} activeDays={activeDays} />
+      <CalendarStreak streak={streak} activities={activeDays.activities} dayPlans={activeDays.dayPlans} />
 
       {checklistItems.length > 0 && (
         <div>

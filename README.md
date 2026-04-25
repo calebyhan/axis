@@ -4,7 +4,7 @@ Personal athletic dashboard PWA. Unifies endurance data (Strava) and strength tr
 
 **Strava is the sensor layer. Axis is the intelligence layer.**
 
-No existing app combines Strava-automated run ingestion with manual strength logging, cross-discipline load tracking (ATL/CTL), and rule-based insights — all without LLM APIs or recurring AI costs.
+No existing app combines Strava-automated run ingestion with manual strength logging, cross-discipline load tracking (ATL/CTL), and rule-based insights - all without LLM APIs or recurring AI costs.
 
 Single user. Own your data. No social features, no SaaS, no app review required.
 

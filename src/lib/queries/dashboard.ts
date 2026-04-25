@@ -209,11 +209,23 @@ export async function getActivityStreak() {
   return streak;
 }
 
-export async function getMonthActiveDays(): Promise<Map<string, number>> {
+export type DayPlanEntry = {
+  dayOfWeek: number;
+  hasWorkoutSlot: boolean;
+  hasCardioSlot: boolean;
+  workoutSatisfiedByRest: boolean;
+  cardioSatisfiedByRest: boolean;
+};
+
+export async function getMonthActiveDays(): Promise<{
+  activities: { start_time: string; type: string }[];
+  dayPlans: DayPlanEntry[];
+}> {
   const supabase = await createClient();
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const [{ data, error }, dayPlans] = await Promise.all([
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
+  const [{ data, error }, plansMap] = await Promise.all([
     supabase
       .from("activities")
       .select("start_time, type")
@@ -223,30 +235,12 @@ export async function getMonthActiveDays(): Promise<Map<string, number>> {
 
   if (error) console.error("[query] getMonthActiveDays failed", error.message);
 
-  const counts = new Map<string, number>();
-  const dayKinds = buildDailyKindMap(data ?? []);
-  const today = localDateStr(now);
-  const weekStart = startOfCurrentWeek(now);
-  const weekStartKey = localDateStr(weekStart);
+  const dayPlans: DayPlanEntry[] = Array.from(plansMap.entries()).map(([dayOfWeek, plan]) => ({
+    dayOfWeek,
+    ...plan,
+  }));
 
-  for (const [key, kinds] of dayKinds) {
-    counts.set(key, kinds.has("workout") && kinds.has("cardio") ? 2 : 1);
-  }
-
-  const cursor = new Date(weekStart);
-  while (localDateStr(cursor) <= today) {
-    const key = localDateStr(cursor);
-    if (key < weekStartKey) {
-      cursor.setDate(cursor.getDate() + 1);
-      continue;
-    }
-    const plan = dayPlans.get((cursor.getDay() + 6) % 7);
-    const completionCount = getDayCompletionCount(dayKinds.get(key), plan);
-    if (completionCount > 0) counts.set(key, completionCount);
-    cursor.setDate(cursor.getDate() + 1);
-  }
-
-  return counts;
+  return { activities: data ?? [], dayPlans };
 }
 
 export async function getWeekChecklistData() {
