@@ -203,10 +203,22 @@ export default async function ActivityDetailPage({
       {/* ── WORKOUT DETAIL ─────────────────────────────────────────────── */}
       {isWorkout && (
         <>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             <StatCard label="Duration" value={formatDuration(activity.duration)} />
             <StatCard label="Exercises" value={`${exerciseGroups.size}`} />
             <StatCard label="Sets" value={`${sets.length}`} />
+            {activity.avg_heartrate != null && (
+              <StatCard label="Avg HR" value={`${Math.round(activity.avg_heartrate)}`} unit="bpm" />
+            )}
+            {activity.max_heartrate != null && (
+              <StatCard label="Max HR" value={`${Math.round(activity.max_heartrate)}`} unit="bpm" />
+            )}
+            {activity.calories != null && (
+              <StatCard label="Calories" value={`${activity.calories}`} unit="kcal" />
+            )}
+            {activity.suffer_score != null && (
+              <StatCard label="Suffer" value={`${activity.suffer_score}`} />
+            )}
           </div>
 
           <div>
@@ -250,6 +262,15 @@ export default async function ActivityDetailPage({
               })}
             </div>
           </div>
+
+          {activity.strava_activity_id && (
+            <div>
+              <div className="text-xs text-muted uppercase tracking-wider mb-3">Heart Rate</div>
+              <div className="card p-4">
+                <RunStreams stravaActivityId={activity.strava_activity_id} units={units} />
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

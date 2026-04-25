@@ -59,6 +59,48 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ status: "ok" });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function mergeWorkoutBiometrics(userId: string, stravaId: number, a: Record<string, any>, supabase: ReturnType<typeof createServerClient>) {
+  const stravaStart = new Date(a.start_date).getTime();
+  const windowMs = 90 * 60 * 1000; // 90-minute tolerance on either side
+
+  const { data: candidates } = await supabase
+    .from("activities")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("type", "workout")
+    .gte("start_time", new Date(stravaStart - windowMs).toISOString())
+    .lte("start_time", new Date(stravaStart + windowMs).toISOString());
+
+  if (!candidates || candidates.length === 0) return;
+
+  const biometrics = {
+    avg_heartrate: a.average_heartrate ?? null,
+    max_heartrate: a.max_heartrate ?? null,
+    calories: a.calories ?? null,
+    suffer_score: a.suffer_score ?? null,
+    strava_activity_id: stravaId,
+  };
+
+  if (candidates.length === 1) {
+    await supabase.from("activities").update(biometrics).eq("id", candidates[0].id);
+    return;
+  }
+
+  // Multiple candidates — store for user to resolve
+  await supabase.from("pending_strava_links").insert({
+    user_id: userId,
+    strava_activity_id: stravaId,
+    strava_data: {
+      ...biometrics,
+      name: a.name ?? null,
+      start_time: a.start_date,
+      duration: a.moving_time,
+    },
+    candidate_ids: candidates.map((c: { id: string }) => c.id),
+  });
+}
+
 function verifyHmac(body: string, signature: string, secret: string): boolean {
   const expected = "sha256=" + createHmac("sha256", secret).update(body).digest("hex");
   if (signature.length !== expected.length) return false;
@@ -120,6 +162,19 @@ async function processWebhookEvent(payload: {
   }
 
   const activity = await activityRes.json();
+
+  // Workout sport types are merged into an existing Axis session rather than
+  // stored as new records. Anything that isn't a run or ride is treated as a
+  // gym/fitness workout.
+  const sport = activity.sport_type as string;
+  const isRun = sport === "Run" || sport === "VirtualRun";
+  const isRide = ["Ride", "VirtualRide", "EBikeRide", "EMountainBikeRide", "GravelRide", "MountainBikeRide"].includes(sport);
+
+  if (!isRun && !isRide) {
+    await mergeWorkoutBiometrics(profile.id, payload.object_id, activity, supabase);
+    revalidatePath("/activity");
+    return;
+  }
 
   const { error: upsertError } = await supabase
     .from("activities")
