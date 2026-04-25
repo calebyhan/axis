@@ -144,11 +144,6 @@ export interface Profile {
   id: string;
   units: Units;
   accent_color: AccentColor;
-  weight_increment_upper: number;
-  weight_increment_lower: number;
-  ohp_bench_ratio: number;
-  dl_squat_ratio: number;
-  volume_ceiling: number;
   strava_access_token: string | null;
   strava_refresh_token: string | null;
   token_expires_at: string | null;

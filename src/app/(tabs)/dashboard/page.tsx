@@ -55,7 +55,7 @@ export default async function DashboardPage() {
 
       <div>
         <h2 className="section-label">Body weight</h2>
-        <BodyWeightSparkline data={bodyWeightData} />
+        <BodyWeightSparkline data={bodyWeightData} units={units} />
       </div>
     </div>
   );

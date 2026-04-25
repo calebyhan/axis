@@ -124,13 +124,14 @@ export function StatsClient({
     losing: { label: "Losing", color: "text-red-400" },
   }[trend];
 
+  // Use raw kg values here — formatWeight handles the kg→lbs conversion for display
   const currentWeight =
-    convertedBodyData.length > 0 ? convertedBodyData[convertedBodyData.length - 1].body_weight : null;
-  const firstWeight = convertedBodyData.length > 0 ? convertedBodyData[0].body_weight : null;
+    initialBodyData.length > 0 ? initialBodyData[initialBodyData.length - 1].body_weight : null;
+  const firstWeight = initialBodyData.length > 0 ? initialBodyData[0].body_weight : null;
   const weightDelta =
     currentWeight !== null && firstWeight !== null ? currentWeight - firstWeight : null;
-  const minWeight = convertedBodyData.length > 0 ? Math.min(...convertedBodyData.map((d) => d.body_weight)) : null;
-  const maxWeight = convertedBodyData.length > 0 ? Math.max(...convertedBodyData.map((d) => d.body_weight)) : null;
+  const minWeight = initialBodyData.length > 0 ? Math.min(...initialBodyData.map((d) => d.body_weight)) : null;
+  const maxWeight = initialBodyData.length > 0 ? Math.max(...initialBodyData.map((d) => d.body_weight)) : null;
 
   // ── Running computations ──────────────────────────────────────────────────
   const totalDistanceKm = initialRunningData.reduce((s, r) => s + (r.distance ?? 0), 0) / 1000;

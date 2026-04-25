@@ -54,20 +54,10 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
 
   const [units, setUnits] = useState<Units>(profile?.units ?? "imperial");
   const [accent, setAccent] = useState<AccentColor>(profile?.accent_color ?? "blue");
-  const [incUpper, setIncUpper] = useState(profile?.weight_increment_upper ?? 2.5);
-  const [incLower, setIncLower] = useState(profile?.weight_increment_lower ?? 5.0);
-  const [ohpBench, setOhpBench] = useState(profile?.ohp_bench_ratio ?? 0.65);
-  const [dlSquat, setDlSquat] = useState(profile?.dl_squat_ratio ?? 1.20);
-  const [volCeiling, setVolCeiling] = useState(profile?.volume_ceiling ?? 10);
 
   async function persistProfile(next: {
     units?: Units;
     accent?: AccentColor;
-    incUpper?: number;
-    incLower?: number;
-    ohpBench?: number;
-    dlSquat?: number;
-    volCeiling?: number;
   }) {
     setSaving(true);
     setSaveError(null);
@@ -78,11 +68,6 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
     const { error } = await saveProfile({
       units: nextUnits,
       accent_color: nextAccent,
-      weight_increment_upper: next.incUpper ?? incUpper,
-      weight_increment_lower: next.incLower ?? incLower,
-      ohp_bench_ratio: next.ohpBench ?? ohpBench,
-      dl_squat_ratio: next.dlSquat ?? dlSquat,
-      volume_ceiling: next.volCeiling ?? volCeiling,
     });
 
     setSaving(false);
@@ -294,35 +279,6 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
         </div>
       </Section>
 
-      <Section title="Weight Increments">
-        <div className="card p-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <label className="text-sm">Upper body ({units === "imperial" ? "lbs" : "kg"})</label>
-            <input
-              type="number"
-              step="0.5"
-              min="0.5"
-              value={incUpper}
-              onChange={(e) => setIncUpper(parseFloat(e.target.value))}
-              onBlur={(e) => void persistProfile({ incUpper: parseFloat(e.target.value) })}
-              className="w-20 bg-background border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:border-accent"
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <label className="text-sm">Lower body ({units === "imperial" ? "lbs" : "kg"})</label>
-            <input
-              type="number"
-              step="0.5"
-              min="0.5"
-              value={incLower}
-              onChange={(e) => setIncLower(parseFloat(e.target.value))}
-              onBlur={(e) => void persistProfile({ incLower: parseFloat(e.target.value) })}
-              className="w-20 bg-background border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:border-accent"
-            />
-          </div>
-        </div>
-      </Section>
-
       <Section title="Weekly Schedule">
         <div className="card divide-y divide-border">
           <div className="flex items-center px-4 py-2 gap-4">
@@ -349,57 +305,6 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
               />
             </div>
           ))}
-        </div>
-      </Section>
-
-      <Section title="Strength Ratios">
-        <div className="card p-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <label className="text-sm">OHP / Bench target</label>
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max="1"
-                value={ohpBench}
-                onChange={(e) => setOhpBench(parseFloat(e.target.value))}
-                onBlur={(e) => void persistProfile({ ohpBench: parseFloat(e.target.value) })}
-                className="w-20 bg-background border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none"
-              />
-              <span className="text-muted text-xs">%</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <label className="text-sm">Deadlift / Squat target</label>
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={dlSquat}
-                onChange={(e) => setDlSquat(parseFloat(e.target.value))}
-                onBlur={(e) => void persistProfile({ dlSquat: parseFloat(e.target.value) })}
-                className="w-20 bg-background border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none"
-              />
-              <span className="text-muted text-xs">×</span>
-            </div>
-          </div>
-        </div>
-      </Section>
-
-      <Section title="Volume Ceiling">
-        <div className="card p-4 flex items-center justify-between">
-          <label className="text-sm">Max sets per muscle per session</label>
-          <input
-            type="number"
-            min="5"
-            max="30"
-            value={volCeiling}
-            onChange={(e) => setVolCeiling(parseInt(e.target.value))}
-            onBlur={(e) => void persistProfile({ volCeiling: parseInt(e.target.value) })}
-            className="w-16 bg-background border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none"
-          />
         </div>
       </Section>
 

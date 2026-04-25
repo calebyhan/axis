@@ -1,6 +1,8 @@
 "use client";
 
 import { LineChart, Line, ResponsiveContainer, Tooltip, YAxis } from "recharts";
+import { formatWeight, weightUnit } from "@/lib/units";
+import type { Units } from "@/types";
 
 interface DataPoint {
   date: string;
@@ -10,6 +12,7 @@ interface DataPoint {
 
 interface Props {
   data: { date: string; body_weight: number }[];
+  units: Units;
 }
 
 function computeRollingAverage(
@@ -24,7 +27,7 @@ function computeRollingAverage(
   });
 }
 
-export function BodyWeightSparkline({ data }: Props) {
+export function BodyWeightSparkline({ data, units }: Props) {
   if (data.length === 0) {
     return (
       <div className="card p-4">
@@ -36,24 +39,38 @@ export function BodyWeightSparkline({ data }: Props) {
     );
   }
 
+  const unit = weightUnit(units);
   const chartData = computeRollingAverage(data);
   const latest = data[data.length - 1]?.body_weight;
   const minWeight = Math.min(...data.map((d) => d.body_weight));
   const maxWeight = Math.max(...data.map((d) => d.body_weight));
-  const domain = [minWeight - 1, maxWeight + 1];
+
+  // Convert bounds for Y-axis domain
+  const minDisplay = parseFloat(formatWeight(minWeight, units));
+  const maxDisplay = parseFloat(formatWeight(maxWeight, units));
+  const domain = [minDisplay - (units === "imperial" ? 2 : 1), maxDisplay + (units === "imperial" ? 2 : 1)];
+
+  // Convert all data points for display
+  const displayData = chartData.map((d) => ({
+    ...d,
+    body_weight: parseFloat(formatWeight(d.body_weight, units)),
+    rolling: d.rolling !== undefined ? parseFloat(formatWeight(d.rolling, units)) : undefined,
+  }));
 
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-medium">Body Weight</span>
         {latest && (
-          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-sm font-semibold">{latest} kg</span>
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-sm font-semibold">
+            {formatWeight(latest, units)} {unit}
+          </span>
         )}
       </div>
 
       <div className="h-24">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
+          <LineChart data={displayData}>
             <YAxis domain={domain} hide />
             <Tooltip
               content={({ active, payload }) => {
@@ -62,7 +79,7 @@ export function BodyWeightSparkline({ data }: Props) {
                 return (
                   <div className="card px-2 py-1 text-xs">
                     <div>{d.date}</div>
-                    <div className="font-medium">{d.body_weight} kg</div>
+                    <div className="font-medium">{d.body_weight} {unit}</div>
                   </div>
                 );
               }}

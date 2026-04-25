@@ -6,11 +6,6 @@ import type { AccentColor, Units } from "@/types";
 interface ProfilePayload {
   units: Units;
   accent_color: AccentColor;
-  weight_increment_upper: number;
-  weight_increment_lower: number;
-  ohp_bench_ratio: number;
-  dl_squat_ratio: number;
-  volume_ceiling: number;
 }
 
 export async function saveProfile(payload: ProfilePayload): Promise<{ error: string | null }> {
