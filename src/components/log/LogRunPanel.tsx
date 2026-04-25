@@ -217,12 +217,12 @@ export function LogRunPanel({ onSave }: { onSave: () => void }) {
           </button>
           {showManual && (
             <div className="mt-4">
-              <LogRunForm onSave={onSave} />
+              <LogRunForm onSave={onSave} units={units} />
             </div>
           )}
         </div>
       ) : (
-        <LogRunForm onSave={onSave} />
+        <LogRunForm onSave={onSave} units={units} />
       )}
     </div>
   );

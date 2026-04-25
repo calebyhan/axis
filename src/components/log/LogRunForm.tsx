@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
+import { distanceUnit } from "@/lib/units";
+import type { Units } from "@/types";
 
 const schema = z.object({
   distance: z.number().positive("Distance must be positive"),
@@ -12,7 +14,7 @@ const schema = z.object({
   notes: z.string().optional(),
 });
 
-export function LogRunForm({ onSave }: { onSave: () => void }) {
+export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; units?: Units }) {
   const [distance, setDistance] = useState("");
   const [hours, setHours] = useState("0");
   const [minutes, setMinutes] = useState("30");
@@ -50,7 +52,9 @@ export function LogRunForm({ onSave }: { onSave: () => void }) {
 
     const durationSecs =
       parsed.data.hours * 3600 + parsed.data.minutes * 60;
-    const distanceM = parsed.data.distance * 1000;
+    const distanceM = units === "imperial"
+      ? parsed.data.distance * 1609.344
+      : parsed.data.distance * 1000;
 
     const { error: dbError } = await supabase.from("activities").insert({
       user_id: user.id,
@@ -74,7 +78,7 @@ export function LogRunForm({ onSave }: { onSave: () => void }) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
-        <label className="block text-xs text-muted mb-1.5">Distance (km)</label>
+        <label className="block text-xs text-muted mb-1.5">Distance ({distanceUnit(units)})</label>
         <input
           type="number"
           step="0.01"

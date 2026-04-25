@@ -60,6 +60,48 @@ export async function getWorkoutMuscleCoverage(activityId: string): Promise<Part
   return coverage;
 }
 
+export async function getWorkoutsBulkData(activityIds: string[]): Promise<
+  Record<string, { coverage: Partial<Record<MuscleGroup, number>>; exerciseCount: number; totalVolume: number }>
+> {
+  if (activityIds.length === 0) return {};
+  const supabase = await createClient();
+  const { data: sets, error } = await supabase
+    .from("session_sets")
+    .select("activity_id, exercise_id, weight, reps, exercise:exercises(primary_muscles, secondary_muscles)")
+    .in("activity_id", activityIds);
+
+  if (error) console.error("[query] getWorkoutsBulkData failed", error.message);
+
+  const result: Record<string, { coverage: Partial<Record<MuscleGroup, number>>; exerciseCount: number; totalVolume: number }> = {};
+
+  for (const s of sets ?? []) {
+    if (!result[s.activity_id]) {
+      result[s.activity_id] = { coverage: {}, exerciseCount: 0, totalVolume: 0 };
+    }
+    const entry = result[s.activity_id];
+    entry.totalVolume += (s.weight ?? 0) * (s.reps ?? 0);
+
+    const exRaw = s.exercise as unknown;
+    const ex = (Array.isArray(exRaw) ? exRaw[0] : exRaw) as { primary_muscles: MuscleGroup[]; secondary_muscles: MuscleGroup[] } | null;
+    if (!ex) continue;
+    for (const m of ex.primary_muscles ?? []) {
+      entry.coverage[m] = (entry.coverage[m] ?? 0) + 1;
+    }
+  }
+
+  // compute exerciseCount per activity
+  const exerciseIdsByActivity: Record<string, Set<string>> = {};
+  for (const s of sets ?? []) {
+    if (!exerciseIdsByActivity[s.activity_id]) exerciseIdsByActivity[s.activity_id] = new Set();
+    exerciseIdsByActivity[s.activity_id].add(s.exercise_id);
+  }
+  for (const [id, exIds] of Object.entries(exerciseIdsByActivity)) {
+    result[id].exerciseCount = exIds.size;
+  }
+
+  return result;
+}
+
 export async function getWorkoutCoverageAndStats(activityId: string): Promise<{
   coverage: Partial<Record<MuscleGroup, number>>;
   exerciseCount: number;

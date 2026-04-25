@@ -1,13 +1,11 @@
 export const dynamic = "force-dynamic";
 
-import { getActivitiesFeed, getWorkoutCoverageAndStats } from "@/lib/queries/activity";
+import { getActivitiesFeed, getWorkoutsBulkData } from "@/lib/queries/activity";
 import { getUserUnits } from "@/lib/queries/profile";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
 
 import { createClient } from "@/lib/supabase/server";
-import type { Activity, MuscleGroup } from "@/types";
-
-type WorkoutData = { coverage: Partial<Record<MuscleGroup, number>>; exerciseCount: number; totalVolume: number };
+import type { Activity } from "@/types";
 
 export default async function ActivityPage() {
   const supabase = await createClient();
@@ -20,14 +18,8 @@ export default async function ActivityPage() {
     (dayTypesRaw ?? []).map((d) => [d.id, d.name])
   );
 
-  const workoutActivities = activities.filter((a) => a.type === "workout");
-  const workoutDataMap: Record<string, WorkoutData> = {};
-  await Promise.all(
-    workoutActivities.slice(0, 20).map(async (a) => {
-      const data = await getWorkoutCoverageAndStats(a.id);
-      workoutDataMap[a.id] = data;
-    })
-  );
+  const workoutIds = activities.filter((a) => a.type === "workout").map((a) => a.id);
+  const workoutDataMap = await getWorkoutsBulkData(workoutIds);
 
   return (
     <div className="page-shell">

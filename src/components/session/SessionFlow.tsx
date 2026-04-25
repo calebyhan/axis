@@ -176,7 +176,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
               {saveError}
             </p>
           )}
-          <SessionSummary session={finalSession} onClose={onComplete} />
+          <SessionSummary session={finalSession} onClose={onComplete} units={units} />
         </div>
       </div>
     );

@@ -1,11 +1,13 @@
 "use client";
 
 import { computeE1RM } from "@/lib/e1rm";
-import type { SessionState } from "@/types";
+import { formatWeight, weightUnit } from "@/lib/units";
+import type { SessionState, Units } from "@/types";
 
 interface Props {
   session: SessionState;
   onClose: () => void;
+  units: Units;
 }
 
 function getPushPullSplit(session: SessionState): { push: number; pull: number } {
@@ -39,7 +41,7 @@ function getDuration(session: SessionState): string {
   return hrs > 0 ? `${hrs}h ${rem}m` : `${mins}m`;
 }
 
-export function SessionSummary({ session, onClose }: Props) {
+export function SessionSummary({ session, onClose, units }: Props) {
   const totalSets = session.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
   const totalVolume = session.exercises.reduce(
     (sum, ex) => sum + ex.sets.reduce((s, set) => s + set.weight * set.reps, 0),
@@ -62,10 +64,8 @@ export function SessionSummary({ session, onClose }: Props) {
           <div className="text-xs text-muted mt-0.5">Sets</div>
         </div>
         <div className="card p-3">
-          <div className="text-lg font-semibold">
-            {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume}
-          </div>
-          <div className="text-xs text-muted mt-0.5">Volume (kg)</div>
+          <div className="text-lg font-semibold">{formatWeight(totalVolume, units)}</div>
+          <div className="text-xs text-muted mt-0.5">Volume ({weightUnit(units)})</div>
         </div>
       </div>
 
@@ -102,7 +102,7 @@ export function SessionSummary({ session, onClose }: Props) {
               <div key={ex.exerciseId} className="flex justify-between text-sm">
                 <span>{ex.name}</span>
                 <span className="text-muted">
-                  {ex.sets.length} sets · {bestE1RM > 0 ? `${bestE1RM.toFixed(0)} e1RM` : "BW"}
+                  {ex.sets.length} sets · {bestE1RM > 0 ? `${formatWeight(bestE1RM, units)} e1RM` : "BW"}
                 </span>
               </div>
             );
