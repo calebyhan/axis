@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { clearDraft, saveDraft } from "@/lib/idb/session-draft";
-import type { Exercise, MuscleGroup, SessionState, Units } from "@/types";
+import type { DayType, Exercise, MuscleGroup, SessionState, Units } from "@/types";
 import { useSession } from "@/context/SessionContext";
 import { ExerciseSearch } from "./ExerciseSearch";
 import { SetLogger } from "./SetLogger";
@@ -30,6 +30,9 @@ export function SessionFlow({ onClose, onComplete }: Props) {
   const [saving, setSaving] = useState(false);
   const [units, setUnits] = useState<Units>("metric");
   const [todayMuscles, setTodayMuscles] = useState<MuscleGroup[] | undefined>(undefined);
+  // undefined = loading, null = no scheduled day type, DayType = loaded
+  const [todayDayType, setTodayDayType] = useState<DayType | null | undefined>(undefined);
+  const [allDayTypes, setAllDayTypes] = useState<DayType[]>([]);
 
   // Derive activeExercise from live session state — never stale
   const activeExercise = session?.exercises.find((e) => e.exerciseId === activeExerciseId) ?? null;
@@ -53,6 +56,9 @@ export function SessionFlow({ onClose, onComplete }: Props) {
       if (error) console.error("[SessionFlow] Failed to load exercises", error.message);
       if (data) setExercises(data as Exercise[]);
     });
+    supabase.from("day_types").select("id, name, category, muscle_focus").eq("category", "strength").then(({ data }) => {
+      if (data) setAllDayTypes(data as DayType[]);
+    });
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
       supabase.from("profiles").select("units").eq("id", user.id).single().then(({ data }) => {
@@ -63,25 +69,27 @@ export function SessionFlow({ onClose, onComplete }: Props) {
     const isoDay = (new Date().getDay() + 6) % 7;
     supabase
       .from("weekly_schedule")
-      .select("day_type:day_types!weekly_schedule_day_type_id_fkey(muscle_focus)")
+      .select("day_type:day_types!weekly_schedule_day_type_id_fkey(id, name, category, muscle_focus)")
       .eq("day_of_week", isoDay)
       .eq("active", true)
       .limit(1)
       .single()
       .then(({ data }) => {
-        const dt = data?.day_type;
-        const muscles = (Array.isArray(dt) ? dt[0] : dt)?.muscle_focus as MuscleGroup[] | null | undefined;
+        const dt = (Array.isArray(data?.day_type) ? data.day_type[0] : data?.day_type) as DayType | null | undefined;
+        const muscles = dt?.muscle_focus;
         if (muscles && muscles.length > 0) setTodayMuscles(muscles);
+        setTodayDayType(dt ?? null);
       });
   }, []);
 
-  // Start session if no active session and no draft
+  // Start session once day type is resolved (undefined = still loading)
   useEffect(() => {
+    if (todayDayType === undefined) return;
     if (!isActive && !hasDraft) {
-      startSession(null);
+      startSession(todayDayType);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [todayDayType]);
 
   function handleExerciseSelect(ex: Exercise) {
     addExercise({
@@ -93,6 +101,25 @@ export function SessionFlow({ onClose, onComplete }: Props) {
     setActiveExerciseId(ex.id);
     setShowRecentStats(true);
     setStep("logging");
+  }
+
+  function inferDayType(workedMuscles: MuscleGroup[], scheduled: DayType | null): DayType | null {
+    if (allDayTypes.length === 0) return scheduled;
+    const worked = new Set(workedMuscles);
+    let best: DayType | null = null;
+    let bestScore = 0;
+    for (const dt of allDayTypes) {
+      const focus = dt.muscle_focus;
+      if (!focus || focus.length === 0) continue;
+      const overlap = focus.filter((m) => worked.has(m)).length;
+      const score = overlap / focus.length;
+      if (score > bestScore) {
+        bestScore = score;
+        best = dt;
+      }
+    }
+    // Require at least 30% of the day type's focus muscles to be worked
+    return bestScore >= 0.3 ? best : scheduled;
   }
 
   async function handleEndSession() {
@@ -112,6 +139,9 @@ export function SessionFlow({ onClose, onComplete }: Props) {
     const captured = endSession();
     const key = captured.startTime.toISOString();
 
+    const workedMuscles = captured.exercises.flatMap((ex) => ex.primaryMuscles);
+    const inferredDayType = inferDayType(workedMuscles, captured.dayType ?? null);
+
     const { data: activityData, error: activityError } = await supabase
       .from("activities")
       .insert({
@@ -120,7 +150,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
         source: "manual",
         start_time: captured.startTime.toISOString(),
         duration: Math.floor((Date.now() - captured.startTime.getTime()) / 1000),
-        day_type_id: captured.dayType?.id ?? null,
+        day_type_id: inferredDayType?.id ?? null,
       })
       .select("id")
       .single();
