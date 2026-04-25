@@ -14,25 +14,33 @@ const schema = z.object({
   notes: z.string().optional(),
 });
 
+interface FormFields {
+  distance: string;
+  hours: string;
+  minutes: string;
+  effort: number;
+  notes: string;
+}
+
 export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; units?: Units }) {
-  const [distance, setDistance] = useState("");
-  const [hours, setHours] = useState("0");
-  const [minutes, setMinutes] = useState("30");
-  const [effort, setEffort] = useState(3);
-  const [notes, setNotes] = useState("");
+  const [form, setForm] = useState<FormFields>({ distance: "", hours: "0", minutes: "30", effort: 3, notes: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  function setField<K extends keyof FormFields>(key: K, value: FormFields[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
     const parsed = schema.safeParse({
-      distance: parseFloat(distance),
-      hours: parseInt(hours) || 0,
-      minutes: parseInt(minutes) || 0,
-      effort,
-      notes,
+      distance: parseFloat(form.distance),
+      hours: parseInt(form.hours) || 0,
+      minutes: parseInt(form.minutes) || 0,
+      effort: form.effort,
+      notes: form.notes,
     });
 
     if (!parsed.success) {
@@ -42,7 +50,6 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
 
     setSaving(true);
     const supabase = createClient();
-
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setError("Not authenticated. Please reload and try again.");
@@ -50,11 +57,8 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
       return;
     }
 
-    const durationSecs =
-      parsed.data.hours * 3600 + parsed.data.minutes * 60;
-    const distanceM = units === "imperial"
-      ? parsed.data.distance * 1609.344
-      : parsed.data.distance * 1000;
+    const durationSecs = parsed.data.hours * 3600 + parsed.data.minutes * 60;
+    const distanceM = units === "imperial" ? parsed.data.distance * 1609.344 : parsed.data.distance * 1000;
 
     const { error: dbError } = await supabase.from("activities").insert({
       user_id: user.id,
@@ -63,27 +67,25 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
       start_time: new Date().toISOString(),
       duration: durationSecs,
       distance: distanceM,
-      suffer_score: (effort - 1) * 50,
+      suffer_score: (parsed.data.effort - 1) * 50,
       notes: parsed.data.notes ?? null,
     });
 
     setSaving(false);
-    if (dbError) {
-      setError(dbError.message);
-    } else {
-      onSave();
-    }
+    if (dbError) setError(dbError.message);
+    else onSave();
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
-        <label className="block text-xs text-muted mb-1.5">Distance ({distanceUnit(units)})</label>
+        <label htmlFor="log-run-distance" className="block text-xs text-muted mb-1.5">Distance ({distanceUnit(units)})</label>
         <input
+          id="log-run-distance"
           type="number"
           step="0.01"
-          value={distance}
-          onChange={(e) => setDistance(e.target.value)}
+          value={form.distance}
+          onChange={(e) => setField("distance", e.target.value)}
           placeholder="5.0"
           className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)]"
           required
@@ -91,13 +93,14 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
       </div>
 
       <div>
-        <label className="block text-xs text-muted mb-1.5">Duration</label>
+        <div className="block text-xs text-muted mb-1.5">Duration</div>
         <div className="flex gap-2">
           <input
             type="number"
             min="0"
-            value={hours}
-            onChange={(e) => setHours(e.target.value)}
+            id="log-run-hours"
+            value={form.hours}
+            onChange={(e) => setField("hours", e.target.value)}
             placeholder="0"
             className="flex-1 bg-background border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] text-center"
           />
@@ -106,8 +109,9 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
             type="number"
             min="0"
             max="59"
-            value={minutes}
-            onChange={(e) => setMinutes(e.target.value)}
+            id="log-run-minutes"
+            value={form.minutes}
+            onChange={(e) => setField("minutes", e.target.value)}
             placeholder="30"
             className="flex-1 bg-background border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] text-center"
           />
@@ -116,17 +120,15 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
       </div>
 
       <div>
-        <label className="block text-xs text-muted mb-1.5">Perceived Effort</label>
+        <div className="block text-xs text-muted mb-1.5">Perceived Effort</div>
         <div className="flex gap-2">
           {[1, 2, 3, 4, 5].map((v) => (
             <button
               key={v}
               type="button"
-              onClick={() => setEffort(v)}
+              onClick={() => setField("effort", v)}
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                effort === v
-                  ? "border-accent text-accent"
-                  : "border-border text-muted hover:text-white"
+                form.effort === v ? "border-accent text-accent" : "border-border text-muted hover:text-white"
               }`}
             >
               {v}
@@ -136,13 +138,14 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
       </div>
 
       <div>
-        <label className="block text-xs text-muted mb-1.5">Notes (optional)</label>
+        <label htmlFor="log-run-notes" className="block text-xs text-muted mb-1.5">Notes (optional)</label>
         <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          id="log-run-notes"
+          value={form.notes}
+          onChange={(e) => setField("notes", e.target.value)}
           rows={2}
           className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] resize-none"
-          placeholder="Felt good, new route…"
+          placeholder="Felt good, new route..."
         />
       </div>
 
@@ -153,7 +156,7 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
         disabled={saving}
         className="w-full bg-accent py-3 rounded-lg text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
       >
-        {saving ? "Saving…" : "Save Run"}
+        {saving ? "Saving..." : "Save Run"}
       </button>
     </form>
   );

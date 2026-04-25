@@ -53,6 +53,7 @@ export function RouteMapExpandable({ polyline }: { polyline: string }) {
           <div
             className="fixed inset-0 z-[2000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setOpen(false)}
+            onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
             role="dialog"
             aria-modal="true"
             aria-label="Interactive route map"
@@ -61,6 +62,8 @@ export function RouteMapExpandable({ polyline }: { polyline: string }) {
               className="relative w-full max-w-3xl rounded-2xl overflow-hidden border border-white/10 bg-[#050505] shadow-[0_28px_80px_rgba(0,0,0,0.55)]"
               style={{ height: "70vh" }}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              role="none"
             >
               <LeafletMap key={`modal-${polyline}`} polyline={polyline} interactive={true} />
               <button

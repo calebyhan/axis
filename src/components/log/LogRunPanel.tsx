@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import useSWR from "swr";
 import { createClient } from "@/lib/supabase/client";
 import { formatDistance, distanceUnit } from "@/lib/units";
 import { LogRunForm } from "./LogRunForm";
@@ -31,6 +32,7 @@ function formatRelativeDate(isoDate: string): string {
 }
 
 const RECENT_MS = 48 * 60 * 60 * 1000;
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 function ActivityRow({
   activity,
@@ -72,15 +74,17 @@ function ActivityRow({
 }
 
 export function LogRunPanel({ onSave }: { onSave: () => void }) {
-  const [activities, setActivities] = useState<StravaActivity[]>([]);
-  const [connected, setConnected] = useState(true);
-  const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState<number | null>(null);
   const [imported, setImported] = useState<Set<number>>(new Set());
-  const [showHistory, setShowHistory] = useState(false);
-  const [showManual, setShowManual] = useState(false);
+  const [panels, setPanels] = useState({ showHistory: false, showManual: false });
+  const { showHistory, showManual } = panels;
   const [units, setUnits] = useState<Units>("imperial");
-  const [now] = useState(() => Date.now());
+  const now = useRef(Date.now()).current;
+
+  const { data: stravaData, isLoading: loading } = useSWR<{
+    connected: boolean;
+    activities: StravaActivity[];
+  }>("/api/strava/sync", fetcher);
 
   useEffect(() => {
     const supabase = createClient();
@@ -95,16 +99,10 @@ export function LogRunPanel({ onSave }: { onSave: () => void }) {
           if (data?.units) setUnits(data.units as Units);
         });
     });
-
-    fetch("/api/strava/sync")
-      .then((r) => r.json())
-      .then((data) => {
-        setConnected(data.connected !== false);
-        setActivities(data.activities ?? []);
-      })
-      .catch(() => setConnected(false))
-      .finally(() => setLoading(false));
   }, []);
+
+  const connected = stravaData?.connected !== false;
+  const activities = stravaData?.activities ?? [];
 
   async function importActivity(id: number) {
     setImporting(id);
@@ -134,7 +132,6 @@ export function LogRunPanel({ onSave }: { onSave: () => void }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Recent Strava activities (< 48h) */}
       {recentActivities.length > 0 && (
         <div>
           <div className="text-xs text-muted uppercase tracking-wider mb-2">
@@ -155,11 +152,10 @@ export function LogRunPanel({ onSave }: { onSave: () => void }) {
         </div>
       )}
 
-      {/* Older Strava history */}
       {olderActivities.length > 0 && (
         <div>
           <button
-            onClick={() => setShowHistory((v) => !v)}
+            onClick={() => setPanels((p) => ({ ...p, showHistory: !p.showHistory }))}
             className="w-full flex items-center justify-between text-sm text-muted py-1"
           >
             <span>
@@ -192,7 +188,6 @@ export function LogRunPanel({ onSave }: { onSave: () => void }) {
         </div>
       )}
 
-      {/* Empty / disconnected states */}
       {connected && activities.length === 0 && (
         <p className="text-sm text-muted text-center py-1">
           No new Strava runs to import.
@@ -204,11 +199,10 @@ export function LogRunPanel({ onSave }: { onSave: () => void }) {
         </p>
       )}
 
-      {/* Manual log section */}
       {hasStravaContent ? (
         <div>
           <button
-            onClick={() => setShowManual((v) => !v)}
+            onClick={() => setPanels((p) => ({ ...p, showManual: !p.showManual }))}
             className="w-full flex items-center gap-3 text-xs text-muted py-1"
           >
             <div className="flex-1 h-px bg-border" />

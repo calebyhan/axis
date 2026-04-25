@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Activity — Axis", description: "Activity detail" };
 
 import { getActivityWithSets } from "@/lib/queries/activity";
 import { getUserUnits } from "@/lib/queries/profile";
@@ -10,6 +11,7 @@ import { SplitsTable } from "@/components/activity/SplitsTable";
 import type { MuscleGroup, BestEffort } from "@/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { DeleteActivityButton } from "@/components/activity/DeleteActivityButton";
 import { RouteMapExpandable } from "@/components/activity/RouteMapExpandable";
 
@@ -181,7 +183,9 @@ export default async function ActivityDetailPage({
             <div>
               <div className="text-xs text-muted uppercase tracking-wider mb-3">Charts</div>
               <div className="card p-4">
-                <RunStreams stravaActivityId={activity.strava_activity_id} units={units} />
+                <Suspense fallback={<div className="text-sm text-muted py-4 text-center">Loading charts...</div>}>
+                  <RunStreams stravaActivityId={activity.strava_activity_id} units={units} />
+                </Suspense>
               </div>
             </div>
           )}

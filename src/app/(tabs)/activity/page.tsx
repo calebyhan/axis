@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Activity — Axis", description: "Chronological feed of runs and workouts" };
 
 import { getActivitiesFeed, getWorkoutsBulkData } from "@/lib/queries/activity";
 import { getUserUnits } from "@/lib/queries/profile";
@@ -37,7 +38,7 @@ export default async function ActivityPage() {
   const pendingLinks = (pendingRaw ?? []).map((p) => ({
     id: p.id,
     strava_data: p.strava_data,
-    candidates: (p.candidate_ids as string[]).map((id) => candidateMap[id]).filter(Boolean),
+    candidates: (p.candidate_ids as string[]).flatMap((id) => candidateMap[id] ? [candidateMap[id]] : []),
   }));
 
   return (

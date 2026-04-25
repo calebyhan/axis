@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Fuse from "fuse.js";
 import type { Exercise, MuscleGroup } from "@/types";
 
@@ -9,7 +9,6 @@ interface Props {
   onSelect: (exercise: Exercise) => void;
   scoredOrder?: string[];
   defaultMuscles?: MuscleGroup[];
-  autoFocus?: boolean;
   collapseUntilTyped?: boolean;
 }
 
@@ -22,16 +21,11 @@ export function ExerciseSearch({
   onSelect,
   scoredOrder,
   defaultMuscles,
-  autoFocus = true,
   collapseUntilTyped = false,
 }: Props) {
   const [query, setQuery] = useState("");
   const [selectedMuscles, setSelectedMuscles] = useState<MuscleGroup[] | "all" | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (autoFocus) inputRef.current?.focus();
-  }, [autoFocus]);
 
   const activeMuscs = useMemo(() => {
     if (selectedMuscles === "all") return null;

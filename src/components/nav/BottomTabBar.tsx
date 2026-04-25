@@ -67,8 +67,8 @@ export function BottomTabBar() {
       className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t border-[#1F1F1F]"
       style={{
         background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)), #141414",
-        backdropFilter: "blur(24px) saturate(150%)",
-        WebkitBackdropFilter: "blur(24px) saturate(150%)",
+        backdropFilter: "blur(8px) saturate(150%)",
+        WebkitBackdropFilter: "blur(8px) saturate(150%)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >

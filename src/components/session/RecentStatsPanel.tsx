@@ -24,8 +24,7 @@ interface Props {
 }
 
 export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSuggestion, onDismiss }: Props) {
-  const [sets, setSets] = useState<SetRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [{ sets, loading }, setSetsState] = useState<{ sets: SetRecord[]; loading: boolean }>({ sets: [], loading: true });
 
   useEffect(() => {
     const supabase = createClient();
@@ -41,7 +40,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
       .then(({ data, error }) => {
         if (error) {
           console.error("[RecentStatsPanel] Failed to load sets", error.message);
-          setLoading(false);
+          setSetsState((prev) => ({ ...prev, loading: false }));
           return;
         }
         const mapped: SetRecord[] = (data ?? []).map((s: Record<string, unknown>) => ({
@@ -56,8 +55,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
           onDismiss();
           return;
         }
-        setSets(mapped);
-        setLoading(false);
+        setSetsState({ sets: mapped, loading: false });
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exercise.id]);
@@ -91,10 +89,18 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
   }
 
   return (
-    <div className="fixed inset-0 bg-background/80 z-50 flex items-end" onClick={onDismiss}>
+    <div
+      className="fixed inset-0 bg-background/80 z-50 flex items-end"
+      onClick={onDismiss}
+      onKeyDown={(e) => e.key === "Escape" && onDismiss()}
+      role="presentation"
+      tabIndex={-1}
+    >
       <div
         className="w-full card rounded-b-none p-5 pb-nav max-h-[75vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        role="none"
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-medium">{exercise.name}</h3>
@@ -109,8 +115,8 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
             <div>
               <p className="text-xs text-muted mb-2 uppercase tracking-wide">Last Session</p>
               <div className="flex flex-col gap-1">
-                {lastSession.map((s, i) => (
-                  <div key={i} className="flex justify-between text-sm">
+                {lastSession.map((s, lastSetIdx) => (
+                  <div key={`last-set-${lastSetIdx}`} className="flex justify-between text-sm">
                     <span className="text-muted">Set {s.set_number}</span>
                     <span>{d(s.weight)} {unit} × {s.reps} @ RPE {s.rpe}</span>
                     <span className="text-muted">{d(s.e1rm).toFixed(1)}</span>
@@ -135,10 +141,10 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
               <div>
                 <p className="text-xs text-muted mb-1 uppercase tracking-wide">e1RM Trend (last {last5E1RMs.length})</p>
                 <div className="flex gap-2">
-                  {[...last5E1RMs].reverse().map((v, i) => (
-                    <span key={i} className="text-sm text-white">
+                  {[...last5E1RMs].reverse().map((v, e1rmIdx) => (
+                    <span key={`e1rm-${e1rmIdx}`} className="text-sm text-white">
                       {d(v).toFixed(0)}
-                      {i < last5E1RMs.length - 1 && <span className="text-muted"> →</span>}
+                      {e1rmIdx < last5E1RMs.length - 1 && <span className="text-muted"> &rarr;</span>}
                     </span>
                   ))}
                 </div>

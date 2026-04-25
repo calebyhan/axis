@@ -49,9 +49,9 @@ export function SetLogger({ exerciseName, sets, weightIncrement, units, onAddSet
 
       {sets.length > 0 && (
         <div className="flex flex-col gap-1">
-          {sets.map((s, i) => (
-            <div key={i} className="flex items-center justify-between text-xs text-muted px-1">
-              <span>Set {i + 1}</span>
+          {sets.map((s, setIdx) => (
+            <div key={`set-log-${setIdx}`} className="flex items-center justify-between text-xs text-muted px-1">
+              <span>Set {setIdx + 1}</span>
               <span>{kgToDisplay(s.weight)} {unit} × {s.reps} @ RPE {s.rpe}</span>
               <span className="text-white">{kgToDisplay(computeE1RM(s.weight, s.reps)).toFixed(1)} e1RM</span>
             </div>
@@ -83,13 +83,14 @@ export function SetLogger({ exerciseName, sets, weightIncrement, units, onAddSet
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted">Reps</label>
+          <label htmlFor="set-reps-input" className="text-xs text-muted">Reps</label>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setRepsStr(String(Math.max(1, reps - 1)))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >−</button>
             <input
+              id="set-reps-input"
               type="number"
               inputMode="numeric"
               value={repsStr}
@@ -105,13 +106,14 @@ export function SetLogger({ exerciseName, sets, weightIncrement, units, onAddSet
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted">RPE</label>
+          <label htmlFor="set-rpe-input" className="text-xs text-muted">RPE</label>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setRpeStr(String(Math.max(1, Math.round((rpe - 0.5) * 10) / 10)))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >−</button>
             <input
+              id="set-rpe-input"
               type="number"
               inputMode="decimal"
               step="0.5"

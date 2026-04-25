@@ -19,7 +19,9 @@ interface Props {
   units: Units;
 }
 
-export function WorkoutCard({ activity, coverage = {}, exerciseCount, totalVolume, dayTypeName, units }: Props) {
+const EMPTY_COVERAGE: Partial<Record<import("@/types").MuscleGroup, number>> = {};
+
+export function WorkoutCard({ activity, coverage = EMPTY_COVERAGE, exerciseCount, totalVolume, dayTypeName, units }: Props) {
   return (
     <Link href={`/activity/${activity.id}`} className="card surface-hover p-4 sm:p-5 flex gap-4 items-center block">
       <div className="shrink-0">

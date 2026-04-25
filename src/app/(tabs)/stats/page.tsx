@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Stats — Axis", description: "Training trends and performance charts" };
 
 import { getVolumeOverTime, getRunningStats, getBodyWeightStats, getWorkoutSummary, getTrainingLoadHistory, type TimeRange } from "@/lib/queries/stats";
 import { getUserUnits } from "@/lib/queries/profile";
