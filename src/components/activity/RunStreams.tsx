@@ -17,6 +17,9 @@ import type { HRZone } from "@/app/api/strava/zones/route";
 
 type Point = { t: number; [key: string]: number | null };
 
+// Zones are athlete-level, not activity-level — cache across component instances
+let zonesPromise: Promise<HRZone[] | null> | null = null;
+
 interface StreamsData {
   points: Point[];
   available: string[];
@@ -82,13 +85,20 @@ export function RunStreams({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!zonesPromise) {
+      zonesPromise = fetch("/api/strava/zones")
+        .then((r) => r.json())
+        .then((z) => z.hr ?? null)
+        .catch(() => null);
+    }
+
     Promise.all([
       fetch(`/api/strava/streams/${stravaActivityId}`).then((r) => r.json()),
-      fetch("/api/strava/zones").then((r) => r.json()),
+      zonesPromise,
     ])
       .then(([streams, zones]) => {
         setData(streams);
-        setHrZones(zones.hr ?? null);
+        setHrZones(zones);
       })
       .catch(() => {})
       .finally(() => setLoading(false));

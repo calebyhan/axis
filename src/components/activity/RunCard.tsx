@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Activity, Units } from "@/types";
 import { formatDistance, formatPace, distanceUnit } from "@/lib/units";
-import { LeafletMapWrapper } from "./LeafletMapWrapper";
+import { PolylinePreview } from "./PolylinePreview";
 
 function formatDuration(secs: number | null): string {
   if (!secs) return "—";
@@ -23,11 +23,7 @@ export function RunCard({ activity, units }: Props) {
     <Link href={`/activity/${activity.id}`} className="card surface-hover flex flex-col block overflow-hidden">
       {activity.summary_polyline && (
         <div className="w-full h-28 bg-white/[0.02] border-b border-border pointer-events-none">
-          <LeafletMapWrapper
-            polyline={activity.summary_polyline}
-            interactive={false}
-            fitPadding={8}
-          />
+          <PolylinePreview polyline={activity.summary_polyline} />
         </div>
       )}
 

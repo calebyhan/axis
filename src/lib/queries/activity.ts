@@ -6,7 +6,7 @@ export async function getActivitiesFeed(type?: "run" | "workout", limit = 30) {
 
   let query = supabase
     .from("activities")
-    .select("*")
+    .select("id, user_id, strava_activity_id, type, day_type_id, start_time, duration, source, distance, avg_heartrate, suffer_score, avg_pace, name, summary_polyline, elevation_gain, avg_cadence, elapsed_time")
     .order("start_time", { ascending: false })
     .limit(limit);
 

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 // Returns "YYYY-MM-DD" in local time — avoids UTC drift for date-only columns
@@ -43,7 +44,7 @@ function buildDailyKindMap(
   return days;
 }
 
-async function fetchDayPlans(): Promise<Map<number, DayPlan>> {
+const fetchDayPlans = cache(async function fetchDayPlans(): Promise<Map<number, DayPlan>> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("weekly_schedule")
@@ -69,7 +70,7 @@ async function fetchDayPlans(): Promise<Map<number, DayPlan>> {
   }
 
   return plans;
-}
+});
 
 function getDayCompletionCount(
   kinds: Set<ActivityKind> | undefined,
