@@ -46,9 +46,11 @@ export function WeekChecklist({ items }: Props) {
 
   const todayIsoDay = (new Date().getDay() + 6) % 7;
 
+  const ordered = [...items].sort((a, b) => (a.dayOfWeek + 1) % 7 - (b.dayOfWeek + 1) % 7);
+
   return (
     <div className="card divide-y divide-white/5">
-      {items.map((day) => {
+      {ordered.map((day) => {
         const dayPassed = day.dayOfWeek <= todayIsoDay;
         return (
           <div key={day.dayOfWeek} className="flex items-center gap-3 px-4 py-3">

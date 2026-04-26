@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import type { AccentColor, DayType, Profile, Units, WeeklyScheduleRow } from "@/types";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAY_DISPLAY_ORDER = [6, 0, 1, 2, 3, 4, 5];
 
 const ACCENT_COLORS: { value: AccentColor; label: string; hex: string }[] = [
   { value: "blue", label: "Blue", hex: "#3B82F6" },
@@ -238,9 +239,9 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
             <span className="text-xs text-muted w-[120px] text-center">Workout</span>
             <span className="text-xs text-muted w-[120px] text-center">Cardio</span>
           </div>
-          {DAY_NAMES.map((day, dayIdx) => (
+          {DAY_DISPLAY_ORDER.map((dayIdx) => (
             <div key={`schedule-day-${dayIdx}`} className="flex items-center gap-4 px-4 py-3">
-              <span className="text-sm flex-1">{day}</span>
+              <span className="text-sm flex-1">{DAY_NAMES[dayIdx]}</span>
               <Select
                 value={planMaps.strength[dayIdx] ?? ""}
                 options={strengthTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
