@@ -44,14 +44,17 @@ export default async function DashboardPage() {
         <WeeklyStatsSummary {...weeklyStats} units={units} />
       </div>
 
-      <CalendarStreak streak={streak} activities={activeDays.activities} dayPlans={activeDays.dayPlans} />
-
-      {checklistItems.length > 0 && (
-        <div>
-          <h2 className="section-label">Planned sessions</h2>
-          <WeekChecklist items={checklistItems} />
+      <div className={`grid gap-5 ${checklistItems.length > 0 ? "md:grid-cols-3" : "grid-cols-1"}`}>
+        <div className={checklistItems.length > 0 ? "md:col-span-2" : ""}>
+          <CalendarStreak streak={streak} activities={activeDays.activities} dayPlans={activeDays.dayPlans} />
         </div>
-      )}
+        {checklistItems.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <h2 className="section-label">Planned sessions</h2>
+            <WeekChecklist items={checklistItems} />
+          </div>
+        )}
+      </div>
 
       <div>
         <h2 className="section-label">Body weight</h2>

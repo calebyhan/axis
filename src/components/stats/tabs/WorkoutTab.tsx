@@ -56,6 +56,7 @@ export default function WorkoutTab({ workoutSummary, volumeChartData, units }: P
         <StatCard label="Total Sets" value={String(workoutSummary.totalSets)} />
       </div>
 
+      <div className="md:grid md:grid-cols-2 md:gap-5 flex flex-col gap-5">
       <div className="card p-4">
         <h3 className="text-sm font-medium mb-4">Volume Over Time ({weightUnit(units)})</h3>
         {volumeChartData.length === 0 ? (
@@ -113,6 +114,7 @@ export default function WorkoutTab({ workoutSummary, volumeChartData, units }: P
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

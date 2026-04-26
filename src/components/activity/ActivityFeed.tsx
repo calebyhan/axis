@@ -241,7 +241,7 @@ export function ActivityFeed({ activities, workoutDataMap, dayTypeNames, units }
           <p className="text-muted text-sm">No activities match your filters.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="grid gap-3 md:grid-cols-2">
           {filtered.map((activity) => {
             if (activity.type === "workout") {
               const wd = workoutDataMap[activity.id] ?? { coverage: {}, exerciseCount: 0, totalVolume: 0 };

@@ -68,6 +68,7 @@ export default function RunningTab({
         <StatCard label="Avg HR" value={avgHR ? `${avgHR} bpm` : "—"} />
       </div>
 
+      <div className="md:grid md:grid-cols-2 md:gap-5 flex flex-col gap-5">
       <div className="card p-4">
         <h3 className="text-sm font-medium mb-4">Distance ({distanceUnit(units)})</h3>
         {runCount === 0 ? (
@@ -176,6 +177,7 @@ export default function RunningTab({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -203,22 +203,25 @@ export function SessionFlow({ onClose, onComplete }: Props) {
 
   if (finalSession) {
     return (
-      <div className="fixed inset-0 bg-background z-50 flex flex-col">
-        <div className="flex items-center gap-3 px-4 pb-4 border-b border-border" style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))" }}>
-          <div className="w-9 h-9 shrink-0" />
-          <h2 className="flex-1 font-semibold text-center">Session Complete</h2>
-          <div className="w-9 h-9 shrink-0" />
-        </div>
-        <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav">
-          {saveError && <p className="text-yellow-400 text-xs mb-4 px-3 py-2 bg-yellow-400/10 rounded-lg border border-yellow-400/20">{saveError}</p>}
-          <SessionSummary session={finalSession} onClose={onComplete} units={units} />
+      <div className="fixed inset-0 z-50 flex flex-col bg-background md:bg-black/60 md:items-center md:justify-center md:p-6">
+        <div className="flex flex-col w-full h-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-2xl md:rounded-3xl md:bg-[#0A0A0A] md:border md:border-[#1F1F1F] md:overflow-hidden">
+          <div className="flex items-center gap-3 px-4 pb-4 border-b border-border" style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))" }}>
+            <div className="w-9 h-9 shrink-0" />
+            <h2 className="flex-1 font-semibold text-center">Session Complete</h2>
+            <div className="w-9 h-9 shrink-0" />
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav md:pb-6">
+            {saveError && <p className="text-yellow-400 text-xs mb-4 px-3 py-2 bg-yellow-400/10 rounded-lg border border-yellow-400/20">{saveError}</p>}
+            <SessionSummary session={finalSession} onClose={onComplete} units={units} />
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-50 flex flex-col">
+    <div className="fixed inset-0 z-50 flex flex-col bg-background md:bg-black/60 md:items-center md:justify-center md:p-6">
+    <div className="flex flex-col w-full h-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-2xl md:rounded-3xl md:bg-[#0A0A0A] md:border md:border-[#1F1F1F] md:overflow-hidden">
       <SessionHeader session={session} saving={saving} onCancel={() => { cancelSession(); onClose(); }} onEnd={handleEndSession} />
 
       {autosaveFailed && <div className="px-4 py-2 bg-yellow-900/30 border-b border-yellow-700/40 text-xs text-yellow-400">Auto-save failed - tap End to save your workout manually.</div>}
@@ -265,6 +268,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
           onDismiss={() => setUiState((prev) => ({ ...prev, showRecentStats: false }))}
         />
       )}
+    </div>
     </div>
   );
 }

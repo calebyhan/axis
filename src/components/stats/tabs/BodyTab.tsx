@@ -73,6 +73,7 @@ export default function BodyTab({
         </div>
       )}
 
+      <div className="md:grid md:grid-cols-2 md:gap-5 flex flex-col gap-5">
       <div className="card p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-medium">Body Weight ({weightUnit(units)})</h3>
@@ -129,6 +130,7 @@ export default function BodyTab({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

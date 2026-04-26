@@ -136,7 +136,7 @@ body::after {
 }
 
 .page-shell {
-  width: min(100%, 56rem);
+  width: min(100%, 72rem);
   margin: 0 auto;
   padding: var(--top-h) 1rem var(--nav-h);
 }

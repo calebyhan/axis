@@ -20,7 +20,6 @@ export function Sidebar() {
         <div className="px-3 py-3">
           <div className="text-[11px] uppercase tracking-[0.28em] text-white/40 mb-2">Axis</div>
           <h1 className="text-2xl font-semibold tracking-[-0.05em]">Training OS</h1>
-          <p className="text-sm text-muted mt-2">Matte black tracking for lifting, running, and recovery.</p>
         </div>
         <nav className="flex flex-col gap-1 px-1 pt-4 flex-1">
           {TABS.map((tab) => {

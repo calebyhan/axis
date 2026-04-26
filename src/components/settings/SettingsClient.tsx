@@ -78,19 +78,19 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
   async function handleUnitsChange(nextUnits: Units) {
     if (nextUnits === units || saving) return;
     const previousUnits = units;
-    setUnits(nextUnits);
+    setPreferences((prev) => ({ ...prev, units: nextUnits }));
     const ok = await persistProfile({ units: nextUnits });
-    if (!ok) setUnits(previousUnits);
+    if (!ok) setPreferences((prev) => ({ ...prev, units: previousUnits }));
   }
 
   async function handleAccentChange(nextAccent: AccentColor) {
     if (nextAccent === accent || saving) return;
     const previousAccent = accent;
-    setAccent(nextAccent);
+    setPreferences((prev) => ({ ...prev, accent: nextAccent }));
     document.documentElement.style.setProperty("--accent", ACCENT_COLORS.find((c) => c.value === nextAccent)?.hex ?? "#3B82F6");
     const ok = await persistProfile({ accent: nextAccent });
     if (!ok) {
-      setAccent(previousAccent);
+      setPreferences((prev) => ({ ...prev, accent: previousAccent }));
       document.documentElement.style.setProperty("--accent", ACCENT_COLORS.find((c) => c.value === previousAccent)?.hex ?? "#3B82F6");
     }
   }
@@ -242,20 +242,24 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
           {DAY_DISPLAY_ORDER.map((dayIdx) => (
             <div key={`schedule-day-${dayIdx}`} className="flex items-center gap-4 px-4 py-3">
               <span className="text-sm flex-1">{DAY_NAMES[dayIdx]}</span>
-              <Select
-                value={planMaps.strength[dayIdx] ?? ""}
-                options={strengthTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
-                onChange={(val) => {
-                  void handleScheduleChange(dayIdx, val);
-                }}
-              />
-              <Select
-                value={planMaps.cardio[dayIdx] ?? ""}
-                options={runTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
-                onChange={(val) => {
-                  void handleCardioChange(dayIdx, val);
-                }}
-              />
+              <div className="w-[120px] flex justify-center">
+                <Select
+                  value={planMaps.strength[dayIdx] ?? ""}
+                  options={strengthTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
+                  onChange={(val) => {
+                    void handleScheduleChange(dayIdx, val);
+                  }}
+                />
+              </div>
+              <div className="w-[120px] flex justify-center">
+                <Select
+                  value={planMaps.cardio[dayIdx] ?? ""}
+                  options={runTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
+                  onChange={(val) => {
+                    void handleCardioChange(dayIdx, val);
+                  }}
+                />
+              </div>
             </div>
           ))}
         </div>
