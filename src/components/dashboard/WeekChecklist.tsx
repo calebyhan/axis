@@ -50,6 +50,9 @@ export function WeekChecklist({ items }: Props) {
 
   return (
     <div className="card divide-y divide-white/5">
+      <div className="px-4 py-3">
+        <span className="text-[11px] uppercase tracking-[0.24em] text-white/45">Planned sessions</span>
+      </div>
       {ordered.map((day) => {
         const dayPassed = day.dayOfWeek <= todayIsoDay;
         return (

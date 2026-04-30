@@ -49,17 +49,11 @@ export default async function DashboardPage() {
           <CalendarStreak streak={streak} activities={activeDays.activities} dayPlans={activeDays.dayPlans} />
         </div>
         {checklistItems.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <h2 className="section-label">Planned sessions</h2>
-            <WeekChecklist items={checklistItems} />
-          </div>
+          <WeekChecklist items={checklistItems} />
         )}
       </div>
 
-      <div>
-        <h2 className="section-label">Body weight</h2>
-        <BodyWeightSparkline data={bodyWeightData} units={units} />
-      </div>
+      <BodyWeightSparkline data={bodyWeightData} units={units} />
     </div>
   );
 }
