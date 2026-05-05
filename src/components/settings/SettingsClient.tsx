@@ -67,6 +67,8 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
     units: profile?.units ?? "imperial",
     accent: profile?.accent_color ?? "blue",
   });
+  const [displayName, setDisplayName] = useState(profile?.display_name ?? "");
+  const [displayNameDraft, setDisplayNameDraft] = useState(profile?.display_name ?? "");
   const { units, accent } = preferences;
 
   const { saving, saved, error: saveError } = saveStatus;
@@ -88,6 +90,26 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
     router.refresh();
     document.documentElement.style.setProperty("--accent", ACCENT_COLORS.find((c) => c.value === nextAccent)?.hex ?? "#3B82F6");
     return true;
+  }
+
+  async function handleDisplayNameSave() {
+    if (saving) return;
+    const normalized = displayNameDraft.trim();
+    if (normalized === displayName) return;
+
+    setSaveStatus({ saving: true, saved: false, error: null });
+    const { error } = await saveProfile({ display_name: normalized || null });
+
+    if (error) {
+      setSaveStatus({ saving: false, saved: false, error: "Failed to save settings. Please try again." });
+      return;
+    }
+
+    setDisplayName(normalized);
+    setDisplayNameDraft(normalized);
+    setSaveStatus({ saving: false, saved: true, error: null });
+    setTimeout(() => setSaveStatus((prev) => ({ ...prev, saved: false })), 2000);
+    router.refresh();
   }
 
   async function handleUnitsChange(nextUnits: Units) {
@@ -272,6 +294,35 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
               title={c.label}
             />
           ))}
+        </div>
+      </Section>
+
+      <Section title="Display Name">
+        <div className="card p-4 flex flex-col gap-3">
+          <div>
+            <div className="font-medium text-sm">Dashboard greeting</div>
+            <div className="text-xs text-muted mt-0.5">
+              Leave blank to use your Google account name automatically.
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <input
+              id="display-name"
+              type="text"
+              value={displayNameDraft}
+              onChange={(e) => setDisplayNameDraft(e.target.value)}
+              placeholder="Use Google name"
+              className="flex-1 rounded-xl border border-border bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-white/25 focus:border-border-strong focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => void handleDisplayNameSave()}
+              disabled={saving || displayNameDraft.trim() === displayName}
+              className="rounded-xl border border-border px-3 py-2 text-sm text-white/80 transition-colors hover:border-border-strong hover:text-white disabled:opacity-50"
+            >
+              Save
+            </button>
+          </div>
         </div>
       </Section>
 

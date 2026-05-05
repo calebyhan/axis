@@ -7,7 +7,7 @@ import {
   getWeekChecklistData,
   getMonthActiveDays,
 } from "@/lib/queries/dashboard";
-import { getUserUnits } from "@/lib/queries/profile";
+import { getUserDisplayName, getUserUnits } from "@/lib/queries/profile";
 import { matchChecklist } from "@/lib/checklist";
 import { WeeklyStatsSummary } from "@/components/dashboard/WeeklyStatsSummary";
 import { CalendarStreak } from "@/components/dashboard/CalendarStreak";
@@ -16,14 +16,21 @@ import { BodyWeightSparkline } from "@/components/dashboard/BodyWeightSparkline"
 import type { Activity, DayType, ScheduleOverride, WeeklyScheduleRow } from "@/types";
 
 export default async function DashboardPage() {
-  const [weeklyStats, bodyWeightData, streak, checklistData, units, activeDays] = await Promise.all([
+  const [weeklyStats, bodyWeightData, streak, checklistData, units, activeDays, displayName] = await Promise.all([
     getWeeklyStats(),
     getBodyWeightHistory(30),
     getActivityStreak(),
     getWeekChecklistData(),
     getUserUnits(),
     getMonthActiveDays(),
+    getUserDisplayName(),
   ]);
+
+  const todayLabel = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(new Date());
 
   const dayTypeMap = new Map(
     (checklistData.dayTypes as DayType[]).map((dt) => [dt.id, dt])
@@ -42,6 +49,9 @@ export default async function DashboardPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Dashboard</h1>
+          <p className="mt-2 text-sm text-white/55">
+            Hello, {displayName}. Today is {todayLabel}.
+          </p>
         </div>
       </div>
 

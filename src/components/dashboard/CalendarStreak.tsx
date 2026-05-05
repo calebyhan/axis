@@ -121,6 +121,7 @@ export function CalendarStreak({ streak, activities, dayPlans, skipOverrides }: 
           const count = activeDays.get(key) ?? 0;
           let cellClass: string;
           let cellStyle: CSSProperties | undefined;
+          let numberClass = "";
 
           if (count >= 2) {
             cellClass = "border text-white";
@@ -141,13 +142,21 @@ export function CalendarStreak({ streak, activities, dayPlans, skipOverrides }: 
             cellClass = "text-white/45";
           }
 
+          if (isToday) {
+            numberClass = "text-[#F6D365]";
+            cellStyle = {
+              ...cellStyle,
+              boxShadow: [cellStyle?.boxShadow, "0 0 0 1px rgba(246, 211, 101, 0.45) inset"].filter(Boolean).join(", "),
+            };
+          }
+
           return (
             <div
               key={`cell-${cellIdx}`}
               style={cellStyle}
               className={`aspect-square flex items-center justify-center rounded-xl text-[10px] font-medium transition-colors ${cellClass}`}
             >
-              {day}
+              <span className={numberClass}>{day}</span>
             </div>
           );
         })}

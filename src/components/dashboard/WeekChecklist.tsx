@@ -262,9 +262,12 @@ export function WeekChecklist({ items, dayTypes }: Props) {
         </div>
         {ordered.map((day) => {
           const dayPassed = day.date <= todayStr;
+          const isToday = day.date === todayStr;
           return (
             <div key={day.dayOfWeek} className="flex items-center gap-3 px-4 py-3">
-              <span className="text-xs text-white/38 w-8 shrink-0">{DAY_NAMES[day.dayOfWeek]}</span>
+              <span className={`text-xs w-8 shrink-0 ${isToday ? "text-[#F6D365] font-medium" : "text-white/38"}`}>
+                {DAY_NAMES[day.dayOfWeek]}
+              </span>
               <div className="flex flex-wrap gap-2">
                 {day.workout && (
                   <Pill

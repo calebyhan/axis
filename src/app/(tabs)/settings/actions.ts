@@ -4,8 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import type { AccentColor, Units } from "@/types";
 
 interface ProfilePayload {
-  units: Units;
-  accent_color: AccentColor;
+  units?: Units;
+  accent_color?: AccentColor;
+  display_name?: string | null;
 }
 
 export async function saveProfile(payload: ProfilePayload): Promise<{ error: string | null }> {

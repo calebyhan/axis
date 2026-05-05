@@ -144,6 +144,7 @@ export interface Profile {
   id: string;
   units: Units;
   accent_color: AccentColor;
+  display_name: string | null;
   strava_access_token: string | null;
   strava_refresh_token: string | null;
   token_expires_at: string | null;
