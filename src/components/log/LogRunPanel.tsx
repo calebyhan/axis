@@ -60,6 +60,7 @@ function ActivityRow({
         </div>
       </div>
       <button
+        type="button"
         onClick={() => onImport(activity.id)}
         disabled={importing || imported}
         className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
@@ -155,6 +156,8 @@ export function LogRunPanel({ onSave }: { onSave: () => void }) {
       {olderActivities.length > 0 && (
         <div>
           <button
+            type="button"
+            aria-expanded={showHistory}
             onClick={() => setPanels((p) => ({ ...p, showHistory: !p.showHistory }))}
             className="w-full flex items-center justify-between text-sm text-muted py-1"
           >
@@ -162,6 +165,7 @@ export function LogRunPanel({ onSave }: { onSave: () => void }) {
               Strava history ({olderActivities.length} unimported)
             </span>
             <svg
+              aria-hidden="true"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -202,6 +206,8 @@ export function LogRunPanel({ onSave }: { onSave: () => void }) {
       {hasStravaContent ? (
         <div>
           <button
+            type="button"
+            aria-expanded={showManual}
             onClick={() => setPanels((p) => ({ ...p, showManual: !p.showManual }))}
             className="w-full flex items-center gap-3 text-xs text-muted py-1"
           >

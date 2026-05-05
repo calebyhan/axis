@@ -61,13 +61,16 @@ export function SetLogger({ exerciseName, sets, weightIncrement, units, onAddSet
 
       <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted">Weight ({unit})</label>
+          <label htmlFor="set-weight-input" className="text-xs text-muted">Weight ({unit})</label>
           <div className="flex items-center gap-1">
             <button
+              type="button"
+              aria-label="Decrease weight"
               onClick={() => setWeightStr(String(Math.max(0, Math.round((weightDisplay - dispIncrement) * 10) / 10)))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >−</button>
             <input
+              id="set-weight-input"
               type="number"
               inputMode="decimal"
               value={weightStr}
@@ -76,6 +79,8 @@ export function SetLogger({ exerciseName, sets, weightIncrement, units, onAddSet
               className="flex-1 w-0 min-w-0 bg-surface border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:border-[var(--accent)]"
             />
             <button
+              type="button"
+              aria-label="Increase weight"
               onClick={() => setWeightStr(String(Math.round((weightDisplay + dispIncrement) * 10) / 10))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >+</button>
@@ -86,6 +91,8 @@ export function SetLogger({ exerciseName, sets, weightIncrement, units, onAddSet
           <label htmlFor="set-reps-input" className="text-xs text-muted">Reps</label>
           <div className="flex items-center gap-1">
             <button
+              type="button"
+              aria-label="Decrease reps"
               onClick={() => setRepsStr(String(Math.max(1, reps - 1)))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >−</button>
@@ -99,6 +106,8 @@ export function SetLogger({ exerciseName, sets, weightIncrement, units, onAddSet
               className="flex-1 w-0 min-w-0 bg-surface border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:border-[var(--accent)]"
             />
             <button
+              type="button"
+              aria-label="Increase reps"
               onClick={() => setRepsStr(String(reps + 1))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >+</button>
@@ -109,6 +118,8 @@ export function SetLogger({ exerciseName, sets, weightIncrement, units, onAddSet
           <label htmlFor="set-rpe-input" className="text-xs text-muted">RPE</label>
           <div className="flex items-center gap-1">
             <button
+              type="button"
+              aria-label="Decrease RPE"
               onClick={() => setRpeStr(String(Math.max(1, Math.round((rpe - 0.5) * 10) / 10)))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >−</button>
@@ -123,6 +134,8 @@ export function SetLogger({ exerciseName, sets, weightIncrement, units, onAddSet
               className="flex-1 w-0 min-w-0 bg-surface border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:border-[var(--accent)]"
             />
             <button
+              type="button"
+              aria-label="Increase RPE"
               onClick={() => setRpeStr(String(Math.min(10, Math.round((rpe + 0.5) * 10) / 10)))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >+</button>
@@ -135,6 +148,7 @@ export function SetLogger({ exerciseName, sets, weightIncrement, units, onAddSet
       </div>
 
       <button
+        type="button"
         onClick={handleAdd}
         className="w-full bg-accent py-3 rounded-lg text-sm font-medium text-white hover:opacity-90 transition-opacity"
       >

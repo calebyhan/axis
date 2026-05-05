@@ -64,6 +64,7 @@ export function BottomTabBar() {
 
   return (
     <nav
+      aria-label="Primary"
       className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t border-[#1F1F1F]"
       style={{
         background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)), #141414",
@@ -79,6 +80,7 @@ export function BottomTabBar() {
             <Link
               key={tab.href}
               href={tab.href}
+              aria-current={active ? "page" : undefined}
               className={`flex-1 flex flex-col items-center justify-center py-2.5 min-h-[58px] rounded-2xl transition-all ${
                 active
                   ? "bg-white/[0.08] text-white"
@@ -86,7 +88,7 @@ export function BottomTabBar() {
               }`}
               aria-label={tab.label}
             >
-              {tab.icon(active)}
+              <span aria-hidden="true">{tab.icon(active)}</span>
               <span className="text-[10px] mt-1 font-medium tracking-[0.02em]">{tab.label}</span>
             </Link>
           );

@@ -218,6 +218,7 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
           </div>
           {stravaConnected ? (
             <button
+              type="button"
               onClick={handleDisconnectStrava}
               disabled={disconnecting}
               className="text-xs text-red-400 border border-red-400/30 rounded-lg px-3 py-1.5 disabled:opacity-50"
@@ -236,10 +237,12 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
       </Section>
 
       <Section title="Units">
-        <div className="card p-4 flex gap-2">
+        <div className="card p-4 flex gap-2" role="group" aria-label="Units">
           {(["metric", "imperial"] as const).map((u) => (
             <button
               key={u}
+              type="button"
+              aria-pressed={units === u}
               onClick={() => void handleUnitsChange(u)}
               disabled={saving}
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${
@@ -253,10 +256,13 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
       </Section>
 
       <Section title="Accent Color">
-        <div className="card p-4 flex gap-3">
+        <div className="card p-4 flex gap-3" role="group" aria-label="Accent color">
           {ACCENT_COLORS.map((c) => (
             <button
               key={c.value}
+              type="button"
+              aria-label={`${c.label} accent color`}
+              aria-pressed={accent === c.value}
               onClick={() => void handleAccentChange(c.value)}
               disabled={saving}
               style={{ background: c.hex }}
@@ -271,35 +277,39 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
 
       <Section title="Weekly Schedule">
         <div className="card divide-y divide-border">
-          <div className="flex items-center px-4 py-2 gap-4">
+          <div className="hidden sm:flex items-center px-4 py-2 gap-4">
             <span className="text-xs text-muted flex-1" />
             <span className="text-xs text-muted w-[120px] text-center">Workout</span>
             <span className="text-xs text-muted w-[120px] text-center">Cardio</span>
           </div>
           {DAY_DISPLAY_ORDER.map((dayIdx) => (
-            <div key={`schedule-day-${dayIdx}`} className="flex items-center gap-4 px-4 py-3">
-              <span className="text-sm flex-1">{DAY_NAMES[dayIdx]}</span>
-              <div className="w-[120px] flex justify-center">
-                <Select
-                  value={planMaps.strength[dayIdx] ?? ""}
-                  options={strengthTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
-                  placeholder="Rest"
-                  showEmptyOption={!strengthTypes.some((dt) => dt.name === "Rest")}
-                  onChange={(val) => {
-                    void handleScheduleChange(dayIdx, val);
-                  }}
-                />
-              </div>
-              <div className="w-[120px] flex justify-center">
-                <Select
-                  value={planMaps.cardio[dayIdx] ?? ""}
-                  options={runTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
-                  placeholder="Rest"
-                  showEmptyOption={!runTypes.some((dt) => dt.name === "Rest")}
-                  onChange={(val) => {
-                    void handleCardioChange(dayIdx, val);
-                  }}
-                />
+            <div key={`schedule-day-${dayIdx}`} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
+              <span className="text-sm font-medium sm:flex-1">{DAY_NAMES[dayIdx]}</span>
+              <div className="grid grid-cols-2 gap-3 sm:contents">
+                <div className="flex min-w-0 flex-col gap-1.5 sm:w-[120px] sm:items-center">
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-muted sm:hidden">Workout</span>
+                  <Select
+                    value={planMaps.strength[dayIdx] ?? ""}
+                    options={strengthTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
+                    placeholder="Rest"
+                    showEmptyOption={!strengthTypes.some((dt) => dt.name === "Rest")}
+                    onChange={(val) => {
+                      void handleScheduleChange(dayIdx, val);
+                    }}
+                  />
+                </div>
+                <div className="flex min-w-0 flex-col gap-1.5 sm:w-[120px] sm:items-center">
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-muted sm:hidden">Cardio</span>
+                  <Select
+                    value={planMaps.cardio[dayIdx] ?? ""}
+                    options={runTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
+                    placeholder="Rest"
+                    showEmptyOption={!runTypes.some((dt) => dt.name === "Rest")}
+                    onChange={(val) => {
+                      void handleCardioChange(dayIdx, val);
+                    }}
+                  />
+                </div>
               </div>
             </div>
           ))}
@@ -308,6 +318,7 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
 
       <Section title="Data">
         <button
+          type="button"
           onClick={exportData}
           className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors"
         >
@@ -329,6 +340,7 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
             </div>
           )}
           <button
+            type="button"
             onClick={() => void clearOfflineCache()}
             disabled={cacheStatus.clearing}
             className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
@@ -340,6 +352,7 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
 
       <Section title="Account">
         <button
+          type="button"
           onClick={async () => {
             await deleteAxisCaches();
             await supabase.auth.signOut();

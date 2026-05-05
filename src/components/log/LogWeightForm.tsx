@@ -88,13 +88,14 @@ export function LogWeightForm({ onSave }: { onSave: () => void }) {
       <p className="text-sm text-white/40">{today}</p>
 
       <div className="flex items-center gap-6">
-        <button type="button" onClick={() => nudge(-1)} className="w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 active:scale-95 transition-all">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path d="M5 12h14" /></svg>
+        <button type="button" aria-label="Decrease body weight" onClick={() => nudge(-1)} className="w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 active:scale-95 transition-all">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path d="M5 12h14" /></svg>
         </button>
 
         <div className="flex flex-col items-center">
           {editing ? (
             <input
+              aria-label={`Body weight in ${weightUnit(formData.units)}`}
               ref={inputRef}
               type="number"
               step={step}
@@ -108,15 +109,15 @@ export function LogWeightForm({ onSave }: { onSave: () => void }) {
               className="w-36 text-center text-5xl font-light tracking-tight bg-transparent border-b border-accent text-white focus:outline-none pb-1"
             />
           ) : (
-            <button type="button" onClick={handleTapNumber} className="text-5xl font-light tracking-tight text-white leading-none">
+            <button type="button" aria-label="Edit body weight" onClick={handleTapNumber} className="text-5xl font-light tracking-tight text-white leading-none">
               {formData.value}
             </button>
           )}
           <span className="text-base text-white/40 mt-2">{weightUnit(formData.units)}</span>
         </div>
 
-        <button type="button" onClick={() => nudge(1)} className="w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 active:scale-95 transition-all">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path d="M12 5v14M5 12h14" /></svg>
+        <button type="button" aria-label="Increase body weight" onClick={() => nudge(1)} className="w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 active:scale-95 transition-all">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><path d="M12 5v14M5 12h14" /></svg>
         </button>
       </div>
 

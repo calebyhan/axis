@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import Fuse from "fuse.js";
 import type { Exercise, MuscleGroup } from "@/types";
 
@@ -26,6 +26,7 @@ export function ExerciseSearch({
   const [query, setQuery] = useState("");
   const [selectedMuscles, setSelectedMuscles] = useState<MuscleGroup[] | "all" | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchId = useId();
 
   const activeMuscs = useMemo(() => {
     if (selectedMuscles === "all") return null;
@@ -84,8 +85,10 @@ export function ExerciseSearch({
   return (
     <div className="flex flex-col gap-3">
       {chipMuscs && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Exercise muscle filters">
           <button
+            type="button"
+            aria-pressed={activeMuscs === null}
             onClick={() => setSelectedMuscles("all")}
             className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
               activeMuscs === null
@@ -100,6 +103,8 @@ export function ExerciseSearch({
             return (
               <button
                 key={m}
+                type="button"
+                aria-pressed={on}
                 onClick={() => toggleMuscle(m)}
                 className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                   on ? "bg-accent text-white" : "bg-border text-muted hover:text-white"
@@ -113,6 +118,8 @@ export function ExerciseSearch({
       )}
 
       <input
+        id={searchId}
+        aria-label="Search exercises"
         ref={inputRef}
         type="text"
         value={query}
@@ -126,6 +133,7 @@ export function ExerciseSearch({
           {results.map((ex) => (
             <li key={ex.id}>
               <button
+                type="button"
                 onClick={() => onSelect(ex)}
                 className="w-full text-left px-3 py-3 rounded-lg hover:bg-surface border border-transparent hover:border-border transition-all"
               >

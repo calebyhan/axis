@@ -48,6 +48,17 @@ button, a, [role="button"] {
   touch-action: manipulation;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 body {
   position: relative;
   min-height: 100vh;
@@ -117,22 +128,15 @@ body::after {
 
 /* Card base */
 .card {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015)),
-    var(--surface);
+  background: var(--surface-strong);
   border: 1px solid var(--border);
-  border-radius: 1.5rem;
-  box-shadow: var(--shadow-md);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-radius: 0.75rem;
 }
 
 .card-soft {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+  background: var(--surface-soft);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1.25rem;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  border-radius: 0.75rem;
 }
 
 .page-shell {
@@ -186,16 +190,11 @@ body::after {
   justify-content: center;
   gap: 0.5rem;
   min-height: 2.75rem;
-  border-radius: 999px;
+  border-radius: 0.75rem;
   padding: 0.85rem 1.1rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05)),
-    rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.04);
   color: white;
-  box-shadow: var(--shadow-md);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, opacity 180ms ease;
 }
 
@@ -205,9 +204,7 @@ body::after {
 }
 
 .glass-button-primary {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06)),
-    color-mix(in srgb, var(--accent) 68%, #0f0f0f 32%);
+  background: color-mix(in srgb, var(--accent) 76%, #0f0f0f 24%);
   border-color: color-mix(in srgb, var(--accent) 60%, rgba(255, 255, 255, 0.12));
 }
 

@@ -111,6 +111,7 @@ export function SessionSummary({ session, onClose, units }: Props) {
       </div>
 
       <button
+        type="button"
         onClick={onClose}
         className="w-full border border-border py-3 rounded-lg text-sm font-medium text-muted hover:text-white transition-colors"
       >

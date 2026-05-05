@@ -19,15 +19,16 @@ export function Sidebar() {
       <div className="card h-full flex flex-col px-4 py-5">
         <div className="px-3 py-3">
           <div className="text-[11px] uppercase tracking-[0.28em] text-white/40 mb-2">Axis</div>
-          <h1 className="text-2xl font-semibold tracking-[-0.05em]">Training OS</h1>
+          <div className="text-2xl font-semibold tracking-[-0.05em]">Training OS</div>
         </div>
-        <nav className="flex flex-col gap-1 px-1 pt-4 flex-1">
+        <nav aria-label="Primary" className="flex flex-col gap-1 px-1 pt-4 flex-1">
           {TABS.map((tab) => {
             const active = pathname.startsWith(tab.href);
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
+                aria-current={active ? "page" : undefined}
                 className={`flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition-all ${
                   active
                     ? "bg-white/[0.08] text-white border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
@@ -35,7 +36,7 @@ export function Sidebar() {
                 }`}
               >
                 {tab.label}
-                <span className={`h-2 w-2 rounded-full ${active ? "bg-accent" : "bg-white/10"}`} />
+                <span aria-hidden="true" className={`h-2 w-2 rounded-full ${active ? "bg-accent" : "bg-white/10"}`} />
               </Link>
             );
           })}

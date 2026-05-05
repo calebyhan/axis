@@ -79,9 +79,9 @@ function Pill({
   const showSkipIcon = isSkip && state === "override-done";
 
   return (
-    <button type="button" onClick={onClick} className={cls} style={style}>
+    <button type="button" onClick={onClick} className={cls} style={style} aria-label={`Change ${slot.kind} plan: ${label}`}>
       {showCheck && (
-        <svg viewBox="0 0 10 8" fill="none" className="w-2.5 h-2 shrink-0">
+        <svg aria-hidden="true" viewBox="0 0 10 8" fill="none" className="w-2.5 h-2 shrink-0">
           <path
             d="M1 4l2.5 2.5L9 1"
             stroke="currentColor"
@@ -92,7 +92,7 @@ function Pill({
         </svg>
       )}
       {showSkipIcon && (
-        <svg viewBox="0 0 10 2" fill="none" className="w-2.5 h-1 shrink-0">
+        <svg aria-hidden="true" viewBox="0 0 10 2" fill="none" className="w-2.5 h-1 shrink-0">
           <path d="M1 1h8" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
         </svg>
       )}
@@ -123,7 +123,7 @@ function OverrideModal({ slot, dayName, dayTypes, isPending, onClose, onSelect, 
   const isSkipSelected = slot.isOverridden && slot.effective === null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="schedule-override-title">
       <div className="absolute inset-0 bg-black/60" />
       <div
         className="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-[#141414] border border-white/10 p-5 pb-8 sm:pb-5"
@@ -132,16 +132,17 @@ function OverrideModal({ slot, dayName, dayTypes, isPending, onClose, onSelect, 
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-white/40">{dayName}</p>
-            <p className="text-sm font-medium text-white mt-0.5">
+            <p id="schedule-override-title" className="text-sm font-medium text-white mt-0.5">
               Override {slot.kind === "workout" ? "workout" : "cardio"}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close schedule override"
             className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:text-white/70 transition-colors"
           >
-            <svg viewBox="0 0 10 10" fill="none" className="w-3 h-3">
+            <svg aria-hidden="true" viewBox="0 0 10 10" fill="none" className="w-3 h-3">
               <path d="M1 9L9 1M1 1l8 8" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
             </svg>
           </button>
@@ -155,6 +156,7 @@ function OverrideModal({ slot, dayName, dayTypes, isPending, onClose, onSelect, 
               <button
                 key={dt.id}
                 type="button"
+                aria-pressed={isSelected}
                 disabled={isPending}
                 onClick={() => onSelect(dt.id)}
                 className={`w-full text-left px-3.5 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-between ${
@@ -173,6 +175,7 @@ function OverrideModal({ slot, dayName, dayTypes, isPending, onClose, onSelect, 
 
           <button
             type="button"
+            aria-pressed={isSkipSelected}
             disabled={isPending}
             onClick={() => onSelect(null)}
             className={`w-full text-left px-3.5 py-2.5 rounded-lg text-sm transition-colors ${

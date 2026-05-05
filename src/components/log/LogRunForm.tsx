@@ -95,6 +95,7 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
       <div>
         <div className="block text-xs text-muted mb-1.5">Duration</div>
         <div className="flex gap-2">
+          <label htmlFor="log-run-hours" className="sr-only">Hours</label>
           <input
             type="number"
             min="0"
@@ -105,6 +106,7 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
             className="flex-1 bg-background border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] text-center"
           />
           <span className="text-muted self-center">h</span>
+          <label htmlFor="log-run-minutes" className="sr-only">Minutes</label>
           <input
             type="number"
             min="0"
@@ -121,11 +123,12 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
 
       <div>
         <div className="block text-xs text-muted mb-1.5">Perceived Effort</div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" role="group" aria-label="Perceived effort">
           {[1, 2, 3, 4, 5].map((v) => (
             <button
               key={v}
               type="button"
+              aria-pressed={form.effort === v}
               onClick={() => setField("effort", v)}
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
                 form.effort === v ? "border-accent text-accent" : "border-border text-muted hover:text-white"

@@ -140,17 +140,21 @@ export function ActivityFeed({ activities, workoutDataMap, dayTypeNames, units }
     <div className="flex flex-col gap-4">
       {/* Search + type row */}
       <div className="flex flex-col gap-2">
+        <label htmlFor="activity-search" className="sr-only">Search activities</label>
         <input
+          id="activity-search"
           type="search"
           placeholder="Search activities…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full bg-[#141414] border border-[#1F1F1F] rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20"
         />
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5" role="group" aria-label="Activity type">
           {typeOptions.map((opt) => (
             <button
               key={opt.value}
+              type="button"
+              aria-pressed={typeFilter === opt.value}
               onClick={() => {
                 setTypeFilter(opt.value);
                 setDistanceFilter("any");
@@ -172,10 +176,12 @@ export function ActivityFeed({ activities, workoutDataMap, dayTypeNames, units }
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1.5">
             <span className="text-[10px] text-white/35 uppercase tracking-[0.16em]">Distance</span>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Distance filter">
               {distanceOptions.map((opt) => (
                 <button
                   key={opt.value}
+                  type="button"
+                  aria-pressed={distanceFilter === opt.value}
                   onClick={() => setDistanceFilter(opt.value)}
                   className={`px-2.5 py-1 rounded-md text-xs transition-colors border ${
                     distanceFilter === opt.value
@@ -196,10 +202,12 @@ export function ActivityFeed({ activities, workoutDataMap, dayTypeNames, units }
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1.5">
             <span className="text-[10px] text-white/35 uppercase tracking-[0.16em]">Muscle Group</span>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Muscle group filter">
               {MUSCLE_GROUPS.map((g) => (
                 <button
                   key={g.label}
+                  type="button"
+                  aria-pressed={muscleFilter === g.label}
                   onClick={() => setMuscleFilter(muscleFilter === g.label ? null : g.label)}
                   className={`px-2.5 py-1 rounded-md text-xs transition-colors border ${
                     muscleFilter === g.label
@@ -215,10 +223,12 @@ export function ActivityFeed({ activities, workoutDataMap, dayTypeNames, units }
           {availableDayTypes.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <span className="text-[10px] text-white/35 uppercase tracking-[0.16em]">Day Type</span>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Day type filter">
                 {availableDayTypes.map(([id, name]) => (
                   <button
                     key={id}
+                    type="button"
+                    aria-pressed={dayTypeFilter === id}
                     onClick={() => setDayTypeFilter(dayTypeFilter === id ? null : id)}
                     className={`px-2.5 py-1 rounded-md text-xs transition-colors border ${
                       dayTypeFilter === id

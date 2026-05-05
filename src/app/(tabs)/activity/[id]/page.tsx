@@ -110,9 +110,10 @@ export default async function ActivityDetailPage({
       <div className="flex items-center gap-3">
         <Link
           href="/activity"
+          aria-label="Back to activity"
           className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </Link>
@@ -142,7 +143,7 @@ export default async function ActivityDetailPage({
           )}
 
           {/* Summary stats grid */}
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3 sm:grid-cols-4">
             <StatCard label="Distance" value={distanceKm ? formatDistance(distanceKm, units) : "—"} unit={distanceUnit(units)} />
             <StatCard label="Duration" value={formatDuration(activity.duration)} />
             <StatCard label="Avg Pace" value={formatPace(activity.avg_pace, units)} />
@@ -207,7 +208,7 @@ export default async function ActivityDetailPage({
       {/* ── WORKOUT DETAIL ─────────────────────────────────────────────── */}
       {isWorkout && (
         <>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3 sm:grid-cols-4">
             <StatCard label="Duration" value={formatDuration(activity.duration)} />
             <StatCard label="Exercises" value={`${exerciseGroups.size}`} />
             <StatCard label="Sets" value={`${sets.length}`} />
@@ -227,7 +228,7 @@ export default async function ActivityDetailPage({
 
           <div>
             <h2 className="text-sm font-medium text-muted mb-3 uppercase tracking-wide">Muscle Coverage</h2>
-            <div className="flex gap-6">
+            <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
               <MuscleHeatmap coverage={coverage} size="full" />
               <MuscleHeatmap coverage={coverage} size="full" showBack />
             </div>
@@ -240,7 +241,7 @@ export default async function ActivityDetailPage({
                 const bestE1RM = Math.max(...exSets.map((s: SetRow) => computeE1RM(s.weight, s.reps)));
                 return (
                   <div key={exId} className="card p-4">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col gap-1 mb-3 sm:flex-row sm:items-center sm:justify-between">
                       <span className="font-medium">{name}</span>
                       {bestE1RM > 0 && (
                         <span className="text-xs text-muted">
@@ -250,12 +251,12 @@ export default async function ActivityDetailPage({
                     </div>
                     <div className="flex flex-col gap-1.5">
                       {exSets.map((s: SetRow, i: number) => (
-                        <div key={i} className="flex justify-between text-sm">
+                        <div key={i} className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm sm:grid-cols-3">
                           <span className="text-muted">Set {s.set_number}</span>
-                          <span>
+                          <span className="text-right sm:text-left">
                             {formatWeight(s.weight, units)} {weightUnit(units)} × {s.reps}
                           </span>
-                          <span className="text-muted">
+                          <span className="text-muted col-span-2 sm:col-span-1 sm:text-right">
                             RPE {s.rpe} · {formatWeight(computeE1RM(s.weight, s.reps), units)} e1RM
                           </span>
                         </div>
@@ -291,8 +292,8 @@ function StatCard({
   unit?: string;
 }) {
   return (
-    <div className="card p-3 text-center">
-      <div className="text-lg font-semibold tracking-tight">
+    <div className="card p-3 text-center min-w-0">
+      <div className="text-base font-semibold tracking-tight sm:text-lg">
         {value}
         {unit && <span className="text-xs font-normal text-muted ml-1">{unit}</span>}
       </div>

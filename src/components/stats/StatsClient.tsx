@@ -137,11 +137,13 @@ export function StatsClient({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex gap-1 bg-surface rounded-lg p-1">
+      <div className="flex gap-1 bg-surface rounded-lg p-1" role="group" aria-label="Stats time range">
         {TIME_RANGES.map((r) => (
           <button
             key={r.value}
+            type="button"
             onClick={() => router.push(`/stats?range=${r.value}`)}
+            aria-pressed={timeRange === r.value}
             className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
               timeRange === r.value ? "bg-border text-white" : "text-muted"
             }`}
@@ -151,10 +153,13 @@ export function StatsClient({
         ))}
       </div>
 
-      <div className="flex gap-4 border-b border-border">
+      <div className="flex gap-4 border-b border-border" role="tablist" aria-label="Stats sections">
         {TABS.map((t) => (
           <button
             key={t.value}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === t.value}
             onClick={() => setActiveTab(t.value)}
             className={`pb-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
               activeTab === t.value ? "border-accent text-white" : "border-transparent text-muted"

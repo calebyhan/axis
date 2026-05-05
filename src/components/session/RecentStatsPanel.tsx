@@ -104,7 +104,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-medium">{exercise.name}</h3>
-          <button onClick={onDismiss} className="text-muted text-sm">Done</button>
+          <button type="button" onClick={onDismiss} className="text-muted text-sm">Done</button>
         </div>
 
         {sets.length === 0 ? (
@@ -154,6 +154,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
             {/* Suggestion */}
             {suggestion && (
               <button
+                type="button"
                 onClick={() => onAcceptSuggestion(suggestion.weight, suggestion.reps)}
                 className="w-full border border-accent rounded-lg py-2.5 text-sm font-medium text-accent hover:bg-accent/10 transition-colors"
               >
