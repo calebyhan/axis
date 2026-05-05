@@ -13,6 +13,7 @@ interface Props {
 }
 
 type SlotState = "done" | "pending" | "override-done" | "override-pending";
+type SlotTone = "default" | "rest" | "skip";
 
 function getSlotState(slot: ChecklistSlot, dayPassed: boolean): SlotState {
   // Skip override: completed once day has passed, silver until then
@@ -21,12 +22,17 @@ function getSlotState(slot: ChecklistSlot, dayPassed: boolean): SlotState {
   }
 
   const effectiveType = slot.isOverridden ? slot.effective : slot.planned;
-  // Only auto-complete "Rest" for run-category slots — strength slots must have a matched activity
-  const isRest = effectiveType?.name === "Rest" && effectiveType.category === "run";
+  const isRest = effectiveType?.name === "Rest";
   const isDone = !!slot.matched || (isRest && dayPassed);
 
   if (slot.isOverridden) return isDone ? "override-done" : "override-pending";
   return isDone ? "done" : "pending";
+}
+
+function getSlotTone(slot: ChecklistSlot): SlotTone {
+  if (slot.isOverridden && slot.effective === null) return "skip";
+  if ((slot.effective ?? slot.planned).name === "Rest") return "rest";
+  return "default";
 }
 
 function Pill({
@@ -39,6 +45,7 @@ function Pill({
   onClick: () => void;
 }) {
   const state = getSlotState(slot, dayPassed);
+  const tone = getSlotTone(slot);
   const isSkip = slot.isOverridden && slot.effective === null;
   const label = isSkip ? "Skip" : (slot.effective?.name ?? slot.planned.name);
 
@@ -47,13 +54,21 @@ function Pill({
   let style: React.CSSProperties | undefined;
 
   if (state === "done") {
-    style = {
-      borderColor: "rgba(var(--accent-rgb), 0.4)",
-      backgroundColor: "rgba(var(--accent-rgb), 0.1)",
-      color: "var(--accent)",
-    };
+    if (tone === "rest") {
+      cls += " text-sky-300";
+      style = {
+        borderColor: "rgba(125, 211, 252, 0.55)",
+        backgroundColor: "rgba(14, 165, 233, 0.18)",
+      };
+    } else {
+      style = {
+        borderColor: "rgba(var(--accent-rgb), 0.55)",
+        backgroundColor: "rgba(var(--accent-rgb), 0.18)",
+        color: "var(--accent)",
+      };
+    }
   } else if (state === "override-done") {
-    cls += " border-orange-500/40 bg-orange-500/[0.08] text-orange-400";
+    cls += " border-orange-500/55 bg-orange-500/[0.18] text-orange-300";
   } else if (state === "override-pending") {
     cls += " border-white/25 bg-white/[0.06] text-white/60";
   } else {

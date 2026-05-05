@@ -247,6 +247,7 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
                   value={planMaps.strength[dayIdx] ?? ""}
                   options={strengthTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
                   placeholder="Rest"
+                  showEmptyOption={!strengthTypes.some((dt) => dt.name === "Rest")}
                   onChange={(val) => {
                     void handleScheduleChange(dayIdx, val);
                   }}
@@ -257,6 +258,7 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
                   value={planMaps.cardio[dayIdx] ?? ""}
                   options={runTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
                   placeholder="Rest"
+                  showEmptyOption={!runTypes.some((dt) => dt.name === "Rest")}
                   onChange={(val) => {
                     void handleCardioChange(dayIdx, val);
                   }}

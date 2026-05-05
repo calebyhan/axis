@@ -86,9 +86,9 @@ const fetchDayPlans = cache(async function fetchDayPlans(): Promise<Map<number, 
     const cardioName = Array.isArray(cdt) ? cdt[0]?.name : cdt?.name;
 
     plans.set(row.day_of_week, {
-      hasWorkoutSlot: !!workoutName,
+      hasWorkoutSlot: true,
       hasCardioSlot: !!cardioName,
-      workoutSatisfiedByRest: workoutName === "Rest",
+      workoutSatisfiedByRest: !workoutName || workoutName === "Rest",
       cardioSatisfiedByRest: cardioName === "Rest",
     });
   }

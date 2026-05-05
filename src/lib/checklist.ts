@@ -1,5 +1,12 @@
 import type { Activity, DayType, ScheduleOverride, WeeklyScheduleRow } from "@/types";
 
+const WORKOUT_REST_DAY_TYPE: DayType = {
+  id: "__workout_rest__",
+  name: "Rest",
+  category: "strength",
+  muscle_focus: null,
+};
+
 export interface ChecklistSlot {
   planned: DayType;
   effective: DayType | null; // null = skip override (intentional rest)
@@ -70,19 +77,18 @@ export function matchChecklist(
   for (const s of active) {
     const date = slotDate(s.day_of_week);
 
-    if (s.day_type) {
-      const override = overrideMap.get(`${date}:workout`);
-      const isOverridden = !!override;
-      const effective = isOverridden
-        ? (override!.day_type_id ? (dayTypeMap.get(override!.day_type_id) ?? null) : null)
-        : s.day_type;
-      allSlots.push({
-        scheduleId: s.id, dayOfWeek: s.day_of_week, date,
-        planned: s.day_type, effective,
-        kind: "workout", isOverridden,
-        key: `workout:${s.id}`,
-      });
-    }
+    const workoutPlanned = s.day_type ?? WORKOUT_REST_DAY_TYPE;
+    const workoutOverride = overrideMap.get(`${date}:workout`);
+    const workoutIsOverridden = !!workoutOverride;
+    const workoutEffective = workoutIsOverridden
+      ? (workoutOverride!.day_type_id ? (dayTypeMap.get(workoutOverride!.day_type_id) ?? null) : null)
+      : workoutPlanned;
+    allSlots.push({
+      scheduleId: s.id, dayOfWeek: s.day_of_week, date,
+      planned: workoutPlanned, effective: workoutEffective,
+      kind: "workout", isOverridden: workoutIsOverridden,
+      key: `workout:${s.id}`,
+    });
 
     if (s.cardio_day_type) {
       const override = overrideMap.get(`${date}:cardio`);

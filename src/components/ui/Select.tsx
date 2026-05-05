@@ -13,9 +13,10 @@ interface Props {
   options: Option[];
   onChange: (value: string) => void;
   placeholder?: string;
+  showEmptyOption?: boolean;
 }
 
-export function Select({ value, options, onChange, placeholder = "—" }: Props) {
+export function Select({ value, options, onChange, placeholder = "—", showEmptyOption = true }: Props) {
   const [open, setOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -68,17 +69,30 @@ export function Select({ value, options, onChange, placeholder = "—" }: Props)
           className="rounded-2xl border border-border bg-[#161616] shadow-[0_16px_48px_rgba(0,0,0,0.6)] backdrop-blur-xl overflow-hidden animate-select-open"
         >
           <div className="p-1">
-            <button
-              type="button"
-              onClick={() => pick("")}
-              className={`w-full text-left px-3 py-2.5 text-sm rounded-xl transition-colors ${
-                value === ""
-                  ? "bg-white/[0.08] text-white"
-                  : "text-muted hover:bg-white/[0.05] hover:text-white"
-              }`}
-            >
-              {placeholder}
-            </button>
+            {showEmptyOption && (
+              <button
+                type="button"
+                onClick={() => pick("")}
+                className={`w-full text-left px-3 py-2.5 text-sm rounded-xl transition-colors flex items-center gap-2 ${
+                  value === ""
+                    ? "bg-white/[0.08] text-white"
+                    : "text-muted hover:bg-white/[0.05] hover:text-white"
+                }`}
+              >
+                <svg
+                  viewBox="0 0 12 12"
+                  className={`w-3 h-3 flex-shrink-0 transition-opacity ${value === "" ? "opacity-100 text-accent" : "opacity-0"}`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M1 6l3.5 3.5L11 2" />
+                </svg>
+                <span>{placeholder}</span>
+              </button>
+            )}
             {options.map((o) => (
               <button
                 key={o.value}
