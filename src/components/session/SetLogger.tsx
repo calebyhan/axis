@@ -8,13 +8,15 @@ import type { SessionSet, Units } from "@/types";
 interface Props {
   exerciseName: string;
   sets: SessionSet[];
+  suggestedSet: SessionSet | null;
   weightIncrement: number; // always kg
   units: Units;
   onAddSet: (set: { reps: number; weight: number; rpe: number }) => void; // weight always kg
 }
 
-export function SetLogger({ exerciseName, sets, weightIncrement, units, onAddSet }: Props) {
+export function SetLogger({ exerciseName, sets, suggestedSet, weightIncrement, units, onAddSet }: Props) {
   const lastSet = sets[sets.length - 1];
+  const seedSet = suggestedSet ?? lastSet;
   const unit = weightUnit(units);
 
   function kgToDisplay(kg: number) {
@@ -27,9 +29,9 @@ export function SetLogger({ exerciseName, sets, weightIncrement, units, onAddSet
     ? Math.round(weightIncrement * 2.20462 * 10) / 10
     : weightIncrement;
 
-  const [repsStr, setRepsStr] = useState(String(lastSet?.reps ?? 8));
-  const [weightStr, setWeightStr] = useState(String(kgToDisplay(lastSet?.weight ?? 0)));
-  const [rpeStr, setRpeStr] = useState(String(lastSet?.rpe ?? 7));
+  const [repsStr, setRepsStr] = useState(String(seedSet?.reps ?? 8));
+  const [weightStr, setWeightStr] = useState(String(kgToDisplay(seedSet?.weight ?? 0)));
+  const [rpeStr, setRpeStr] = useState(String(seedSet?.rpe ?? 7));
 
   const reps = Math.max(1, parseInt(repsStr) || 1);
   const weightDisplay = parseFloat(weightStr) || 0;

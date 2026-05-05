@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import type { MuscleGroup } from "@/types";
 
 // Returns "YYYY-MM-DD" in local time — avoids UTC drift for date-only columns
 function localDateStr(date: Date): string {
@@ -179,6 +180,32 @@ export async function getWeeklyStats() {
   const weightDelta = thisAvg !== null && lastAvg !== null ? thisAvg - lastAvg : null;
 
   return { runDistance, sessionCount, totalVolume, weightDelta };
+}
+
+export async function getWeeklyMuscleCoverage(): Promise<Partial<Record<MuscleGroup, number>>> {
+  const supabase = await createClient();
+  const weekStart = startOfCurrentWeek().toISOString();
+
+  const { data: sets, error } = await supabase
+    .from("session_sets")
+    .select("exercise:exercises(primary_muscles), activities!inner(start_time)")
+    .gte("activities.start_time", weekStart);
+
+  if (error) console.error("[query] getWeeklyMuscleCoverage failed", error.message);
+
+  const coverage: Partial<Record<MuscleGroup, number>> = {};
+
+  for (const set of sets ?? []) {
+    const exRaw = set.exercise as unknown;
+    const exercise = (Array.isArray(exRaw) ? exRaw[0] : exRaw) as { primary_muscles: MuscleGroup[] } | null;
+    if (!exercise) continue;
+
+    for (const muscle of exercise.primary_muscles ?? []) {
+      coverage[muscle] = (coverage[muscle] ?? 0) + 1;
+    }
+  }
+
+  return coverage;
 }
 
 export async function getBodyWeightHistory(days = 30) {

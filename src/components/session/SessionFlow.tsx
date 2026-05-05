@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { clearDraft, saveDraft } from "@/lib/idb/session-draft";
-import type { DayType, Exercise, MuscleGroup, SessionState, Units } from "@/types";
+import type { DayType, Exercise, MuscleGroup, SessionSet, SessionState, Units } from "@/types";
 import { useSession } from "@/context/SessionContext";
 import { ExerciseSearch } from "./ExerciseSearch";
 import { SetLogger } from "./SetLogger";
@@ -86,6 +86,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
   const [uiState, setUiState] = useState<NavState & { showRecentStats: boolean }>({ step: "exercise_search", activeExerciseId: null, showRecentStats: false });
   const [saveState, setSaveState] = useState<SaveState>({ saving: false, error: null, finalSession: null });
   const [userSetup, setUserSetup] = useState<UserSetup>({ units: "metric", todayMuscles: undefined, todayDayType: undefined });
+  const [suggestedSets, setSuggestedSets] = useState<Record<string, SessionSet | undefined>>({});
 
   const { exercises, allDayTypes } = loadedData;
   const { step, activeExerciseId, showRecentStats } = uiState;
@@ -93,6 +94,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
   const { units, todayMuscles, todayDayType } = userSetup;
 
   const activeExercise = session?.exercises.find((e) => e.exerciseId === activeExerciseId) ?? null;
+  const activeSuggestedSet = activeExerciseId ? suggestedSets[activeExerciseId] ?? null : null;
 
   const coverage = useMemo((): Partial<Record<MuscleGroup, number>> => {
     if (!session) return {};
@@ -138,8 +140,26 @@ export function SessionFlow({ onClose, onComplete }: Props) {
   }, [todayDayType]);
 
   function handleExerciseSelect(ex: Exercise) {
-    addExercise({ exerciseId: ex.id, name: ex.name, primaryMuscles: ex.primary_muscles, secondaryMuscles: ex.secondary_muscles });
+    if (!session?.exercises.some((existing) => existing.exerciseId === ex.id)) {
+      addExercise({ exerciseId: ex.id, name: ex.name, primaryMuscles: ex.primary_muscles, secondaryMuscles: ex.secondary_muscles });
+    }
     setUiState((prev) => ({ ...prev, step: "logging", activeExerciseId: ex.id, showRecentStats: true }));
+  }
+
+  function handleAcceptSuggestion(set: SessionSet) {
+    if (!activeExerciseId) return;
+    setSuggestedSets((prev) => ({ ...prev, [activeExerciseId]: set }));
+    setUiState((prev) => ({ ...prev, showRecentStats: false }));
+  }
+
+  function handleAddSet(exerciseId: string, set: SessionSet) {
+    addSet(exerciseId, set);
+    setSuggestedSets((prev) => {
+      if (!prev[exerciseId]) return prev;
+      const next = { ...prev };
+      delete next[exerciseId];
+      return next;
+    });
   }
 
   function inferDayType(workedMuscles: MuscleGroup[], scheduled: DayType | null): DayType | null {
@@ -231,7 +251,20 @@ export function SessionFlow({ onClose, onComplete }: Props) {
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-nav flex flex-col gap-6">
         {step === "logging" && activeExercise && session && (
           <div className="card p-4">
-            <SetLogger exerciseName={activeExercise.name} sets={activeExercise.sets} weightIncrement={2.5} units={units} onAddSet={(s) => addSet(activeExercise.exerciseId, s)} />
+            <SetLogger
+              key={[
+                activeExercise.exerciseId,
+                activeSuggestedSet?.weight ?? "manual",
+                activeSuggestedSet?.reps ?? "manual",
+                activeSuggestedSet?.rpe ?? "manual",
+              ].join(":")}
+              exerciseName={activeExercise.name}
+              sets={activeExercise.sets}
+              suggestedSet={activeSuggestedSet}
+              weightIncrement={2.5}
+              units={units}
+              onAddSet={(s) => handleAddSet(activeExercise.exerciseId, s)}
+            />
           </div>
         )}
 
@@ -264,7 +297,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
           exercise={exercises.find((e) => e.id === activeExerciseId)!}
           weightIncrement={2.5}
           units={units}
-          onAcceptSuggestion={() => setUiState((prev) => ({ ...prev, showRecentStats: false }))}
+          onAcceptSuggestion={handleAcceptSuggestion}
           onDismiss={() => setUiState((prev) => ({ ...prev, showRecentStats: false }))}
         />
       )}

@@ -6,6 +6,7 @@ import {
   getActivityStreak,
   getWeekChecklistData,
   getMonthActiveDays,
+  getWeeklyMuscleCoverage,
 } from "@/lib/queries/dashboard";
 import { getUserDisplayName, getUserUnits } from "@/lib/queries/profile";
 import { matchChecklist } from "@/lib/checklist";
@@ -13,11 +14,13 @@ import { WeeklyStatsSummary } from "@/components/dashboard/WeeklyStatsSummary";
 import { CalendarStreak } from "@/components/dashboard/CalendarStreak";
 import { WeekChecklist } from "@/components/dashboard/WeekChecklist";
 import { BodyWeightSparkline } from "@/components/dashboard/BodyWeightSparkline";
+import { WeeklyMuscleCoverage } from "@/components/dashboard/WeeklyMuscleCoverage";
 import type { Activity, DayType, ScheduleOverride, WeeklyScheduleRow } from "@/types";
 
 export default async function DashboardPage() {
-  const [weeklyStats, bodyWeightData, streak, checklistData, units, activeDays, displayName] = await Promise.all([
+  const [weeklyStats, weeklyMuscleCoverage, bodyWeightData, streak, checklistData, units, activeDays, displayName] = await Promise.all([
     getWeeklyStats(),
+    getWeeklyMuscleCoverage(),
     getBodyWeightHistory(30),
     getActivityStreak(),
     getWeekChecklistData(),
@@ -55,9 +58,14 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="card p-5 sm:p-6">
-        <div className="text-[11px] uppercase tracking-[0.24em] text-white/45 mb-3">This Week</div>
-        <WeeklyStatsSummary {...weeklyStats} units={units} />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="card p-5 sm:p-6">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-white/45 mb-3">This Week</div>
+          <WeeklyStatsSummary {...weeklyStats} units={units} />
+        </div>
+        <div className="hidden lg:block">
+          <WeeklyMuscleCoverage coverage={weeklyMuscleCoverage} />
+        </div>
       </div>
 
       <div className={`grid gap-5 ${checklistItems.length > 0 ? "md:grid-cols-3" : "grid-cols-1"}`}>
@@ -72,6 +80,10 @@ export default async function DashboardPage() {
         {checklistItems.length > 0 && (
           <WeekChecklist items={checklistItems} dayTypes={checklistData.dayTypes as DayType[]} />
         )}
+      </div>
+
+      <div className="lg:hidden">
+        <WeeklyMuscleCoverage coverage={weeklyMuscleCoverage} />
       </div>
 
       <BodyWeightSparkline data={bodyWeightData} units={units} />

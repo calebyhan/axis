@@ -19,7 +19,7 @@ interface Props {
   exercise: Exercise;
   weightIncrement: number; // kg
   units: Units;
-  onAcceptSuggestion: (weight: number, reps: number) => void;
+  onAcceptSuggestion: (set: { weight: number; reps: number; rpe: number }) => void;
   onDismiss: () => void;
 }
 
@@ -155,7 +155,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
             {suggestion && (
               <button
                 type="button"
-                onClick={() => onAcceptSuggestion(suggestion.weight, suggestion.reps)}
+                onClick={() => onAcceptSuggestion(suggestion)}
                 className="w-full border border-accent rounded-lg py-2.5 text-sm font-medium text-accent hover:bg-accent/10 transition-colors"
               >
                 Try {d(suggestion.weight)} {unit} × {suggestion.reps}
@@ -184,11 +184,11 @@ function groupBySessions(sets: SetRecord[]): SetRecord[][] {
 function computeSuggestion(
   sessions: SetRecord[][],
   increment: number
-): { weight: number; reps: number } | null {
+): { weight: number; reps: number; rpe: number } | null {
   if (sessions.length < 3) {
     if (sessions.length === 0) return null;
     const lastMax = sessions[0].reduce((best, s) => (s.e1rm > best.e1rm ? s : best));
-    return { weight: lastMax.weight, reps: lastMax.reps };
+    return { weight: lastMax.weight, reps: lastMax.reps, rpe: lastMax.rpe };
   }
 
   const [s0, , s2] = sessions;
@@ -199,10 +199,10 @@ function computeSuggestion(
   const lastMax = sessions[0].reduce((best, s) => (s.e1rm > best.e1rm ? s : best));
 
   if (trend > 2.5) {
-    return { weight: lastMax.weight + increment, reps: lastMax.reps };
+    return { weight: lastMax.weight + increment, reps: lastMax.reps, rpe: lastMax.rpe };
   } else if (trend >= 0) {
-    return { weight: lastMax.weight, reps: lastMax.reps + 1 };
+    return { weight: lastMax.weight, reps: lastMax.reps + 1, rpe: lastMax.rpe };
   } else {
-    return { weight: Math.max(0, lastMax.weight - increment), reps: lastMax.reps };
+    return { weight: Math.max(0, lastMax.weight - increment), reps: lastMax.reps, rpe: lastMax.rpe };
   }
 }
