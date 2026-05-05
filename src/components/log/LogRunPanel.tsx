@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import useSWR from "swr";
 import { createClient } from "@/lib/supabase/client";
 import { formatDistance, distanceUnit } from "@/lib/units";
@@ -32,6 +32,7 @@ function formatRelativeDate(isoDate: string): string {
 }
 
 const RECENT_MS = 48 * 60 * 60 * 1000;
+const PANEL_LOADED_AT = Date.now();
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 function ActivityRow({
@@ -79,7 +80,6 @@ export function LogRunPanel({ onSave }: { onSave: () => void }) {
   const [panels, setPanels] = useState({ showHistory: false, showManual: false });
   const { showHistory, showManual } = panels;
   const [units, setUnits] = useState<Units>("imperial");
-  const now = useRef(Date.now()).current;
 
   const { data: stravaData, isLoading: loading } = useSWR<{
     connected: boolean;
@@ -119,10 +119,10 @@ export function LogRunPanel({ onSave }: { onSave: () => void }) {
   }
 
   const recentActivities = activities.filter(
-    (a) => now - new Date(a.start_date).getTime() < RECENT_MS
+    (a) => PANEL_LOADED_AT - new Date(a.start_date).getTime() < RECENT_MS
   );
   const olderActivities = activities.filter(
-    (a) => now - new Date(a.start_date).getTime() >= RECENT_MS
+    (a) => PANEL_LOADED_AT - new Date(a.start_date).getTime() >= RECENT_MS
   );
   const hasStravaContent = connected && activities.length > 0;
 

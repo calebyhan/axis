@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { classifyTrend } from "@/lib/body-weight-trend";
-import { formatDistance, formatPace } from "@/lib/units";
+import { formatDistance } from "@/lib/units";
 import { useState } from "react";
 import type { TimeRange } from "@/lib/queries/stats";
 import type { TrainingLoadPoint } from "@/lib/training-load";

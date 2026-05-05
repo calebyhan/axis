@@ -1,11 +1,26 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
-import { LogRunPanel } from "@/components/log/LogRunPanel";
-import { LogWeightForm } from "@/components/log/LogWeightForm";
-import { SessionFlow } from "@/components/session/SessionFlow";
 
 type Panel = null | "session" | "run" | "weight";
+
+const PanelLoading = () => (
+  <div className="py-8 text-center text-sm text-muted">Loading…</div>
+);
+
+const LogRunPanel = dynamic(
+  () => import("@/components/log/LogRunPanel").then((module) => module.LogRunPanel),
+  { ssr: false, loading: PanelLoading }
+);
+const LogWeightForm = dynamic(
+  () => import("@/components/log/LogWeightForm").then((module) => module.LogWeightForm),
+  { ssr: false, loading: PanelLoading }
+);
+const SessionFlow = dynamic(
+  () => import("@/components/session/SessionFlow").then((module) => module.SessionFlow),
+  { ssr: false, loading: PanelLoading }
+);
 
 export default function LogPage() {
   const [panel, setPanel] = useState<Panel>(null);

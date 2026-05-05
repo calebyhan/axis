@@ -1,6 +1,5 @@
 "use client";
 
-import { LineChart, Line, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 import { formatWeight, weightUnit } from "@/lib/units";
 import type { Units } from "@/types";
 
@@ -27,6 +26,12 @@ function computeRollingAverage(
   });
 }
 
+function buildPath(points: { x: number; y: number }[]): string {
+  return points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+    .join(" ");
+}
+
 export function BodyWeightSparkline({ data, units }: Props) {
   if (data.length === 0) {
     return (
@@ -42,20 +47,24 @@ export function BodyWeightSparkline({ data, units }: Props) {
   const unit = weightUnit(units);
   const chartData = computeRollingAverage(data);
   const latest = data[data.length - 1]?.body_weight;
-  const minWeight = Math.min(...data.map((d) => d.body_weight));
-  const maxWeight = Math.max(...data.map((d) => d.body_weight));
-
-  // Convert bounds for Y-axis domain
-  const minDisplay = parseFloat(formatWeight(minWeight, units));
-  const maxDisplay = parseFloat(formatWeight(maxWeight, units));
-  const domain = [minDisplay - (units === "imperial" ? 2 : 1), maxDisplay + (units === "imperial" ? 2 : 1)];
-
-  // Convert all data points for display
   const displayData = chartData.map((d) => ({
     ...d,
     body_weight: parseFloat(formatWeight(d.body_weight, units)),
     rolling: d.rolling !== undefined ? parseFloat(formatWeight(d.rolling, units)) : undefined,
   }));
+  const values = displayData.flatMap((d) => [d.body_weight, d.rolling ?? d.body_weight]);
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const padding = units === "imperial" ? 2 : 1;
+  const minY = minValue - padding;
+  const maxY = maxValue + padding;
+  const range = Math.max(maxY - minY, 1);
+  const width = 320;
+  const height = 96;
+  const xStep = displayData.length > 1 ? width / (displayData.length - 1) : 0;
+  const toY = (value: number) => height - ((value - minY) / range) * height;
+  const bodyPath = buildPath(displayData.map((d, index) => ({ x: index * xStep, y: toY(d.body_weight) })));
+  const rollingPath = buildPath(displayData.map((d, index) => ({ x: index * xStep, y: toY(d.rolling ?? d.body_weight) })));
 
   return (
     <div className="card p-4">
@@ -69,39 +78,16 @@ export function BodyWeightSparkline({ data, units }: Props) {
       </div>
 
       <div className="h-24">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={displayData}>
-            <YAxis domain={domain} hide />
-            <Tooltip
-              content={({ active, payload }) => {
-                if (!active || !payload?.[0]) return null;
-                const d = payload[0].payload as DataPoint;
-                return (
-                  <div className="card px-2 py-1 text-xs">
-                    <div>{d.date}</div>
-                    <div className="font-medium">{d.body_weight} {unit}</div>
-                  </div>
-                );
-              }}
-            />
-            <Line
-              type="monotone"
-              dataKey="body_weight"
-              stroke="rgba(255,255,255,0.18)"
-              strokeWidth={1}
-              dot={false}
-              isAnimationActive={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="rolling"
-              stroke="var(--accent, #3B82F6)"
-              strokeWidth={2}
-              dot={false}
-              isAnimationActive={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          role="img"
+          aria-label={`Body weight trend, latest ${formatWeight(latest, units)} ${unit}`}
+          className="h-full w-full overflow-visible"
+          preserveAspectRatio="none"
+        >
+          <path d={bodyPath} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+          <path d={rollingPath} fill="none" stroke="var(--accent, #3B82F6)" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
+        </svg>
       </div>
       <p className="text-[10px] text-white/38 mt-1 text-right">7-day avg overlaid</p>
     </div>
