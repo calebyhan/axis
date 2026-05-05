@@ -3,6 +3,7 @@
 const CACHE_VERSION = "axis-pwa-v1";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PAGE_CACHE = `${CACHE_VERSION}-pages`;
+const DATA_CACHE = `${CACHE_VERSION}-data`;
 
 const STATIC_ASSETS = [
   "/manifest.json",
@@ -49,7 +50,22 @@ self.addEventListener("fetch", (event) => {
 
   if (isNavigationLikeRequest(request, url)) {
     event.respondWith(networkFirstPage(request));
+    return;
   }
+
+  if (isCacheableDataRequest(request, url)) {
+    event.respondWith(networkFirstJson(request));
+  }
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "CLEAR_AXIS_CACHE") return;
+
+  event.waitUntil(
+    deleteAxisCaches().then(() => {
+      event.source?.postMessage({ type: "AXIS_CACHE_CLEARED" });
+    })
+  );
 });
 
 function isStaticAsset(url) {
@@ -76,6 +92,15 @@ function isNavigationLikeRequest(request, url) {
   );
 }
 
+function isCacheableDataRequest(request, url) {
+  if (request.headers.get("accept")?.includes("text/html")) return false;
+
+  return (
+    url.pathname.startsWith("/api/strava/streams/") ||
+    url.pathname === "/api/strava/zones"
+  );
+}
+
 async function cacheFirst(request, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
@@ -86,6 +111,22 @@ async function cacheFirst(request, cacheName) {
     cache.put(request, response.clone());
   }
   return response;
+}
+
+async function networkFirstJson(request) {
+  const cache = await caches.open(DATA_CACHE);
+
+  try {
+    const response = await fetch(request);
+    if (isCacheable(response)) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    return Response.error();
+  }
 }
 
 async function networkFirstPage(request) {
@@ -111,4 +152,13 @@ async function networkFirstPage(request) {
 
 function isCacheable(response) {
   return response && response.ok && response.status === 200 && response.type === "basic";
+}
+
+async function deleteAxisCaches() {
+  const keys = await caches.keys();
+  await Promise.all(
+    keys
+      .filter((key) => key.startsWith("axis-pwa-"))
+      .map((key) => caches.delete(key))
+  );
 }

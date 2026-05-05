@@ -34,11 +34,26 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+async function deleteAxisCaches() {
+  if (!("caches" in window)) return 0;
+
+  const keys = await caches.keys();
+  const axisKeys = keys.filter((key) => key.startsWith("axis-pwa-"));
+  await Promise.all(axisKeys.map((key) => caches.delete(key)));
+  navigator.serviceWorker?.controller?.postMessage({ type: "CLEAR_AXIS_CACHE" });
+  return axisKeys.length;
+}
+
 export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }: Props) {
   const supabase = createClient();
   const router = useRouter();
   const [saveStatus, setSaveStatus] = useState<{ saving: boolean; saved: boolean; error: string | null }>({ saving: false, saved: false, error: null });
   const [disconnecting, setDisconnecting] = useState(false);
+  const [cacheStatus, setCacheStatus] = useState<{
+    clearing: boolean;
+    message: string | null;
+    error: string | null;
+  }>({ clearing: false, message: null, error: null });
   const [planMaps, setPlanMaps] = useState<{ strength: Record<number, string>; cardio: Record<number, string> }>(() => {
     const strength: Record<number, string> = {};
     const cardio: Record<number, string> = {};
@@ -149,6 +164,28 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
     a.download = `axis-export-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function clearOfflineCache() {
+    if (cacheStatus.clearing) return;
+    if (!("caches" in window)) {
+      setCacheStatus({ clearing: false, message: null, error: "Offline cache is not available in this browser." });
+      return;
+    }
+
+    setCacheStatus({ clearing: true, message: null, error: null });
+
+    try {
+      const clearedCount = await deleteAxisCaches();
+      setCacheStatus({
+        clearing: false,
+        message: clearedCount === 0 ? "Offline cache was already empty." : "Offline cache cleared.",
+        error: null,
+      });
+      setTimeout(() => setCacheStatus((prev) => ({ ...prev, message: null })), 2500);
+    } catch {
+      setCacheStatus({ clearing: false, message: null, error: "Failed to clear offline cache. Please try again." });
+    }
   }
 
   const strengthTypes = dayTypes.filter((dt) => dt.category === "strength");
@@ -278,9 +315,33 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
         </button>
       </Section>
 
+      <Section title="Offline Storage">
+        <div className="card p-4 flex flex-col gap-3">
+          <div>
+            <div className="font-medium text-sm">Cached app shell and data</div>
+            <div className="text-xs text-muted mt-0.5">
+              Clears offline pages, static assets, and cached read-only API responses.
+            </div>
+          </div>
+          {(cacheStatus.message || cacheStatus.error) && (
+            <div className={`text-xs ${cacheStatus.error ? "text-red-400" : "text-green-400"}`}>
+              {cacheStatus.error ?? cacheStatus.message}
+            </div>
+          )}
+          <button
+            onClick={() => void clearOfflineCache()}
+            disabled={cacheStatus.clearing}
+            className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
+          >
+            {cacheStatus.clearing ? "Clearing…" : "Clear offline cache"}
+          </button>
+        </div>
+      </Section>
+
       <Section title="Account">
         <button
           onClick={async () => {
+            await deleteAxisCaches();
             await supabase.auth.signOut();
             router.push("/login");
           }}
