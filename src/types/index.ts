@@ -166,3 +166,11 @@ export interface WeeklyScheduleRow {
   day_type?: DayType;
   cardio_day_type?: DayType;
 }
+
+export interface ScheduleOverride {
+  id: string;
+  user_id: string;
+  date: string; // YYYY-MM-DD
+  slot: "workout" | "cardio";
+  day_type_id: string | null; // null = skip/rest override
+}

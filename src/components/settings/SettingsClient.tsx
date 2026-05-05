@@ -151,7 +151,7 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
     URL.revokeObjectURL(url);
   }
 
-  const strengthTypes = dayTypes.filter((dt) => dt.category === "strength" || dt.name === "Rest");
+  const strengthTypes = dayTypes.filter((dt) => dt.category === "strength");
   const runTypes = dayTypes.filter((dt) => dt.category === "run");
 
   return (

@@ -13,8 +13,7 @@ import { WeeklyStatsSummary } from "@/components/dashboard/WeeklyStatsSummary";
 import { CalendarStreak } from "@/components/dashboard/CalendarStreak";
 import { WeekChecklist } from "@/components/dashboard/WeekChecklist";
 import { BodyWeightSparkline } from "@/components/dashboard/BodyWeightSparkline";
-import type { Activity, WeeklyScheduleRow } from "@/types";
-import type { ChecklistDay } from "@/lib/checklist";
+import type { Activity, DayType, ScheduleOverride, WeeklyScheduleRow } from "@/types";
 
 export default async function DashboardPage() {
   const [weeklyStats, bodyWeightData, streak, checklistData, units, activeDays] = await Promise.all([
@@ -26,9 +25,16 @@ export default async function DashboardPage() {
     getMonthActiveDays(),
   ]);
 
-  const checklistItems: ChecklistDay[] = matchChecklist(
+  const dayTypeMap = new Map(
+    (checklistData.dayTypes as DayType[]).map((dt) => [dt.id, dt])
+  );
+
+  const checklistItems = matchChecklist(
     checklistData.schedule as WeeklyScheduleRow[],
-    checklistData.activities as Activity[]
+    checklistData.activities as Activity[],
+    checklistData.overrides as ScheduleOverride[],
+    checklistData.weekStart,
+    dayTypeMap
   );
 
   return (
@@ -46,10 +52,15 @@ export default async function DashboardPage() {
 
       <div className={`grid gap-5 ${checklistItems.length > 0 ? "md:grid-cols-3" : "grid-cols-1"}`}>
         <div className={checklistItems.length > 0 ? "md:col-span-2" : ""}>
-          <CalendarStreak streak={streak} activities={activeDays.activities} dayPlans={activeDays.dayPlans} />
+          <CalendarStreak
+            streak={streak}
+            activities={activeDays.activities}
+            dayPlans={activeDays.dayPlans}
+            skipOverrides={activeDays.skipOverrides}
+          />
         </div>
         {checklistItems.length > 0 && (
-          <WeekChecklist items={checklistItems} />
+          <WeekChecklist items={checklistItems} dayTypes={checklistData.dayTypes as DayType[]} />
         )}
       </div>
 

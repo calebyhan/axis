@@ -7,6 +7,7 @@ interface Props {
   streak: number;
   activities: { start_time: string; type: string }[];
   dayPlans: DayPlanEntry[];
+  skipOverrides: { date: string; slot: "workout" | "cardio" }[];
 }
 
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -18,6 +19,7 @@ function localDateKey(d: Date): string {
 function buildActiveDays(
   activities: { start_time: string; type: string }[],
   dayPlans: DayPlanEntry[],
+  skipOverrides: { date: string; slot: "workout" | "cardio" }[],
 ): Map<string, number> {
   const dayKinds = new Map<string, Set<string>>();
   for (const { start_time, type } of activities) {
@@ -32,6 +34,12 @@ function buildActiveDays(
     dayKinds.set(key, kinds);
   }
 
+  for (const override of skipOverrides) {
+    const kinds = dayKinds.get(override.date) ?? new Set<string>();
+    kinds.add(override.slot);
+    dayKinds.set(override.date, kinds);
+  }
+
   const map = new Map<string, number>();
   for (const [key, kinds] of dayKinds) {
     map.set(key, kinds.has("workout") && kinds.has("cardio") ? 2 : 1);
@@ -41,11 +49,11 @@ function buildActiveDays(
   const plansByDay = new Map(dayPlans.map((p) => [p.dayOfWeek, p]));
   const today = new Date();
   const todayKey = localDateKey(today);
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-  monday.setHours(0, 0, 0, 0);
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay());
+  weekStart.setHours(0, 0, 0, 0);
 
-  const cursor = new Date(monday);
+  const cursor = new Date(weekStart);
   while (localDateKey(cursor) <= todayKey) {
     const key = localDateKey(cursor);
     const plan = plansByDay.get((cursor.getDay() + 6) % 7);
@@ -66,8 +74,8 @@ function buildActiveDays(
   return map;
 }
 
-export function CalendarStreak({ streak, activities, dayPlans }: Props) {
-  const activeDays = buildActiveDays(activities, dayPlans);
+export function CalendarStreak({ streak, activities, dayPlans, skipOverrides }: Props) {
+  const activeDays = buildActiveDays(activities, dayPlans, skipOverrides);
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth();

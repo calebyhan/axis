@@ -6,11 +6,12 @@ function localDateStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+// Returns the Sunday that starts the current Sun–Sat week (local time)
 function startOfCurrentWeek(today = new Date()): Date {
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-  monday.setHours(0, 0, 0, 0);
-  return monday;
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() - today.getDay()); // JS getDay(): 0=Sun, so this always lands on Sunday
+  sunday.setHours(0, 0, 0, 0);
+  return sunday;
 }
 
 type ActivityKind = "workout" | "cardio";
@@ -19,6 +20,10 @@ type DayPlan = {
   hasCardioSlot: boolean;
   workoutSatisfiedByRest: boolean;
   cardioSatisfiedByRest: boolean;
+};
+type SkipOverride = {
+  date: string;
+  slot: "workout" | "cardio";
 };
 
 function getActivityKind(type: string): ActivityKind | null {
@@ -42,6 +47,25 @@ function buildDailyKindMap(
   }
 
   return days;
+}
+
+function applySkipOverrides(
+  days: Map<string, Set<ActivityKind>>,
+  overrides: SkipOverride[]
+): Map<string, Set<ActivityKind>> {
+  const merged = new Map<string, Set<ActivityKind>>();
+
+  for (const [key, kinds] of days) {
+    merged.set(key, new Set(kinds));
+  }
+
+  for (const override of overrides) {
+    const kinds = merged.get(override.date) ?? new Set<ActivityKind>();
+    kinds.add(override.slot);
+    merged.set(override.date, kinds);
+  }
+
+  return merged;
 }
 
 const fetchDayPlans = cache(async function fetchDayPlans(): Promise<Map<number, DayPlan>> {
@@ -92,9 +116,9 @@ function getDayCompletionCount(
 export async function getWeeklyStats() {
   const supabase = await createClient();
   const now = new Date();
-  const monday = startOfCurrentWeek(now);
-  const weekStart = monday.toISOString();
-  const weekStartDate = localDateStr(monday);
+  const weekStartDateObj = startOfCurrentWeek(now);
+  const weekStart = weekStartDateObj.toISOString();
+  const weekStartDate = localDateStr(weekStartDateObj);
 
   const [
     { data: activities, error: activitiesError },
@@ -126,7 +150,7 @@ export async function getWeeklyStats() {
     0
   );
 
-  const lastWeekStart = new Date(monday);
+  const lastWeekStart = new Date(weekStartDateObj);
   lastWeekStart.setDate(lastWeekStart.getDate() - 7);
   const lastWeekStartDate = localDateStr(lastWeekStart);
 
@@ -174,21 +198,27 @@ export async function getBodyWeightHistory(days = 30) {
 
 export async function getActivityStreak() {
   const supabase = await createClient();
-  const [{ data, error }, dayPlans] = await Promise.all([
+  const today = new Date();
+  const weekStart = localDateStr(startOfCurrentWeek(today));
+  const [{ data, error }, dayPlans, { data: overrides, error: overridesError }] = await Promise.all([
     supabase
       .from("activities")
       .select("start_time, type")
       .order("start_time", { ascending: false })
       .limit(120),
     fetchDayPlans(),
+    supabase
+      .from("schedule_overrides")
+      .select("date, slot")
+      .gte("date", weekStart)
+      .lte("date", localDateStr(today))
+      .is("day_type_id", null),
   ]);
 
   if (error) console.error("[query] getActivityStreak failed", error.message);
+  if (overridesError) console.error("[query] getActivityStreak overrides failed", overridesError.message);
 
-  const activityDays = buildDailyKindMap(data ?? []);
-
-  const today = new Date();
-  const weekStart = localDateStr(startOfCurrentWeek(today));
+  const activityDays = applySkipOverrides(buildDailyKindMap(data ?? []), (overrides as SkipOverride[] | null) ?? []);
   let streak = 0;
 
   for (let i = 0; i < 120; i++) {
@@ -221,34 +251,48 @@ export type DayPlanEntry = {
 export async function getMonthActiveDays(): Promise<{
   activities: { start_time: string; type: string }[];
   dayPlans: DayPlanEntry[];
+  skipOverrides: SkipOverride[];
 }> {
   const supabase = await createClient();
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const monthStartStr = localDateStr(new Date(now.getFullYear(), now.getMonth(), 1));
+  const todayStr = localDateStr(now);
 
-  const [{ data, error }, plansMap] = await Promise.all([
+  const [{ data, error }, plansMap, { data: overrides, error: overridesError }] = await Promise.all([
     supabase
       .from("activities")
       .select("start_time, type")
       .gte("start_time", monthStart.toISOString()),
     fetchDayPlans(),
+    supabase
+      .from("schedule_overrides")
+      .select("date, slot")
+      .gte("date", monthStartStr)
+      .lte("date", todayStr)
+      .is("day_type_id", null),
   ]);
 
   if (error) console.error("[query] getMonthActiveDays failed", error.message);
+  if (overridesError) console.error("[query] getMonthActiveDays overrides failed", overridesError.message);
 
   const dayPlans: DayPlanEntry[] = Array.from(plansMap.entries()).map(([dayOfWeek, plan]) => ({
     dayOfWeek,
     ...plan,
   }));
 
-  return { activities: data ?? [], dayPlans };
+  return { activities: data ?? [], dayPlans, skipOverrides: (overrides as SkipOverride[] | null) ?? [] };
 }
 
 export async function getWeekChecklistData() {
   const supabase = await createClient();
-  const monday = startOfCurrentWeek();
+  const weekStart = startOfCurrentWeek();
+  const weekStartStr = localDateStr(weekStart);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const weekEndStr = localDateStr(weekEnd);
 
-  const [scheduleRes, activitiesRes] = await Promise.all([
+  const [scheduleRes, activitiesRes, overridesRes, dayTypesRes] = await Promise.all([
     supabase
       .from("weekly_schedule")
       .select("*, day_type:day_types!weekly_schedule_day_type_id_fkey(*), cardio_day_type:day_types!weekly_schedule_cardio_day_type_id_fkey(*)")
@@ -256,14 +300,29 @@ export async function getWeekChecklistData() {
     supabase
       .from("activities")
       .select("id, type, start_time, day_type_id")
-      .gte("start_time", monday.toISOString()),
+      .gte("start_time", weekStart.toISOString())
+      .lt("start_time", new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()),
+    supabase
+      .from("schedule_overrides")
+      .select("*")
+      .gte("date", weekStartStr)
+      .lte("date", weekEndStr),
+    supabase
+      .from("day_types")
+      .select("*")
+      .order("name"),
   ]);
 
   if (scheduleRes.error) console.error("[query] getWeekChecklistData schedule failed", scheduleRes.error.message);
   if (activitiesRes.error) console.error("[query] getWeekChecklistData activities failed", activitiesRes.error.message);
+  if (overridesRes.error) console.error("[query] getWeekChecklistData overrides failed", overridesRes.error.message);
+  if (dayTypesRes.error) console.error("[query] getWeekChecklistData dayTypes failed", dayTypesRes.error.message);
 
   return {
     schedule: scheduleRes.data ?? [],
     activities: activitiesRes.data ?? [],
+    overrides: overridesRes.data ?? [],
+    dayTypes: dayTypesRes.data ?? [],
+    weekStart,
   };
 }
