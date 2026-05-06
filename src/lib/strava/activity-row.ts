@@ -3,10 +3,33 @@
 
 type ActivityType = "run" | "ride";
 
+const RUN_SPORTS = new Set(["Run", "VirtualRun"]);
+const RIDE_SPORTS = new Set([
+  "Ride",
+  "VirtualRide",
+  "EBikeRide",
+  "EMountainBikeRide",
+  "GravelRide",
+  "MountainBikeRide",
+]);
+
+export function mapStravaSportType(sportType: string | null | undefined): ActivityType | null {
+  if (!sportType) return null;
+  if (RUN_SPORTS.has(sportType)) return "run";
+  if (RIDE_SPORTS.has(sportType)) return "ride";
+  return null;
+}
+
+export function isSupportedCardioSport(sportType: string | null | undefined): boolean {
+  return mapStravaSportType(sportType) !== null;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildActivityRow(userId: string, stravaId: number, a: Record<string, any>) {
-  const type: ActivityType =
-    a.sport_type === "Run" || a.sport_type === "VirtualRun" ? "run" : "ride";
+  const type = mapStravaSportType(a.sport_type);
+  if (!type) {
+    throw new Error(`Unsupported Strava sport type: ${String(a.sport_type)}`);
+  }
   const distance: number = a.distance ?? 0;
 
   const bestEfforts = Array.isArray(a.best_efforts)

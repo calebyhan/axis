@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getActivities, getActivity } from "@/lib/strava/client";
-import { buildActivityRow } from "@/lib/strava/activity-row";
+import { buildActivityRow, isSupportedCardioSport } from "@/lib/strava/activity-row";
 
 export const runtime = "nodejs";
 
@@ -21,9 +21,7 @@ export async function GET() {
     return NextResponse.json({ connected: false, activities: [] });
   }
 
-  const runActivities = stravaActivities.filter((a) =>
-    ["Run", "VirtualRun", "Ride", "VirtualRide"].includes(a.sport_type as string)
-  );
+  const runActivities = stravaActivities.filter((a) => isSupportedCardioSport(a.sport_type as string));
 
   const { data: existing } = await supabase
     .from("activities")
@@ -52,6 +50,10 @@ export async function POST(request: NextRequest) {
     activity = await getActivity(user.id, activityId);
   } catch {
     return NextResponse.json({ error: "Failed to fetch activity from Strava" }, { status: 502 });
+  }
+
+  if (!isSupportedCardioSport(activity.sport_type as string)) {
+    return NextResponse.json({ error: "Unsupported Strava activity type" }, { status: 400 });
   }
 
   const { error } = await supabase

@@ -46,10 +46,11 @@ function normalizeScheduleRows(rows: unknown): WeeklyScheduleRow[] {
   });
 }
 
-function SessionHeader({ session, saving, draftSaveStatus, onCancel, onEnd }: {
+function SessionHeader({ session, saving, draftSaveStatus, hasLoggedSets, onCancel, onEnd }: {
   session: SessionState | null;
   saving: boolean;
   draftSaveStatus: DraftSaveStatus;
+  hasLoggedSets: boolean;
   onCancel: () => void;
   onEnd: () => void;
 }) {
@@ -74,7 +75,7 @@ function SessionHeader({ session, saving, draftSaveStatus, onCancel, onEnd }: {
           </p>
         )}
       </div>
-      {session && session.exercises.length > 0 && (
+      {hasLoggedSets && (
         <button type="button" onClick={onEnd} disabled={saving} className="shrink-0 px-4 py-1.5 rounded-full bg-accent text-white text-sm font-medium disabled:opacity-50 transition-opacity">
           {saving ? "Saving..." : "End"}
         </button>
@@ -338,7 +339,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background md:bg-black/60 md:items-center md:justify-center md:p-6" role="dialog" aria-modal="true" aria-labelledby="workout-session-title">
     <div className="flex flex-col w-full h-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-2xl md:rounded-3xl md:bg-[#0A0A0A] md:border md:border-[#1F1F1F] md:overflow-hidden">
-      <SessionHeader session={session} saving={saving} draftSaveStatus={draftSaveStatus} onCancel={handleCancelRequest} onEnd={handleEndSession} />
+      <SessionHeader session={session} saving={saving} draftSaveStatus={draftSaveStatus} hasLoggedSets={hasLoggedSets} onCancel={handleCancelRequest} onEnd={handleEndSession} />
 
       {autosaveFailed && <div className="px-4 py-2 bg-yellow-900/30 border-b border-yellow-700/40 text-xs text-yellow-400">Auto-save failed - tap End to save your workout manually.</div>}
       {saveError && <div className="px-4 py-2 bg-red-900/30 border-b border-red-700/40 text-xs text-red-400">{saveError}</div>}

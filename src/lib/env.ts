@@ -53,3 +53,11 @@ export function getStravaWebhookVerifyToken() {
   }
   return value;
 }
+
+export function getStravaWebhookSigningSecret() {
+  const value = process.env.STRAVA_WEBHOOK_SIGNING_SECRET ?? process.env.STRAVA_CLIENT_SECRET;
+  if (!value) {
+    throw new Error("Missing required environment variable: STRAVA_WEBHOOK_SIGNING_SECRET");
+  }
+  return value;
+}

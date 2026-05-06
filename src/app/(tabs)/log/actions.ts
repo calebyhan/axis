@@ -44,6 +44,28 @@ export async function saveWorkoutSession(payload: SaveWorkoutPayload): Promise<{
     return { activityId: null, error: "Invalid session duration" };
   }
 
+  if (payload.sets.length === 0) {
+    return { activityId: null, error: "Log at least one set before saving." };
+  }
+
+  for (const set of payload.sets) {
+    if (!set.exercise_id) {
+      return { activityId: null, error: "Invalid exercise in session." };
+    }
+    if (!Number.isInteger(set.set_number) || set.set_number <= 0) {
+      return { activityId: null, error: "Invalid set number." };
+    }
+    if (!Number.isInteger(set.reps) || set.reps <= 0) {
+      return { activityId: null, error: "Reps must be greater than zero." };
+    }
+    if (!Number.isFinite(set.weight) || set.weight < 0) {
+      return { activityId: null, error: "Weight cannot be negative." };
+    }
+    if (!Number.isFinite(set.rpe) || set.rpe < 1 || set.rpe > 10) {
+      return { activityId: null, error: "RPE must be between 1 and 10." };
+    }
+  }
+
   const sets = payload.sets.map((set) => ({
     exercise_id: set.exercise_id,
     set_number: set.set_number,
