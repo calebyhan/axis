@@ -23,6 +23,25 @@ function getRangeStart(range: TimeRange): Date {
   return startOfWeek(d);
 }
 
+function startOfDay(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function accountCreatedStart(createdAt: string | undefined): Date | null {
+  if (!createdAt) return null;
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return null;
+  return startOfDay(created);
+}
+
+function getVisibleStart(range: TimeRange, userCreatedAt: string | undefined): Date {
+  const rangeStart = getRangeStart(range);
+  const createdStart = accountCreatedStart(userCreatedAt);
+  return createdStart && createdStart > rangeStart ? createdStart : rangeStart;
+}
+
 function weekStartsBetween(start: Date, end: Date): Date[] {
   const weeks: Date[] = [];
   const cursor = startOfWeek(start);
@@ -121,17 +140,21 @@ function plannedSlotToSnapshotInsert(slot: PlannedSlot, userId: string, weekStar
 async function ensurePlannedSlotSnapshots(range: TimeRange): Promise<{
   snapshots: PlannedSlotSnapshot[];
   dayTypeMap: Map<string, DayType>;
+  visibleStart: Date;
+  weekStarts: Date[];
 }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { snapshots: [], dayTypeMap: new Map() };
+  if (!user) return { snapshots: [], dayTypeMap: new Map(), visibleStart: getRangeStart(range), weekStarts: [] };
 
   const now = new Date();
-  const start = getRangeStart(range);
+  const visibleStart = getVisibleStart(range, user.created_at);
+  const start = startOfWeek(visibleStart);
   const end = new Date(startOfWeek(now));
   end.setDate(end.getDate() + 6);
   const weekStarts = weekStartsBetween(start, now);
   const weekStartStrings = weekStarts.map(localDateStr);
+  const visibleStartStr = localDateStr(visibleStart);
   const { schedule, dayTypeMap } = await getBasePlannerData();
 
   const { data: existing, error: existingError } = await supabase
@@ -174,7 +197,9 @@ async function ensurePlannedSlotSnapshots(range: TimeRange): Promise<{
         allOverrides.filter((override) => override.date >= weekStartStr && override.date <= weekEndStr),
         weekStart,
         dayTypeMap
-      ).map((slot) => plannedSlotToSnapshotInsert(slot, user.id, weekStartStr));
+      )
+        .filter((slot) => slot.date >= visibleStartStr)
+        .map((slot) => plannedSlotToSnapshotInsert(slot, user.id, weekStartStr));
     });
 
     if (inserts.length > 0) {
@@ -193,32 +218,36 @@ async function ensurePlannedSlotSnapshots(range: TimeRange): Promise<{
   if (refreshedError) console.error("[query] planned slot snapshot refresh failed", refreshedError.message);
 
   return {
-    snapshots: (refreshed ?? existingSnapshots) as PlannedSlotSnapshot[],
+    snapshots: ((refreshed ?? existingSnapshots) as PlannedSlotSnapshot[]).filter(
+      (snapshot) => snapshot.date >= visibleStartStr
+    ),
     dayTypeMap,
+    visibleStart,
+    weekStarts,
   };
 }
 
 export async function getAdherenceHistory(range: TimeRange): Promise<AdherenceWeek[]> {
   const supabase = await createClient();
   const now = new Date();
-  const start = getRangeStart(range);
   const end = new Date(startOfWeek(now));
   end.setDate(end.getDate() + 6);
+  const { snapshots, dayTypeMap, visibleStart, weekStarts } = await ensurePlannedSlotSnapshots(range);
+  const visibleStartStr = localDateStr(visibleStart);
 
-  const [{ snapshots, dayTypeMap }, activitiesRes] = await Promise.all([
-    ensurePlannedSlotSnapshots(range),
-    supabase
-      .from("activities")
-      .select("id, user_id, strava_activity_id, type, day_type_id, start_time, duration, source, distance, avg_heartrate, max_heartrate, suffer_score, calories, elevation_gain, avg_pace, tags, notes, name, summary_polyline, splits, best_efforts, avg_cadence, avg_watts, elapsed_time, max_speed, average_temp")
-      .gte("start_time", start.toISOString())
-      .lt("start_time", new Date(end.getTime() + 24 * 60 * 60 * 1000).toISOString()),
-  ]);
+  if (weekStarts.length === 0) return [];
+
+  const activitiesRes = await supabase
+    .from("activities")
+    .select("id, user_id, strava_activity_id, type, day_type_id, start_time, duration, source, distance, avg_heartrate, max_heartrate, suffer_score, calories, elevation_gain, avg_pace, tags, notes, name, summary_polyline, splits, best_efforts, avg_cadence, avg_watts, elapsed_time, max_speed, average_temp")
+    .gte("start_time", visibleStart.toISOString())
+    .lt("start_time", new Date(end.getTime() + 24 * 60 * 60 * 1000).toISOString());
 
   if (activitiesRes.error) console.error("[query] adherence activities failed", activitiesRes.error.message);
 
   const activities = (activitiesRes.data ?? []) as unknown as Activity[];
 
-  return weekStartsBetween(start, now).map((weekStart) => {
+  return weekStarts.map((weekStart) => {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
     const weekStartStr = localDateStr(weekStart);
@@ -232,7 +261,7 @@ export async function getAdherenceHistory(range: TimeRange): Promise<AdherenceWe
       });
     const weekActivities = activities.filter((activity) => {
       const date = activity.start_time.split("T")[0];
-      return date >= weekStartStr && date <= weekEndStr;
+      return date >= visibleStartStr && date >= weekStartStr && date <= weekEndStr;
     });
     return { ...deriveAdherence(slots, weekActivities, now), weekStart: weekStartStr };
   });

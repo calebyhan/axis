@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { CHART_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
 import type { AdherenceWeek } from "@/lib/adherence";
-import type { PlannedSlotKind } from "@/lib/planner";
+import { localDateStr } from "@/lib/planner";
 
 interface Props {
   adherence: AdherenceWeek[];
@@ -19,6 +19,7 @@ interface Props {
 
 export default function PlanTab({ adherence }: Props) {
   const latest = adherence[adherence.length - 1] ?? null;
+  const todayStr = localDateStr(new Date());
   const totals = adherence.reduce(
     (acc, week) => {
       acc.planned += week.summary.planned;
@@ -38,6 +39,9 @@ export default function PlanTab({ adherence }: Props) {
     skipped: week.summary.skipped,
   }));
   const currentWeekDays = latest ? groupSlotsByDay(latest.slots) : [];
+  const currentWeekDone = latest ? latest.summary.completed + latest.summary.swapped : 0;
+  const currentWeekLabel =
+    latest && latest.summary.planned > 0 ? `${currentWeekDone}/${latest.summary.planned} done` : "No planned sessions";
 
   return (
     <div className="flex flex-col gap-5">
@@ -71,23 +75,36 @@ export default function PlanTab({ adherence }: Props) {
 
       {latest && currentWeekDays.length > 0 && (
         <div className="card p-4">
-          <h3 className="text-sm font-medium mb-3">Current Week</h3>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-medium">Current Week</h3>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-white/55">
+              {currentWeekLabel}
+            </span>
+          </div>
           <div className="overflow-hidden rounded-lg border border-white/10">
-            {currentWeekDays.map((day, index) => (
-              <div
-                key={day.date}
-                className={`grid gap-3 bg-white/[0.025] px-3 py-3 text-sm md:grid-cols-[5rem_1fr_1fr] ${
-                  index > 0 ? "border-t border-white/10" : ""
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2 md:block">
-                  <div className="font-medium text-white/70">{day.weekday}</div>
-                  <div className="text-xs text-white/35 md:mt-1">{day.date.slice(5)}</div>
+            {currentWeekDays.map((day, index) => {
+              const isToday = day.date === todayStr;
+
+              return (
+                <div
+                  key={day.date}
+                  className={`grid grid-cols-[3.75rem_1fr] gap-3 px-3 py-3 text-sm sm:grid-cols-[4.75rem_1fr] ${
+                    index > 0 ? "border-t border-white/10" : ""
+                  } ${isToday ? "bg-[rgba(var(--accent-rgb),0.09)]" : "bg-white/[0.025]"}`}
+                >
+                  <div className="pt-0.5">
+                    <div className={`font-medium ${isToday ? "text-accent" : "text-white/70"}`}>
+                      {isToday ? "Today" : day.weekday}
+                    </div>
+                    <div className="mt-1 text-xs text-white/35">{day.date.slice(5)}</div>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {day.workout ? <SlotCell item={day.workout} /> : <RestCell kind="Workout" />}
+                    {day.cardio ? <SlotCell item={day.cardio} /> : <RestCell kind="Cardio" />}
+                  </div>
                 </div>
-                <SlotCell kind="workout" item={day.workout} />
-                <SlotCell kind="cardio" item={day.cardio} />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -96,6 +113,29 @@ export default function PlanTab({ adherence }: Props) {
 }
 
 type CurrentWeekSlot = AdherenceWeek["slots"][number];
+
+const STATUS_STYLES: Record<CurrentWeekSlot["status"], { shell: string; badge: string }> = {
+  completed: {
+    shell: "border-green-500/25 bg-green-500/[0.08]",
+    badge: "border-green-500/25 bg-green-500/[0.12] text-green-300",
+  },
+  swapped: {
+    shell: "border-blue-500/25 bg-blue-500/[0.08]",
+    badge: "border-blue-500/25 bg-blue-500/[0.12] text-blue-300",
+  },
+  missed: {
+    shell: "border-red-500/25 bg-red-500/[0.08]",
+    badge: "border-red-500/25 bg-red-500/[0.12] text-red-300",
+  },
+  skipped: {
+    shell: "border-white/10 bg-white/[0.03]",
+    badge: "border-white/10 bg-white/[0.04] text-white/40",
+  },
+  pending: {
+    shell: "border-white/10 bg-black/20",
+    badge: "border-white/10 bg-white/[0.04] text-white/45",
+  },
+};
 
 function groupSlotsByDay(slots: AdherenceWeek["slots"]) {
   const days = new Map<string, { date: string; weekday: string; workout: CurrentWeekSlot | null; cardio: CurrentWeekSlot | null }>();
@@ -114,31 +154,33 @@ function groupSlotsByDay(slots: AdherenceWeek["slots"]) {
   return Array.from(days.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function SlotCell({ kind, item }: { kind: PlannedSlotKind; item: CurrentWeekSlot | null }) {
-  if (!item) {
-    return (
-      <div className="flex min-h-12 items-center justify-between rounded-md border border-white/[0.06] px-3 text-white/25">
-        <span className="text-[10px] uppercase tracking-[0.18em]">{kind}</span>
-        <span className="text-xs">—</span>
-      </div>
-    );
-  }
-
-  const statusClass = {
-    completed: "text-green-400",
-    swapped: "text-blue-400",
-    missed: "text-red-400",
-    skipped: "text-white/35",
-    pending: "text-white/45",
-  }[item.status];
+function SlotCell({ item }: { item: CurrentWeekSlot }) {
+  const styles = STATUS_STYLES[item.status];
+  const kindLabel = item.slot.kind === "workout" ? "Workout" : "Cardio";
+  const showStatusBadge = item.status !== "skipped";
 
   return (
-    <div className="flex min-h-12 items-center justify-between gap-3 rounded-md border border-white/[0.08] bg-black/20 px-3">
-      <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-[0.18em] text-white/35">{kind}</div>
-        <div className="mt-0.5 truncate text-white/75">{item.slot.effective?.name ?? "Skipped"}</div>
+    <div className={`min-h-14 rounded-md border px-3 py-2 ${styles.shell}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/35">{kindLabel}</div>
+          <div className="mt-1 truncate text-sm font-medium text-white/80">{item.slot.effective?.name ?? "Skipped"}</div>
+        </div>
+        {showStatusBadge && (
+          <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] capitalize ${styles.badge}`}>
+            {item.status}
+          </span>
+        )}
       </div>
-      <span className={`shrink-0 text-xs capitalize ${statusClass}`}>{item.status}</span>
+    </div>
+  );
+}
+
+function RestCell({ kind }: { kind: "Workout" | "Cardio" }) {
+  return (
+    <div className="min-h-14 rounded-md border border-white/10 bg-white/[0.02] px-3 py-2">
+      <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/25">{kind}</div>
+      <div className="mt-1 text-sm font-medium text-white/40">Rest</div>
     </div>
   );
 }
