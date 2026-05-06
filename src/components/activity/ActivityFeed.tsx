@@ -51,6 +51,14 @@ function workoutHasMuscleGroup(coverage: Partial<Record<MuscleGroup, number>>, m
   return muscles.some((m) => (coverage[m] ?? 0) > 0);
 }
 
+function filterChipClass(active: boolean) {
+  return `px-2.5 py-1 rounded-md text-xs transition-colors border ${
+    active
+      ? "bg-white/10 border-white/20 text-white"
+      : "border-[#1F1F1F] text-white/40 hover:text-white/60"
+  }`;
+}
+
 export function ActivityFeed({ activities, workoutDataMap, dayTypeNames, units }: Props) {
   const useMetric = units === "metric";
 
@@ -135,58 +143,57 @@ export function ActivityFeed({ activities, workoutDataMap, dayTypeNames, units }
   const showWorkoutFilters = typeFilter === "workout" || (typeFilter === "all");
   const hasRunsInData = activities.some((a) => a.type === "run" || a.type === "manual_run");
   const hasWorkoutsInData = activities.some((a) => a.type === "workout");
+  const showRunFilterGroup = showRunFilters && hasRunsInData;
+  const showWorkoutFilterGroup = showWorkoutFilters && hasWorkoutsInData;
+  const scopedFilterGridClass =
+    showRunFilterGroup && showWorkoutFilterGroup
+      ? "grid gap-3 border-t border-white/8 pt-3 lg:grid-cols-[minmax(14rem,0.8fr)_minmax(0,1.2fr)]"
+      : "grid gap-3 border-t border-white/8 pt-3";
+  const activeFilterCount = [
+    search.trim() !== "",
+    typeFilter !== "all",
+    distanceFilter !== "any",
+    muscleFilter !== null,
+    dayTypeFilter !== null,
+  ].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0;
+
+  function clearFilters() {
+    setSearch("");
+    setTypeFilter("all");
+    setDistanceFilter("any");
+    setMuscleFilter(null);
+    setDayTypeFilter(null);
+  }
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Search + type row */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="activity-search" className="sr-only">Search activities</label>
-        <input
-          id="activity-search"
-          type="search"
-          placeholder="Search activities…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-[#141414] border border-[#1F1F1F] rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20"
-        />
-        <div className="flex gap-1.5" role="group" aria-label="Activity type">
-          {typeOptions.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              aria-pressed={typeFilter === opt.value}
-              onClick={() => {
-                setTypeFilter(opt.value);
-                setDistanceFilter("any");
-                setMuscleFilter(null);
-                setDayTypeFilter(null);
-              }}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                typeFilter === opt.value ? "bg-white/10 text-white" : "text-white/40 hover:text-white/60"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Run filters */}
-      {showRunFilters && hasRunsInData && (
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] text-white/35 uppercase tracking-[0.16em]">Distance</span>
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Distance filter">
-              {distanceOptions.map((opt) => (
+      <section aria-label="Activity filters" className="card p-3 sm:p-4">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <label htmlFor="activity-search" className="sr-only">Search activities</label>
+            <input
+              id="activity-search"
+              type="search"
+              placeholder="Search activities…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="min-h-10 w-full flex-1 rounded-lg border border-[#1F1F1F] bg-[#141414] px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20"
+            />
+            <div className="flex shrink-0 gap-1.5 rounded-lg border border-[#1F1F1F] bg-white/[0.02] p-1" role="group" aria-label="Activity type">
+              {typeOptions.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
-                  aria-pressed={distanceFilter === opt.value}
-                  onClick={() => setDistanceFilter(opt.value)}
-                  className={`px-2.5 py-1 rounded-md text-xs transition-colors border ${
-                    distanceFilter === opt.value
-                      ? "bg-white/10 border-white/20 text-white"
-                      : "border-[#1F1F1F] text-white/40 hover:text-white/60"
+                  aria-pressed={typeFilter === opt.value}
+                  onClick={() => {
+                    setTypeFilter(opt.value);
+                    setDistanceFilter("any");
+                    setMuscleFilter(null);
+                    setDayTypeFilter(null);
+                  }}
+                  className={`min-h-8 flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none ${
+                    typeFilter === opt.value ? "bg-white/10 text-white" : "text-white/40 hover:text-white/60"
                   }`}
                 >
                   {opt.label}
@@ -194,56 +201,90 @@ export function ActivityFeed({ activities, workoutDataMap, dayTypeNames, units }
               ))}
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Workout filters */}
-      {showWorkoutFilters && hasWorkoutsInData && (
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] text-white/35 uppercase tracking-[0.16em]">Muscle Group</span>
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Muscle group filter">
-              {MUSCLE_GROUPS.map((g) => (
-                <button
-                  key={g.label}
-                  type="button"
-                  aria-pressed={muscleFilter === g.label}
-                  onClick={() => setMuscleFilter(muscleFilter === g.label ? null : g.label)}
-                  className={`px-2.5 py-1 rounded-md text-xs transition-colors border ${
-                    muscleFilter === g.label
-                      ? "bg-white/10 border-white/20 text-white"
-                      : "border-[#1F1F1F] text-white/40 hover:text-white/60"
-                  }`}
-                >
-                  {g.label}
-                </button>
-              ))}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/8 pt-3">
+            <div className="text-xs text-white/40">
+              Showing <span className="text-white/70">{filtered.length}</span> of {activities.length}
+              {hasActiveFilters && (
+                <span className="ml-2 text-white/30">
+                  {activeFilterCount} {activeFilterCount === 1 ? "filter" : "filters"} active
+                </span>
+              )}
             </div>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="rounded-md px-2.5 py-1 text-xs text-white/45 transition-colors hover:bg-white/6 hover:text-white/70"
+              >
+                Reset
+              </button>
+            )}
           </div>
-          {availableDayTypes.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] text-white/35 uppercase tracking-[0.16em]">Day Type</span>
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Day type filter">
-                {availableDayTypes.map(([id, name]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={dayTypeFilter === id}
-                    onClick={() => setDayTypeFilter(dayTypeFilter === id ? null : id)}
-                    className={`px-2.5 py-1 rounded-md text-xs transition-colors border ${
-                      dayTypeFilter === id
-                        ? "bg-white/10 border-white/20 text-white"
-                        : "border-[#1F1F1F] text-white/40 hover:text-white/60"
-                    }`}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
+
+          {showRunFilterGroup || showWorkoutFilterGroup ? (
+            <div className={scopedFilterGridClass}>
+              {showRunFilterGroup && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[10px] text-white/35 uppercase tracking-[0.16em]">Run Distance</span>
+                  <div className="flex flex-wrap gap-1.5" role="group" aria-label="Distance filter">
+                    {distanceOptions.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        aria-pressed={distanceFilter === opt.value}
+                        onClick={() => setDistanceFilter(opt.value)}
+                        className={filterChipClass(distanceFilter === opt.value)}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {showWorkoutFilterGroup && (
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] text-white/35 uppercase tracking-[0.16em]">Muscle Group</span>
+                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Muscle group filter">
+                      {MUSCLE_GROUPS.map((g) => (
+                        <button
+                          key={g.label}
+                          type="button"
+                          aria-pressed={muscleFilter === g.label}
+                          onClick={() => setMuscleFilter(muscleFilter === g.label ? null : g.label)}
+                          className={filterChipClass(muscleFilter === g.label)}
+                        >
+                          {g.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {availableDayTypes.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[10px] text-white/35 uppercase tracking-[0.16em]">Day Type</span>
+                      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Day type filter">
+                        {availableDayTypes.map(([id, name]) => (
+                          <button
+                            key={id}
+                            type="button"
+                            aria-pressed={dayTypeFilter === id}
+                            onClick={() => setDayTypeFilter(dayTypeFilter === id ? null : id)}
+                            className={filterChipClass(dayTypeFilter === id)}
+                          >
+                            {name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          )}
+          ) : null}
         </div>
-      )}
+      </section>
 
       {/* Results */}
       {filtered.length === 0 ? (
