@@ -1,8 +1,9 @@
 import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
-import type { MuscleGroup } from "@/types";
+import type { MuscleGroup, MuscleHeatmapDetails } from "@/types";
 
 interface Props {
   coverage: Partial<Record<MuscleGroup, number>>;
+  details?: MuscleHeatmapDetails;
 }
 
 const MUSCLE_LABELS: Record<MuscleGroup, string> = {
@@ -26,7 +27,7 @@ const MUSCLE_LABELS: Record<MuscleGroup, string> = {
   obliques: "Obliques",
 };
 
-export function WeeklyMuscleCoverage({ coverage }: Props) {
+export function WeeklyMuscleCoverage({ coverage, details }: Props) {
   const activeMuscles = Object.entries(coverage)
     .filter((entry): entry is [MuscleGroup, number] => entry[1] > 0)
     .sort((a, b) => b[1] - a[1]);
@@ -50,8 +51,8 @@ export function WeeklyMuscleCoverage({ coverage }: Props) {
       </div>
 
       <div className="mt-5 flex items-center justify-center gap-6">
-        <MuscleHeatmap coverage={coverage} size="full" />
-        <MuscleHeatmap coverage={coverage} size="full" showBack />
+        <MuscleHeatmap coverage={coverage} details={details} tooltipContext="this week" size="full" />
+        <MuscleHeatmap coverage={coverage} details={details} tooltipContext="this week" size="full" showBack />
       </div>
 
       {activeMuscles.length > 0 && (

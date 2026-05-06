@@ -38,6 +38,12 @@ export const MUSCLE_GROUPS: MuscleGroup[] = [
   "abs", "obliques",
 ];
 
+export interface MuscleHeatmapDetail {
+  items: string[];
+}
+
+export type MuscleHeatmapDetails = Partial<Record<MuscleGroup, MuscleHeatmapDetail>>;
+
 export type MovementPattern =
   | "horizontal_push"
   | "horizontal_pull"

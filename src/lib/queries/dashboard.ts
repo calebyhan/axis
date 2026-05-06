@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import type { MuscleGroup } from "@/types";
+import type { MuscleGroup, MuscleHeatmapDetails } from "@/types";
 
 // Returns "YYYY-MM-DD" in local time — avoids UTC drift for date-only columns
 function localDateStr(date: Date): string {
@@ -31,6 +31,23 @@ function getActivityKind(type: string): ActivityKind | null {
   if (type === "workout") return "workout";
   if (type === "run" || type === "manual_run" || type === "ride") return "cardio";
   return null;
+}
+
+function normalizeRelation<T>(raw: unknown): T | null {
+  if (!raw) return null;
+  return (Array.isArray(raw) ? raw[0] : raw) as T;
+}
+
+function setLabel(count: number): string {
+  return `${count} set${count === 1 ? "" : "s"}`;
+}
+
+function weeklyDateLabel(startTime: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(startTime));
 }
 
 function buildDailyKindMap(
@@ -182,30 +199,61 @@ export async function getWeeklyStats() {
   return { runDistance, sessionCount, totalVolume, weightDelta };
 }
 
-export async function getWeeklyMuscleCoverage(): Promise<Partial<Record<MuscleGroup, number>>> {
+export async function getWeeklyMuscleCoverageSummary(): Promise<{
+  coverage: Partial<Record<MuscleGroup, number>>;
+  details: MuscleHeatmapDetails;
+}> {
   const supabase = await createClient();
   const weekStart = startOfCurrentWeek().toISOString();
 
   const { data: sets, error } = await supabase
     .from("session_sets")
-    .select("exercise:exercises(primary_muscles), activities!inner(start_time)")
+    .select("exercise:exercises(name, primary_muscles), activities!inner(start_time, name)")
     .gte("activities.start_time", weekStart);
 
   if (error) console.error("[query] getWeeklyMuscleCoverage failed", error.message);
 
   const coverage: Partial<Record<MuscleGroup, number>> = {};
+  const detailBuckets: Partial<Record<MuscleGroup, Map<string, { label: string; count: number; sortTime: number }>>> = {};
 
   for (const set of sets ?? []) {
-    const exRaw = set.exercise as unknown;
-    const exercise = (Array.isArray(exRaw) ? exRaw[0] : exRaw) as { primary_muscles: MuscleGroup[] } | null;
+    const exercise = normalizeRelation<{ name: string | null; primary_muscles: MuscleGroup[] }>(set.exercise);
+    const activity = normalizeRelation<{ start_time: string; name: string | null }>((set as { activities?: unknown }).activities);
     if (!exercise) continue;
+
+    const exerciseName = exercise.name ?? "Unknown exercise";
+    const dateLabel = activity?.start_time ? weeklyDateLabel(activity.start_time) : "Workout";
+    const label = `${dateLabel} - ${exerciseName}`;
+    const key = `${activity?.start_time ?? "unknown"}:${exerciseName}`;
+    const sortTime = activity?.start_time ? new Date(activity.start_time).getTime() : 0;
 
     for (const muscle of exercise.primary_muscles ?? []) {
       coverage[muscle] = (coverage[muscle] ?? 0) + 1;
+
+      const bucket = detailBuckets[muscle] ?? new Map<string, { label: string; count: number; sortTime: number }>();
+      const item = bucket.get(key) ?? { label, count: 0, sortTime };
+      item.count += 1;
+      bucket.set(key, item);
+      detailBuckets[muscle] = bucket;
     }
   }
 
-  return coverage;
+  const details = Object.fromEntries(
+    Object.entries(detailBuckets).map(([muscle, bucket]) => [
+      muscle,
+      {
+        items: Array.from(bucket.values())
+          .sort((a, b) => b.sortTime - a.sortTime || b.count - a.count || a.label.localeCompare(b.label))
+          .map((item) => `${item.label} (${setLabel(item.count)})`),
+      },
+    ])
+  ) as MuscleHeatmapDetails;
+
+  return { coverage, details };
+}
+
+export async function getWeeklyMuscleCoverage(): Promise<Partial<Record<MuscleGroup, number>>> {
+  return (await getWeeklyMuscleCoverageSummary()).coverage;
 }
 
 export async function getBodyWeightHistory(days = 30) {

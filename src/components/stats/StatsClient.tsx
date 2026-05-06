@@ -8,7 +8,7 @@ import { useState } from "react";
 import type { TimeRange } from "@/lib/queries/stats";
 import type { TrainingLoadPoint } from "@/lib/training-load";
 import type { AdherenceWeek } from "@/lib/adherence";
-import type { Units } from "@/types";
+import type { MuscleGroup, MuscleHeatmapDetails, Units } from "@/types";
 
 type Tab = "workout" | "running" | "body" | "load" | "plan";
 
@@ -40,6 +40,8 @@ interface WorkoutSummary {
   totalSets: number;
   totalVolume: number;
   topExercises: { name: string; volume: number; sets: number }[];
+  muscleCoverage: Partial<Record<MuscleGroup, number>>;
+  muscleDetails: MuscleHeatmapDetails;
 }
 
 interface Props {
@@ -176,7 +178,7 @@ export function StatsClient({
       </div>
 
       {activeTab === "workout" && (
-        <WorkoutTab workoutSummary={workoutSummary} volumeChartData={volumeChartData} units={units} />
+        <WorkoutTab workoutSummary={workoutSummary} volumeChartData={volumeChartData} timeRange={timeRange} units={units} />
       )}
       {activeTab === "running" && (
         <RunningTab

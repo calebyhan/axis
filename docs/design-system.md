@@ -28,7 +28,7 @@ Front/back body SVG with named paths per muscle group. Used on:
 
 **Shading:** Each muscle path is shaded from `#1F1F1F` (untrained / zero sets) to the accent color (high volume). Intensity is driven by set count relative to the session or period total.
 
-**Implementation:** Pure SVG — each muscle group is a `<path id="chest">`, `<path id="hamstrings">`, etc. Color is applied via CSS or inline style. No image assets, works fully offline.
+**Implementation:** Pure SVG — each muscle group renders as a uniquely-prefixed `<g data-muscle="chest">`, `<g data-muscle="hamstrings">`, etc. with one or more anatomical paths inside. Color is applied inline. No image assets, works fully offline.
 
 **Muscle group IDs used across the system:**
 

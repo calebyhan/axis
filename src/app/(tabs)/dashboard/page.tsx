@@ -6,7 +6,7 @@ import {
   getActivityStreak,
   getWeekChecklistData,
   getMonthActiveDays,
-  getWeeklyMuscleCoverage,
+  getWeeklyMuscleCoverageSummary,
 } from "@/lib/queries/dashboard";
 import { getCurrentWeekAdherence } from "@/lib/queries/adherence";
 import { getUserDisplayName, getUserUnits } from "@/lib/queries/profile";
@@ -20,9 +20,9 @@ import { WeeklyAdherence } from "@/components/dashboard/WeeklyAdherence";
 import type { Activity, DayType, ScheduleOverride, WeeklyScheduleRow } from "@/types";
 
 export default async function DashboardPage() {
-  const [weeklyStats, weeklyMuscleCoverage, bodyWeightData, streak, checklistData, units, activeDays, displayName, adherence] = await Promise.all([
+  const [weeklyStats, weeklyMuscleCoverageSummary, bodyWeightData, streak, checklistData, units, activeDays, displayName, adherence] = await Promise.all([
     getWeeklyStats(),
-    getWeeklyMuscleCoverage(),
+    getWeeklyMuscleCoverageSummary(),
     getBodyWeightHistory(30),
     getActivityStreak(),
     getWeekChecklistData(),
@@ -67,7 +67,7 @@ export default async function DashboardPage() {
           <WeeklyStatsSummary {...weeklyStats} units={units} />
         </div>
         <div className="hidden lg:block">
-          <WeeklyMuscleCoverage coverage={weeklyMuscleCoverage} />
+          <WeeklyMuscleCoverage coverage={weeklyMuscleCoverageSummary.coverage} details={weeklyMuscleCoverageSummary.details} />
         </div>
       </div>
 
@@ -86,7 +86,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="lg:hidden">
-        <WeeklyMuscleCoverage coverage={weeklyMuscleCoverage} />
+        <WeeklyMuscleCoverage coverage={weeklyMuscleCoverageSummary.coverage} details={weeklyMuscleCoverageSummary.details} />
       </div>
 
       <BodyWeightSparkline data={bodyWeightData} units={units} />

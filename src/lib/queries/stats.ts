@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { computeE1RM } from "@/lib/e1rm";
 import { computeATLCTLTSB, normalizeStrengthTL, type DailyLoad } from "@/lib/training-load";
+import type { MuscleGroup, MuscleHeatmapDetails } from "@/types";
 
 export type TimeRange = "week" | "month" | "year" | "all";
 
@@ -20,6 +21,22 @@ function getStartDate(range: TimeRange): string | null {
   const d = new Date(now);
   d.setFullYear(d.getFullYear() - 1);
   return d.toISOString();
+}
+
+function normalizeRelation<T>(raw: unknown): T | null {
+  if (!raw) return null;
+  return (Array.isArray(raw) ? raw[0] : raw) as T;
+}
+
+function setLabel(count: number): string {
+  return `${count} set${count === 1 ? "" : "s"}`;
+}
+
+function workoutDateLabel(startTime: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(startTime));
 }
 
 export async function getVolumeOverTime(range: TimeRange) {
@@ -139,7 +156,7 @@ export async function getWorkoutSummary(range: TimeRange) {
     (() => {
       let q = supabase
         .from("session_sets")
-        .select("reps, weight, exercise_id, exercises!inner(name), activities!inner(start_time, type)")
+        .select("reps, weight, exercise_id, exercises!inner(name, primary_muscles), activities!inner(start_time, type)")
         .eq("activities.type", "workout");
       if (since) q = q.gte("activities.start_time", since);
       return q;
@@ -150,17 +167,36 @@ export async function getWorkoutSummary(range: TimeRange) {
   const sets = setsRes.data ?? [];
 
   const exerciseVolume = new Map<string, { name: string; volume: number; sets: number }>();
+  const coverage: Partial<Record<MuscleGroup, number>> = {};
+  const detailBuckets: Partial<Record<MuscleGroup, Map<string, { label: string; count: number; sortTime: number }>>> = {};
   let totalSets = 0;
   let totalVolume = 0;
 
   for (const s of sets) {
-    const exRaw = s.exercises as unknown;
-    const ex = (Array.isArray(exRaw) ? exRaw[0] : exRaw) as { name: string };
+    const ex = normalizeRelation<{ name: string; primary_muscles: MuscleGroup[] }>(s.exercises);
+    const activity = normalizeRelation<{ start_time: string }>(s.activities);
+    if (!ex) continue;
+
     const vol = s.reps * s.weight;
     const existing = exerciseVolume.get(s.exercise_id) ?? { name: ex.name, volume: 0, sets: 0 };
     exerciseVolume.set(s.exercise_id, { name: ex.name, volume: existing.volume + vol, sets: existing.sets + 1 });
     totalSets++;
     totalVolume += vol;
+
+    const dateLabel = activity?.start_time ? workoutDateLabel(activity.start_time) : "Workout";
+    const label = `${dateLabel} - ${ex.name}`;
+    const key = `${activity?.start_time ?? "unknown"}:${s.exercise_id}`;
+    const sortTime = activity?.start_time ? new Date(activity.start_time).getTime() : 0;
+
+    for (const muscle of ex.primary_muscles ?? []) {
+      coverage[muscle] = (coverage[muscle] ?? 0) + 1;
+
+      const bucket = detailBuckets[muscle] ?? new Map<string, { label: string; count: number; sortTime: number }>();
+      const item = bucket.get(key) ?? { label, count: 0, sortTime };
+      item.count += 1;
+      bucket.set(key, item);
+      detailBuckets[muscle] = bucket;
+    }
   }
 
   const topExercises = Array.from(exerciseVolume.values())
@@ -168,11 +204,24 @@ export async function getWorkoutSummary(range: TimeRange) {
     .slice(0, 5)
     .map((e) => ({ name: e.name, volume: Math.round(e.volume), sets: e.sets }));
 
+  const muscleDetails = Object.fromEntries(
+    Object.entries(detailBuckets).map(([muscle, bucket]) => [
+      muscle,
+      {
+        items: Array.from(bucket.values())
+          .sort((a, b) => b.sortTime - a.sortTime || b.count - a.count || a.label.localeCompare(b.label))
+          .map((item) => `${item.label} (${setLabel(item.count)})`),
+      },
+    ])
+  ) as MuscleHeatmapDetails;
+
   return {
     sessionCount: sessionRes.count ?? 0,
     totalSets,
     totalVolume: Math.round(totalVolume),
     topExercises,
+    muscleCoverage: coverage,
+    muscleDetails,
   };
 }
 

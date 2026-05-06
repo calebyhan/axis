@@ -8,7 +8,7 @@ import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
 import { formatWeight, formatDistance, formatPace, weightUnit, distanceUnit } from "@/lib/units";
 import { RunStreams } from "@/components/activity/RunStreams";
 import { SplitsTable } from "@/components/activity/SplitsTable";
-import type { MuscleGroup, BestEffort } from "@/types";
+import type { MuscleGroup, MuscleHeatmapDetails, BestEffort } from "@/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -74,23 +74,47 @@ export default async function ActivityDetailPage({
 
   // ── Workout: muscle coverage + exercise groups ──────────────────────────
   type ExerciseJoin = { name: string; primary_muscles: MuscleGroup[] };
+  type SetRow = { exercise_id: string; set_number: number; reps: number; weight: number; rpe: number; exercise?: unknown };
   function normalizeExercise(raw: unknown): ExerciseJoin | null {
     if (!raw) return null;
     return (Array.isArray(raw) ? raw[0] : raw) as ExerciseJoin ?? null;
   }
+  function setLabel(count: number): string {
+    return `${count} set${count === 1 ? "" : "s"}`;
+  }
 
   const coverage: Partial<Record<MuscleGroup, number>> = {};
-  for (const s of sets) {
+  const detailBuckets: Partial<Record<MuscleGroup, Map<string, { label: string; count: number }>>> = {};
+  const workoutSets = sets as SetRow[];
+
+  for (const s of workoutSets) {
     const ex = normalizeExercise(s.exercise);
     if (!ex) continue;
+
     for (const m of ex.primary_muscles) {
       coverage[m] = (coverage[m] ?? 0) + 1;
+
+      const bucket = detailBuckets[m] ?? new Map<string, { label: string; count: number }>();
+      const item = bucket.get(s.exercise_id) ?? { label: ex.name, count: 0 };
+      item.count += 1;
+      bucket.set(s.exercise_id, item);
+      detailBuckets[m] = bucket;
     }
   }
 
-  type SetRow = { exercise_id: string; set_number: number; reps: number; weight: number; rpe: number; exercise?: unknown };
+  const muscleDetails = Object.fromEntries(
+    Object.entries(detailBuckets).map(([muscle, bucket]) => [
+      muscle,
+      {
+        items: Array.from(bucket.values())
+          .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+          .map((item) => `${item.label} (${setLabel(item.count)})`),
+      },
+    ])
+  ) as MuscleHeatmapDetails;
+
   const exerciseGroups = new Map<string, { name: string; sets: SetRow[] }>();
-  for (const s of sets as SetRow[]) {
+  for (const s of workoutSets) {
     const exId = s.exercise_id;
     const exName = normalizeExercise(s.exercise)?.name ?? "Unknown";
     if (!exerciseGroups.has(exId)) exerciseGroups.set(exId, { name: exName, sets: [] });
@@ -229,8 +253,8 @@ export default async function ActivityDetailPage({
           <div>
             <h2 className="text-sm font-medium text-muted mb-3 uppercase tracking-wide">Muscle Coverage</h2>
             <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
-              <MuscleHeatmap coverage={coverage} size="full" />
-              <MuscleHeatmap coverage={coverage} size="full" showBack />
+              <MuscleHeatmap coverage={coverage} details={muscleDetails} tooltipContext="in this workout" size="full" />
+              <MuscleHeatmap coverage={coverage} details={muscleDetails} tooltipContext="in this workout" size="full" showBack />
             </div>
           </div>
 
