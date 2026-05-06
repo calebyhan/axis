@@ -1,18 +1,9 @@
 "use client";
 
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { CHART_LINE_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
 import { weightUnit, formatWeight } from "@/lib/units";
 import type { Units } from "@/types";
-
-const CHART_STYLE = {
-  contentStyle: {
-    background: "#141414",
-    border: "1px solid #1F1F1F",
-    borderRadius: 8,
-    fontSize: 12,
-  },
-  labelStyle: { color: "#666" },
-};
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -93,7 +84,7 @@ export default function BodyTab({
                   axisLine={false}
                   domain={["auto", "auto"]}
                 />
-                <Tooltip {...CHART_STYLE} />
+                <Tooltip {...CHART_LINE_TOOLTIP_PROPS} />
                 <Line
                   type="monotone"
                   dataKey="body_weight"

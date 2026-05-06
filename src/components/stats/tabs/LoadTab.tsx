@@ -13,18 +13,9 @@ import {
   ReferenceLine,
   Legend,
 } from "recharts";
+import { CHART_LINE_TOOLTIP_PROPS, CHART_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
 import type { TrainingLoadPoint } from "@/lib/training-load";
 import type { TimeRange } from "@/lib/queries/stats";
-
-const CHART_STYLE = {
-  contentStyle: {
-    background: "#141414",
-    border: "1px solid #1F1F1F",
-    borderRadius: 8,
-    fontSize: 12,
-  },
-  labelStyle: { color: "#666" },
-};
 
 function StatCard({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
   return (
@@ -83,7 +74,7 @@ export default function LoadTab({ trainingLoad, latestLoad, tsbInfo, timeRange }
                   <XAxis dataKey="date" tick={{ fill: "#666", fontSize: 10 }} tickLine={false} />
                   <YAxis tick={{ fill: "#666", fontSize: 10 }} tickLine={false} axisLine={false} />
                   <Tooltip
-                    {...CHART_STYLE}
+                    {...CHART_LINE_TOOLTIP_PROPS}
                     formatter={(v, name) => [
                       v,
                       name === "ctl" ? "Fitness (CTL)" : name === "atl" ? "Fatigue (ATL)" : name,
@@ -114,7 +105,7 @@ export default function LoadTab({ trainingLoad, latestLoad, tsbInfo, timeRange }
                   <ReferenceLine y={0} stroke="#444" strokeDasharray="4 4" />
                   <ReferenceLine y={5} stroke="#22c55e" strokeDasharray="3 6" strokeOpacity={0.4} />
                   <ReferenceLine y={-10} stroke="#f97316" strokeDasharray="3 6" strokeOpacity={0.4} />
-                  <Tooltip {...CHART_STYLE} formatter={(v) => [v, "Form (TSB)"]} />
+                  <Tooltip {...CHART_LINE_TOOLTIP_PROPS} formatter={(v) => [v, "Form (TSB)"]} />
                   <Line type="monotone" dataKey="tsb" stroke="#a855f7" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -135,7 +126,7 @@ export default function LoadTab({ trainingLoad, latestLoad, tsbInfo, timeRange }
                   <CartesianGrid strokeDasharray="3 3" stroke="#1F1F1F" />
                   <XAxis dataKey="date" tick={{ fill: "#666", fontSize: 10 }} tickLine={false} />
                   <YAxis tick={{ fill: "#666", fontSize: 10 }} tickLine={false} axisLine={false} />
-                  <Tooltip {...CHART_STYLE} formatter={(v) => [v, "Daily TL"]} />
+                  <Tooltip {...CHART_TOOLTIP_PROPS} formatter={(v) => [v, "Daily TL"]} />
                   <Bar dataKey="dailyTL" fill="#6366f1" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

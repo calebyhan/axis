@@ -9,18 +9,9 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import { CHART_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
 import { weightUnit, formatWeight } from "@/lib/units";
 import type { Units } from "@/types";
-
-const CHART_STYLE = {
-  contentStyle: {
-    background: "#141414",
-    border: "1px solid #1F1F1F",
-    borderRadius: 8,
-    fontSize: 12,
-  },
-  labelStyle: { color: "#666" },
-};
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -74,7 +65,7 @@ export default function WorkoutTab({ workoutSummary, volumeChartData, units }: P
                   tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
                 />
                 <Tooltip
-                  {...CHART_STYLE}
+                  {...CHART_TOOLTIP_PROPS}
                   formatter={(v) => [`${v} ${weightUnit(units)}`, "Volume"]}
                 />
                 <Bar dataKey="volume" fill="var(--accent, #3B82F6)" radius={[3, 3, 0, 0]} />

@@ -10,7 +10,6 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
         <Sidebar />
         {/* Desktop: offset for sidebar. Mobile: offset for bottom nav */}
         <main className="relative min-h-screen overflow-x-hidden pb-6 md:ml-64 md:pb-0">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.1),transparent_60%)] opacity-80" />
           <TabTransition>{children}</TabTransition>
         </main>
         <BottomTabBar />

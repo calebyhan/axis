@@ -143,28 +143,28 @@ async function ensurePlannedSlotSnapshots(range: TimeRange): Promise<{
   if (existingError) console.error("[query] planned slot snapshots failed", existingError.message);
 
   const existingSnapshots = (existing ?? []) as PlannedSlotSnapshot[];
-  const existingWeeks = new Set(existingSnapshots.map((row) => row.week_start));
   const currentWeekStart = localDateStr(startOfWeek(now));
-  const missingWeeks = weekStarts.filter((weekStart) => {
+  const existingWeeks = new Set(existingSnapshots.map((row) => row.week_start));
+  const weeksToBackfill = weekStarts.filter((weekStart) => {
     const weekStartStr = localDateStr(weekStart);
-    return weekStartStr >= currentWeekStart && !existingWeeks.has(weekStartStr);
+    return weekStartStr >= currentWeekStart || !existingWeeks.has(weekStartStr);
   });
 
-  if (missingWeeks.length > 0 && schedule.length > 0) {
-    const firstMissing = missingWeeks[0];
-    const lastMissing = new Date(missingWeeks[missingWeeks.length - 1]);
-    lastMissing.setDate(lastMissing.getDate() + 6);
+  if (weeksToBackfill.length > 0 && schedule.length > 0) {
+    const firstBackfill = weeksToBackfill[0];
+    const lastBackfill = new Date(weeksToBackfill[weeksToBackfill.length - 1]);
+    lastBackfill.setDate(lastBackfill.getDate() + 6);
 
     const { data: overrides, error: overridesError } = await supabase
       .from("schedule_overrides")
       .select("*")
-      .gte("date", localDateStr(firstMissing))
-      .lte("date", localDateStr(lastMissing));
+      .gte("date", localDateStr(firstBackfill))
+      .lte("date", localDateStr(lastBackfill));
 
     if (overridesError) console.error("[query] planned slot override fetch failed", overridesError.message);
 
     const allOverrides = (overrides ?? []) as ScheduleOverride[];
-    const inserts = missingWeeks.flatMap((weekStart) => {
+    const inserts = weeksToBackfill.flatMap((weekStart) => {
       const weekStartStr = localDateStr(weekStart);
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);

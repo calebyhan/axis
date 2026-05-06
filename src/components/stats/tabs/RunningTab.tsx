@@ -11,18 +11,9 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import { CHART_LINE_TOOLTIP_PROPS, CHART_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
 import { distanceUnit, formatDistance, formatPace } from "@/lib/units";
 import type { Units } from "@/types";
-
-const CHART_STYLE = {
-  contentStyle: {
-    background: "#141414",
-    border: "1px solid #1F1F1F",
-    borderRadius: 8,
-    fontSize: 12,
-  },
-  labelStyle: { color: "#666" },
-};
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -81,7 +72,7 @@ export default function RunningTab({
                 <XAxis dataKey="date" tick={{ fill: "#666", fontSize: 10 }} tickLine={false} />
                 <YAxis tick={{ fill: "#666", fontSize: 10 }} tickLine={false} axisLine={false} />
                 <Tooltip
-                  {...CHART_STYLE}
+                  {...CHART_TOOLTIP_PROPS}
                   formatter={(v) => [`${v} ${distanceUnit(units)}`, "Distance"]}
                 />
                 <Bar dataKey="dist" fill="var(--accent, #3B82F6)" radius={[3, 3, 0, 0]} />
@@ -112,7 +103,7 @@ export default function RunningTab({
                   tickFormatter={(v) => formatPace(v, units)}
                 />
                 <Tooltip
-                  {...CHART_STYLE}
+                  {...CHART_LINE_TOOLTIP_PROPS}
                   formatter={(v) => [formatPace(v as number, units), "Pace"]}
                 />
                 <Line
@@ -142,7 +133,7 @@ export default function RunningTab({
                   axisLine={false}
                   domain={[0, 200]}
                 />
-                <Tooltip {...CHART_STYLE} formatter={(v) => [v, "Suffer Score"]} />
+                <Tooltip {...CHART_TOOLTIP_PROPS} formatter={(v) => [v, "Suffer Score"]} />
                 <Bar dataKey="suffer" fill="#f97316" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -164,7 +155,7 @@ export default function RunningTab({
                   axisLine={false}
                   domain={["auto", "auto"]}
                 />
-                <Tooltip {...CHART_STYLE} formatter={(v) => [`${v} bpm`, "Avg HR"]} />
+                <Tooltip {...CHART_LINE_TOOLTIP_PROPS} formatter={(v) => [`${v} bpm`, "Avg HR"]} />
                 <Line
                   type="monotone"
                   dataKey="hr"
