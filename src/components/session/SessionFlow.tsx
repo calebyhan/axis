@@ -2,9 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { saveWorkoutSession } from "@/app/(tabs)/log/actions";
 import { clearDraft, saveDraft } from "@/lib/idb/session-draft";
-import type { DayType, Exercise, MuscleGroup, SessionSet, SessionState, Units } from "@/types";
+import { getTodayPlannedSlots, localDateStr, toISODayOfWeek } from "@/lib/planner";
+import type { DayType, Exercise, MuscleGroup, ScheduleOverride, SessionSet, SessionState, Units, WeeklyScheduleRow } from "@/types";
 import { useSession } from "@/context/SessionContext";
+import type { DraftSaveStatus } from "@/context/SessionContext";
 import { ExerciseSearch } from "./ExerciseSearch";
 import { SetLogger } from "./SetLogger";
 import { RecentStatsPanel } from "./RecentStatsPanel";
@@ -23,12 +26,40 @@ interface NavState { step: Step; activeExerciseId: string | null }
 interface SaveState { saving: boolean; error: string | null; finalSession: SessionState | null }
 interface UserSetup { units: Units; todayMuscles: MuscleGroup[] | undefined; todayDayType: DayType | null | undefined }
 
-function SessionHeader({ session, saving, onCancel, onEnd }: {
-  session: ReturnType<typeof useSession>["session"];
+function firstRelation<T>(value: T | T[] | null | undefined): T | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value ?? undefined;
+}
+
+function normalizeScheduleRows(rows: unknown): WeeklyScheduleRow[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => {
+    const raw = row as WeeklyScheduleRow & {
+      day_type?: DayType | DayType[] | null;
+      cardio_day_type?: DayType | DayType[] | null;
+    };
+    return {
+      ...raw,
+      day_type: firstRelation(raw.day_type),
+      cardio_day_type: firstRelation(raw.cardio_day_type),
+    };
+  });
+}
+
+function SessionHeader({ session, saving, draftSaveStatus, onCancel, onEnd }: {
+  session: SessionState | null;
   saving: boolean;
+  draftSaveStatus: DraftSaveStatus;
   onCancel: () => void;
   onEnd: () => void;
 }) {
+  const statusText = {
+    idle: "",
+    saving: "Saving draft...",
+    saved: "Draft saved",
+    error: "Draft save failed",
+  }[draftSaveStatus];
+
   return (
     <div className="flex items-center gap-3 px-4 pb-4 border-b border-border" style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))" }}>
       <button type="button" onClick={onCancel} aria-label="Close workout session" className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors">
@@ -36,13 +67,47 @@ function SessionHeader({ session, saving, onCancel, onEnd }: {
       </button>
       <div className="flex-1 min-w-0">
         <h2 id="workout-session-title" className="font-semibold">Workout Session</h2>
-        {session && <p className="text-xs text-muted mt-0.5">{session.exercises.length} exercise{session.exercises.length !== 1 ? "s" : ""}</p>}
+        {session && (
+          <p className="text-xs text-muted mt-0.5">
+            {session.exercises.length} exercise{session.exercises.length !== 1 ? "s" : ""}
+            {statusText ? ` · ${statusText}` : ""}
+          </p>
+        )}
       </div>
       {session && session.exercises.length > 0 && (
         <button type="button" onClick={onEnd} disabled={saving} className="shrink-0 px-4 py-1.5 rounded-full bg-accent text-white text-sm font-medium disabled:opacity-50 transition-opacity">
           {saving ? "Saving..." : "End"}
         </button>
       )}
+    </div>
+  );
+}
+
+function CloseSessionPrompt({ saving, error, onKeepDraft, onDiscard, onReturn }: {
+  saving: boolean;
+  error: string | null;
+  onKeepDraft: () => void;
+  onDiscard: () => void;
+  onReturn: () => void;
+}) {
+  return (
+    <div className="absolute inset-0 z-10 flex items-end bg-black/60 md:items-center md:justify-center">
+      <div className="w-full border-t border-border bg-[#0A0A0A] p-4 md:max-w-sm md:rounded-2xl md:border">
+        <h3 className="font-semibold">Close workout?</h3>
+        <p className="mt-2 text-sm text-muted">You have logged sets in this session.</p>
+        {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+        <div className="mt-4 flex flex-col gap-2">
+          <button type="button" onClick={onKeepDraft} disabled={saving} className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium disabled:opacity-50">
+            {saving ? "Saving..." : "Keep draft"}
+          </button>
+          <button type="button" onClick={onDiscard} disabled={saving} className="w-full rounded-lg border border-red-400/30 px-4 py-2 text-sm text-red-300 disabled:opacity-50">
+            Discard
+          </button>
+          <button type="button" onClick={onReturn} disabled={saving} className="w-full rounded-lg border border-border px-4 py-2 text-sm text-muted disabled:opacity-50">
+            Return to workout
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -80,13 +145,14 @@ function LoggedExercisesList({ session, onSelect }: {
 }
 
 export function SessionFlow({ onClose, onComplete }: Props) {
-  const { session, isActive, hasDraft, autosaveFailed, startSession, resumeDraft, discardDraft, addExercise, addSet, endSession, cancelSession } = useSession();
+  const { session, isActive, hasDraft, autosaveFailed, draftSaveStatus, startSession, resumeDraft, discardDraft, addExercise, addSet, endSession, pauseSession, cancelSession } = useSession();
 
   const [loadedData, setLoadedData] = useState<LoadedData>({ exercises: [], allDayTypes: [] });
   const [uiState, setUiState] = useState<NavState & { showRecentStats: boolean }>({ step: "exercise_search", activeExerciseId: null, showRecentStats: false });
   const [saveState, setSaveState] = useState<SaveState>({ saving: false, error: null, finalSession: null });
   const [userSetup, setUserSetup] = useState<UserSetup>({ units: "metric", todayMuscles: undefined, todayDayType: undefined });
   const [suggestedSets, setSuggestedSets] = useState<Record<string, SessionSet | undefined>>({});
+  const [closePrompt, setClosePrompt] = useState<{ open: boolean; saving: boolean; error: string | null }>({ open: false, saving: false, error: null });
 
   const { exercises, allDayTypes } = loadedData;
   const { step, activeExerciseId, showRecentStats } = uiState;
@@ -95,6 +161,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
 
   const activeExercise = session?.exercises.find((e) => e.exerciseId === activeExerciseId) ?? null;
   const activeSuggestedSet = activeExerciseId ? suggestedSets[activeExerciseId] ?? null : null;
+  const hasLoggedSets = (session?.exercises.some((ex) => ex.sets.length > 0) ?? false);
 
   const coverage = useMemo((): Partial<Record<MuscleGroup, number>> => {
     if (!session) return {};
@@ -107,7 +174,9 @@ export function SessionFlow({ onClose, onComplete }: Props) {
 
   useEffect(() => {
     const supabase = createClient();
-    const isoDay = (new Date().getDay() + 6) % 7;
+    const today = new Date();
+    const isoDay = toISODayOfWeek(today);
+    const todayStr = localDateStr(today);
 
     Promise.all([
       supabase.from("exercises").select("*"),
@@ -116,14 +185,29 @@ export function SessionFlow({ onClose, onComplete }: Props) {
         if (!user) return null;
         return supabase.from("profiles").select("units").eq("id", user.id).single();
       }),
-      supabase.from("weekly_schedule")
-        .select("day_type:day_types!weekly_schedule_day_type_id_fkey(id, name, category, muscle_focus)")
-        .eq("day_of_week", isoDay).eq("active", true).limit(1).single(),
-    ]).then(([exercisesRes, dayTypesRes, profileRes, scheduleRes]) => {
-      const dt = (Array.isArray(scheduleRes.data?.day_type) ? scheduleRes.data.day_type[0] : scheduleRes.data?.day_type) as DayType | null | undefined;
+      supabase
+        .from("weekly_schedule")
+        .select("id, day_of_week, day_type_id, cardio_day_type_id, active, day_type:day_types!weekly_schedule_day_type_id_fkey(id, name, category, muscle_focus), cardio_day_type:day_types!weekly_schedule_cardio_day_type_id_fkey(id, name, category, muscle_focus)")
+        .eq("day_of_week", isoDay)
+        .eq("active", true),
+      supabase
+        .from("schedule_overrides")
+        .select("*")
+        .eq("date", todayStr),
+    ]).then(([exercisesRes, dayTypesRes, profileRes, scheduleRes, overridesRes]) => {
+      const dayTypes = (dayTypesRes.data ?? []) as DayType[];
+      const dayTypeMap = new Map(dayTypes.map((dayType) => [dayType.id, dayType]));
+      const todaySlots = getTodayPlannedSlots(
+        normalizeScheduleRows(scheduleRes.data),
+        (overridesRes.data ?? []) as unknown as ScheduleOverride[],
+        dayTypeMap,
+        today
+      );
+      const workoutSlot = todaySlots.find((slot) => slot.kind === "workout");
+      const dt = workoutSlot?.effective?.id === "__workout_rest__" ? null : workoutSlot?.effective;
       setLoadedData({
         exercises: (exercisesRes.data ?? []) as Exercise[],
-        allDayTypes: (dayTypesRes.data ?? []) as DayType[],
+        allDayTypes: dayTypes,
       });
       setUserSetup({
         units: ((profileRes?.data?.units ?? "metric") as Units),
@@ -181,44 +265,56 @@ export function SessionFlow({ onClose, onComplete }: Props) {
     if (!session || saving) return;
     setSaveState((prev) => ({ ...prev, saving: true, error: null }));
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setSaveState((prev) => ({ ...prev, saving: false, error: "Not authenticated. Please reload and try again." }));
-      return;
-    }
-
-    const captured = endSession();
+    const captured = session;
     const key = captured.startTime.toISOString();
     const workedMuscles = captured.exercises.flatMap((ex) => ex.primaryMuscles);
     const inferredDayType = inferDayType(workedMuscles, captured.dayType ?? null);
 
-    const { data: activityData, error: activityError } = await supabase
-      .from("activities")
-      .insert({ user_id: user.id, type: "workout", source: "manual", start_time: captured.startTime.toISOString(), duration: Math.floor((Date.now() - captured.startTime.getTime()) / 1000), day_type_id: inferredDayType?.id ?? null })
-      .select("id").single();
+    const sets = captured.exercises.flatMap((ex) =>
+      ex.sets.map((s, setIdx) => ({
+        exercise_id: ex.exerciseId,
+        set_number: setIdx + 1,
+        reps: s.reps,
+        weight: s.weight,
+        rpe: s.rpe,
+      }))
+    );
 
-    if (activityError || !activityData) {
-      console.error("[SessionFlow] Failed to save activity", activityError?.message);
+    const result = await saveWorkoutSession({
+      start_time: captured.startTime.toISOString(),
+      duration: Math.floor((Date.now() - captured.startTime.getTime()) / 1000),
+      day_type_id: inferredDayType?.id ?? null,
+      sets,
+    });
+
+    if (result.error) {
       saveDraft(captured).catch(console.error);
-      setSaveState((prev) => ({ ...prev, saving: false, error: "Failed to save session. Your draft is preserved - reopen to retry." }));
+      setSaveState((prev) => ({ ...prev, saving: false, error: result.error }));
       return;
     }
 
-    const sets = captured.exercises.flatMap((ex) =>
-      ex.sets.map((s, setIdx) => ({ activity_id: activityData.id, exercise_id: ex.exerciseId, set_number: setIdx + 1, reps: s.reps, weight: s.weight, rpe: s.rpe }))
-    );
-
-    if (sets.length > 0) {
-      const { error: setsError } = await supabase.from("session_sets").insert(sets);
-      if (setsError) {
-        console.error("[SessionFlow] Failed to insert sets", { activityId: activityData.id, error: setsError.message });
-        setSaveState((prev) => ({ ...prev, error: "Session saved but some sets may be missing. Please check your history." }));
-      }
-    }
-
+    endSession();
     await clearDraft(key).catch(console.error);
     setSaveState((prev) => ({ ...prev, saving: false, finalSession: captured }));
+  }
+
+  async function handleKeepDraftAndClose() {
+    setClosePrompt({ open: true, saving: true, error: null });
+    const saved = await pauseSession();
+    if (!saved) {
+      setClosePrompt({ open: true, saving: false, error: "Failed to save this draft locally. Return to the workout and try again." });
+      return;
+    }
+    onClose();
+  }
+
+  function handleCancelRequest() {
+    if (hasLoggedSets) {
+      setClosePrompt({ open: true, saving: false, error: null });
+      return;
+    }
+    cancelSession();
+    onClose();
   }
 
   if (finalSession) {
@@ -242,7 +338,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background md:bg-black/60 md:items-center md:justify-center md:p-6" role="dialog" aria-modal="true" aria-labelledby="workout-session-title">
     <div className="flex flex-col w-full h-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-2xl md:rounded-3xl md:bg-[#0A0A0A] md:border md:border-[#1F1F1F] md:overflow-hidden">
-      <SessionHeader session={session} saving={saving} onCancel={() => { cancelSession(); onClose(); }} onEnd={handleEndSession} />
+      <SessionHeader session={session} saving={saving} draftSaveStatus={draftSaveStatus} onCancel={handleCancelRequest} onEnd={handleEndSession} />
 
       {autosaveFailed && <div className="px-4 py-2 bg-yellow-900/30 border-b border-yellow-700/40 text-xs text-yellow-400">Auto-save failed - tap End to save your workout manually.</div>}
       {saveError && <div className="px-4 py-2 bg-red-900/30 border-b border-red-700/40 text-xs text-red-400">{saveError}</div>}
@@ -299,6 +395,15 @@ export function SessionFlow({ onClose, onComplete }: Props) {
           units={units}
           onAcceptSuggestion={handleAcceptSuggestion}
           onDismiss={() => setUiState((prev) => ({ ...prev, showRecentStats: false }))}
+        />
+      )}
+      {closePrompt.open && (
+        <CloseSessionPrompt
+          saving={closePrompt.saving}
+          error={closePrompt.error}
+          onKeepDraft={handleKeepDraftAndClose}
+          onDiscard={() => { cancelSession(); onClose(); }}
+          onReturn={() => setClosePrompt({ open: false, saving: false, error: null })}
         />
       )}
     </div>

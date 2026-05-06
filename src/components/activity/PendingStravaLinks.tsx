@@ -44,18 +44,31 @@ function formatTime(iso: string): string {
 export function PendingStravaLinks({ links: initialLinks }: Props) {
   const [links, setLinks] = useState(initialLinks);
   const [resolving, setResolving] = useState<string | null>(null);
+  const [errorById, setErrorById] = useState<Record<string, string>>({});
 
   if (links.length === 0) return null;
 
   async function resolve(pendingLinkId: string, activityId: string) {
     setResolving(pendingLinkId);
+    setErrorById((prev) => ({ ...prev, [pendingLinkId]: "" }));
     try {
-      await fetch("/api/strava/link-workout", {
+      const res = await fetch("/api/strava/link-workout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pendingLinkId, activityId }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null) as { error?: string } | null;
+        throw new Error(body?.error ?? "Link failed");
+      }
       setLinks((prev) => prev.filter((l) => l.id !== pendingLinkId));
+      setErrorById((prev) => {
+        const next = { ...prev };
+        delete next[pendingLinkId];
+        return next;
+      });
+    } catch {
+      setErrorById((prev) => ({ ...prev, [pendingLinkId]: "Could not link this workout. Please try again." }));
     } finally {
       setResolving(null);
     }
@@ -63,13 +76,25 @@ export function PendingStravaLinks({ links: initialLinks }: Props) {
 
   async function dismiss(pendingLinkId: string) {
     setResolving(pendingLinkId);
+    setErrorById((prev) => ({ ...prev, [pendingLinkId]: "" }));
     try {
-      await fetch("/api/strava/link-workout/dismiss", {
+      const res = await fetch("/api/strava/link-workout/dismiss", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pendingLinkId }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null) as { error?: string } | null;
+        throw new Error(body?.error ?? "Dismiss failed");
+      }
       setLinks((prev) => prev.filter((l) => l.id !== pendingLinkId));
+      setErrorById((prev) => {
+        const next = { ...prev };
+        delete next[pendingLinkId];
+        return next;
+      });
+    } catch {
+      setErrorById((prev) => ({ ...prev, [pendingLinkId]: "Could not dismiss this link. Please try again." }));
     } finally {
       setResolving(null);
     }
@@ -107,6 +132,10 @@ export function PendingStravaLinks({ links: initialLinks }: Props) {
               </button>
             ))}
           </div>
+
+          {errorById[link.id] && (
+            <p className="text-xs text-red-400">{errorById[link.id]}</p>
+          )}
 
           <button
             disabled={resolving === link.id}

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ChecklistDay, ChecklistSlot } from "@/lib/checklist";
 import type { DayType } from "@/types";
 import { upsertOverride, deleteOverride } from "@/app/(tabs)/dashboard/actions";
@@ -106,12 +108,13 @@ interface ModalProps {
   dayName: string;
   dayTypes: DayType[];
   isPending: boolean;
+  error: string | null;
   onClose: () => void;
   onSelect: (dayTypeId: string | null) => void;
   onReset: () => void;
 }
 
-function OverrideModal({ slot, dayName, dayTypes, isPending, onClose, onSelect, onReset }: ModalProps) {
+function OverrideModal({ slot, dayName, dayTypes, isPending, error, onClose, onSelect, onReset }: ModalProps) {
   const relevantTypes = dayTypes.filter(
     (dt) => dt.category === slot.planned.category && dt.name !== "Rest"
   );
@@ -200,19 +203,28 @@ function OverrideModal({ slot, dayName, dayTypes, isPending, onClose, onSelect, 
             </button>
           </div>
         )}
+        {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
       </div>
     </div>
   );
 }
 
 export function WeekChecklist({ items, dayTypes }: Props) {
+  const router = useRouter();
   const [modalSlot, setModalSlot] = useState<{ slot: ChecklistSlot; dayName: string } | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   if (items.length === 0) {
     return (
-      <div className="card p-4">
-        <p className="text-sm text-muted">No schedule set. Add one in Settings.</p>
+      <div className="card p-4 flex flex-col gap-3">
+        <div>
+          <span className="text-[11px] uppercase tracking-[0.24em] text-white/45">Planned sessions</span>
+          <p className="mt-2 text-sm text-muted">No schedule set.</p>
+        </div>
+        <Link href="/settings" className="text-sm text-accent hover:opacity-80">
+          Add schedule
+        </Link>
       </div>
     );
   }
@@ -230,18 +242,31 @@ export function WeekChecklist({ items, dayTypes }: Props) {
     if (dayTypeId === slot.planned.id) {
       if (slot.isOverridden) {
         startTransition(async () => {
-          await deleteOverride(slot.date, slot.kind);
+          const result = await deleteOverride(slot.date, slot.kind);
+          if (result.error) {
+            setModalError("Could not reset this plan. Please try again.");
+            return;
+          }
+          setModalError(null);
           setModalSlot(null);
+          router.refresh();
         });
       } else {
+        setModalError(null);
         setModalSlot(null);
       }
       return;
     }
 
     startTransition(async () => {
-      await upsertOverride(slot.date, slot.kind, dayTypeId);
+      const result = await upsertOverride(slot.date, slot.kind, dayTypeId);
+      if (result.error) {
+        setModalError("Could not save this override. Please try again.");
+        return;
+      }
+      setModalError(null);
       setModalSlot(null);
+      router.refresh();
     });
   }
 
@@ -249,9 +274,20 @@ export function WeekChecklist({ items, dayTypes }: Props) {
     if (!modalSlot) return;
     const { slot } = modalSlot;
     startTransition(async () => {
-      await deleteOverride(slot.date, slot.kind);
+      const result = await deleteOverride(slot.date, slot.kind);
+      if (result.error) {
+        setModalError("Could not reset this plan. Please try again.");
+        return;
+      }
+      setModalError(null);
       setModalSlot(null);
+      router.refresh();
     });
+  }
+
+  function openModal(slot: ChecklistSlot, dayName: string) {
+    setModalError(null);
+    setModalSlot({ slot, dayName });
   }
 
   return (
@@ -273,14 +309,14 @@ export function WeekChecklist({ items, dayTypes }: Props) {
                   <Pill
                     slot={day.workout}
                     dayPassed={dayPassed}
-                    onClick={() => setModalSlot({ slot: day.workout!, dayName: DAY_NAMES[day.dayOfWeek] })}
+                    onClick={() => openModal(day.workout!, DAY_NAMES[day.dayOfWeek])}
                   />
                 )}
                 {day.cardio && (
                   <Pill
                     slot={day.cardio}
                     dayPassed={dayPassed}
-                    onClick={() => setModalSlot({ slot: day.cardio!, dayName: DAY_NAMES[day.dayOfWeek] })}
+                    onClick={() => openModal(day.cardio!, DAY_NAMES[day.dayOfWeek])}
                   />
                 )}
               </div>
@@ -295,6 +331,7 @@ export function WeekChecklist({ items, dayTypes }: Props) {
           dayName={modalSlot.dayName}
           dayTypes={dayTypes}
           isPending={isPending}
+          error={modalError}
           onClose={() => setModalSlot(null)}
           onSelect={handleSelect}
           onReset={handleReset}

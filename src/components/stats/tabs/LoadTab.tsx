@@ -14,6 +14,7 @@ import {
   Legend,
 } from "recharts";
 import type { TrainingLoadPoint } from "@/lib/training-load";
+import type { TimeRange } from "@/lib/queries/stats";
 
 const CHART_STYLE = {
   contentStyle: {
@@ -38,9 +39,17 @@ interface Props {
   trainingLoad: TrainingLoadPoint[];
   latestLoad: TrainingLoadPoint | null;
   tsbInfo: { label: string; color: string } | null;
+  timeRange: TimeRange;
 }
 
-export default function LoadTab({ trainingLoad, latestLoad, tsbInfo }: Props) {
+const RANGE_LABELS: Record<TimeRange, string> = {
+  week: "Last 7 days",
+  month: "Last 30 days",
+  year: "Last year",
+  all: "Last 2 years",
+};
+
+export default function LoadTab({ trainingLoad, latestLoad, tsbInfo, timeRange }: Props) {
   return (
     <div className="flex flex-col gap-5">
       {latestLoad && tsbInfo && (
@@ -58,14 +67,14 @@ export default function LoadTab({ trainingLoad, latestLoad, tsbInfo }: Props) {
 
       {trainingLoad.length === 0 ? (
         <div className="card p-4">
-          <p className="text-muted text-sm">No training data in the last 90 days.</p>
+          <p className="text-muted text-sm">No training data for this range.</p>
         </div>
       ) : (
         <>
           <div className="card p-4">
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-sm font-medium">Fitness & Fatigue</h3>
-              <span className="text-xs text-muted">Last 90 days</span>
+              <span className="text-xs text-muted">{RANGE_LABELS[timeRange]}</span>
             </div>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">

@@ -6,30 +6,39 @@ import { deleteActivity } from "@/app/(tabs)/activity/actions";
 export function DeleteActivityButton({ activityId }: { activityId: string }) {
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleDelete() {
     setPending(true);
-    await deleteActivity(activityId);
+    setError("");
+    const result = await deleteActivity(activityId);
+    if (result?.error) {
+      setError("Could not delete activity. Please try again.");
+      setPending(false);
+    }
   }
 
   if (confirming) {
     return (
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={() => setConfirming(false)}
-          className="text-xs text-white/45 hover:text-white transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={pending}
-          className="px-3 py-1.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 text-xs font-medium hover:bg-red-500/25 transition-colors disabled:opacity-50"
-        >
-          {pending ? "Deleting…" : "Delete"}
-        </button>
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setConfirming(false)}
+            className="text-xs text-white/45 hover:text-white transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={pending}
+            className="px-3 py-1.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 text-xs font-medium hover:bg-red-500/25 transition-colors disabled:opacity-50"
+          >
+            {pending ? "Deleting…" : "Delete"}
+          </button>
+        </div>
+        {error && <p className="text-[11px] text-red-400">{error}</p>}
       </div>
     );
   }

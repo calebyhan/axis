@@ -175,3 +175,16 @@ export interface ScheduleOverride {
   slot: "workout" | "cardio";
   day_type_id: string | null; // null = skip/rest override
 }
+
+export interface PlannedSlotSnapshot {
+  id: string;
+  user_id: string;
+  week_start: string;
+  date: string;
+  day_of_week: ISODayOfWeek;
+  slot: "workout" | "cardio";
+  planned_day_type_id: string | null;
+  effective_day_type_id: string | null;
+  is_overridden: boolean;
+  is_skipped: boolean;
+}

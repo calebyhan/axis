@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type Panel = null | "session" | "run" | "weight";
@@ -23,12 +24,14 @@ const SessionFlow = dynamic(
 );
 
 export default function LogPage() {
+  const router = useRouter();
   const [panel, setPanel] = useState<Panel>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
   function onSaved(msg: string) {
     setSaved(msg);
     setPanel(null);
+    router.refresh();
     setTimeout(() => setSaved(null), 3000);
   }
 

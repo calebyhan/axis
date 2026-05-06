@@ -11,18 +11,22 @@ import {
 import type { DayType, SessionExercise, SessionState, SessionSet } from "@/types";
 import { saveDraft, getDraft, clearDraft } from "@/lib/idb/session-draft";
 
+export type DraftSaveStatus = "idle" | "saving" | "saved" | "error";
+
 interface SessionContextValue {
   session: SessionState | null;
   isActive: boolean;
   hasDraft: boolean;
   draftKey: string | null;
   autosaveFailed: boolean;
+  draftSaveStatus: DraftSaveStatus;
   startSession: (dayType: DayType | null) => void;
   resumeDraft: () => void;
   discardDraft: () => void;
   addExercise: (exercise: Omit<SessionExercise, "sets">) => void;
   addSet: (exerciseId: string, set: SessionSet) => void;
   endSession: () => SessionState;
+  pauseSession: () => Promise<boolean>;
   cancelSession: () => void;
 }
 
@@ -34,8 +38,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [draftData, setDraftData] = useState<SessionState | null>(null);
   const [draftKey, setDraftKey] = useState<string | null>(null);
   const [autosaveFailed, setAutosaveFailed] = useState(false);
+  const [draftSaveStatus, setDraftSaveStatus] = useState<DraftSaveStatus>("idle");
   const autosaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autosaveFailCount = useRef(0);
+  const sessionRef = useRef<SessionState | null>(null);
 
   // Check for existing draft on mount
   useEffect(() => {
@@ -52,28 +58,48 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       });
   }, []);
 
-  // Autosave every 60 seconds
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  const persistDraft = useCallback(async (state: SessionState | null = sessionRef.current) => {
+    if (!state) return true;
+    setDraftSaveStatus("saving");
+    try {
+      await saveDraft(state);
+      setDraftKey(state.startTime.toISOString());
+      autosaveFailCount.current = 0;
+      setAutosaveFailed(false);
+      setDraftSaveStatus("saved");
+      return true;
+    } catch (err) {
+      console.error("[SessionContext] Autosave failed", String(err));
+      autosaveFailCount.current += 1;
+      if (autosaveFailCount.current >= 2) {
+        setAutosaveFailed(true);
+      }
+      setDraftSaveStatus("error");
+      return false;
+    }
+  }, []);
+
+  // Autosave shortly after edits and periodically while a session is open.
   useEffect(() => {
     if (!session) {
       if (autosaveRef.current) clearInterval(autosaveRef.current);
       return;
     }
+    const debounce = setTimeout(() => {
+      void persistDraft(session);
+    }, 750);
     autosaveRef.current = setInterval(() => {
-      saveDraft(session).then(() => {
-        autosaveFailCount.current = 0;
-        setAutosaveFailed(false);
-      }).catch((err) => {
-        console.error("[SessionContext] Autosave failed", String(err));
-        autosaveFailCount.current += 1;
-        if (autosaveFailCount.current >= 2) {
-          setAutosaveFailed(true);
-        }
-      });
-    }, 60_000);
+      void persistDraft();
+    }, 30_000);
     return () => {
+      clearTimeout(debounce);
       if (autosaveRef.current) clearInterval(autosaveRef.current);
     };
-  }, [session]);
+  }, [persistDraft, session]);
 
   const startSession = useCallback((dayType: DayType | null) => {
     const newSession: SessionState = {
@@ -87,6 +113,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setDraftKey(null);
     autosaveFailCount.current = 0;
     setAutosaveFailed(false);
+    setDraftSaveStatus("idle");
   }, []);
 
   const resumeDraft = useCallback(() => {
@@ -96,6 +123,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setDraftData(null);
       autosaveFailCount.current = 0;
       setAutosaveFailed(false);
+      setDraftSaveStatus("saved");
       // Keep draftKey so SessionFlow can clear it after successful save
     }
   }, [draftData]);
@@ -105,6 +133,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setHasDraft(false);
     setDraftData(null);
     setDraftKey(null);
+    setDraftSaveStatus("idle");
   }, [draftKey]);
 
   const addExercise = useCallback((exercise: Omit<SessionExercise, "sets">) => {
@@ -135,8 +164,20 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setAutosaveFailed(false);
     autosaveFailCount.current = 0;
+    setDraftSaveStatus("idle");
     return finalSession;
   }, [session]);
+
+  const pauseSession = useCallback(async () => {
+    const saved = await persistDraft();
+    if (!saved) return false;
+    setSession(null);
+    setHasDraft(true);
+    setDraftData(sessionRef.current);
+    setAutosaveFailed(false);
+    autosaveFailCount.current = 0;
+    return true;
+  }, [persistDraft]);
 
   const cancelSession = useCallback(() => {
     clearDraft(draftKey ?? undefined).catch(console.error);
@@ -144,6 +185,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setDraftKey(null);
     setAutosaveFailed(false);
     autosaveFailCount.current = 0;
+    setDraftSaveStatus("idle");
   }, [draftKey]);
 
   return (
@@ -154,12 +196,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         hasDraft,
         draftKey,
         autosaveFailed,
+        draftSaveStatus,
         startSession,
         resumeDraft,
         discardDraft,
         addExercise,
         addSet,
         endSession,
+        pauseSession,
         cancelSession,
       }}
     >

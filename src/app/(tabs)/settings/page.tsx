@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SettingsClient } from "@/components/settings/SettingsClient";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ strava_connected?: string; strava_error?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -34,6 +39,10 @@ export default async function SettingsPage() {
         schedule={schedule ?? []}
         dayTypes={dayTypes ?? []}
         stravaConnected={stravaConnected}
+        stravaStatus={{
+          connected: params.strava_connected === "1",
+          error: params.strava_error ?? null,
+        }}
       />
     </div>
   );

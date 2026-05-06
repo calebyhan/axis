@@ -6,6 +6,7 @@ import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/env";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const next = sanitizeNextPath(searchParams.get("next"));
 
   if (code) {
     const cookieStore = await cookies();
@@ -26,9 +27,17 @@ export async function GET(request: NextRequest) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}/dashboard`);
+      return NextResponse.redirect(`${origin}${next}`);
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
+  const loginUrl = new URL("/login", origin);
+  loginUrl.searchParams.set("error", "auth_callback_failed");
+  if (next !== "/dashboard") loginUrl.searchParams.set("next", next);
+  return NextResponse.redirect(loginUrl);
+}
+
+function sanitizeNextPath(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/dashboard";
+  return raw;
 }

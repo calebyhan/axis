@@ -3,19 +3,26 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const searchParams = useSearchParams();
   const supabase = createClient();
+  const next = sanitizeNextPath(searchParams.get("next"));
+  const callbackError = searchParams.get("error");
+  const visibleError = error || getCallbackErrorMessage(callbackError);
 
   async function handleGoogleLogin() {
     setLoading(true);
     setError("");
+    const callbackUrl = new URL("/auth/callback", location.origin);
+    if (next !== "/dashboard") callbackUrl.searchParams.set("next", next);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${location.origin}/auth/callback` },
+      options: { redirectTo: callbackUrl.toString() },
     });
     if (error) {
       setError(error.message);
@@ -33,8 +40,8 @@ export default function LoginPage() {
         </div>
 
         <div className="card p-6 flex flex-col gap-4">
-          {error && (
-            <p className="text-red-400 text-xs">{error}</p>
+          {visibleError && (
+            <p className="text-red-400 text-xs">{visibleError}</p>
           )}
           <button
             type="button"
@@ -54,4 +61,17 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
+
+function sanitizeNextPath(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/dashboard";
+  return raw;
+}
+
+function getCallbackErrorMessage(error: string | null): string {
+  if (!error) return "";
+  if (error === "auth_callback_failed") {
+    return "Sign-in could not be completed. Please try again.";
+  }
+  return "Sign-in failed. Please try again.";
 }

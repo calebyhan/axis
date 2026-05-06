@@ -176,10 +176,18 @@ export async function getWorkoutSummary(range: TimeRange) {
   };
 }
 
-export async function getTrainingLoadHistory() {
+function getTrainingLoadWindow(range: TimeRange): number {
+  if (range === "week") return 7;
+  if (range === "month") return 30;
+  if (range === "year") return 365;
+  return 730;
+}
+
+export async function getTrainingLoadHistory(range: TimeRange = "month") {
   const supabase = await createClient();
   const since = new Date();
-  since.setDate(since.getDate() - 90);
+  since.setDate(since.getDate() - (getTrainingLoadWindow(range) - 1));
+  since.setHours(0, 0, 0, 0);
   const sinceISO = since.toISOString();
 
   const [activitiesRes, setsRes] = await Promise.all([
@@ -215,13 +223,21 @@ export async function getTrainingLoadHistory() {
     dayLoads.set(day, entry);
   }
 
-  const loads: DailyLoad[] = Array.from(dayLoads.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, { runTL, strengthTL }]) => ({
+  const loads: DailyLoad[] = [];
+  const cursor = new Date(since);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  while (cursor <= today) {
+    const date = cursor.toISOString().split("T")[0];
+    const { runTL, strengthTL } = dayLoads.get(date) ?? { runTL: 0, strengthTL: 0 };
+    loads.push({
       date,
       runTL,
       strengthTL: normalizeStrengthTL(strengthTL),
-    }));
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
 
   return computeATLCTLTSB(loads);
 }

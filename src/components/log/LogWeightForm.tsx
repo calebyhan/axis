@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { saveBodyWeight } from "@/app/(tabs)/log/actions";
 import { weightUnit } from "@/lib/units";
 import type { Units } from "@/types";
 
@@ -59,25 +60,14 @@ export function LogWeightForm({ onSave }: { onSave: () => void }) {
 
     setSaving(true);
     setError("");
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError("Not authenticated");
-      setSaving(false);
-      return;
-    }
-
     const kg = formData.units === "imperial" ? raw / 2.20462 : raw;
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-    const { error: dbError } = await supabase.from("daily_checkins").upsert(
-      { user_id: user.id, date: today, body_weight: kg, notes: null },
-      { onConflict: "user_id,date" }
-    );
+    const result = await saveBodyWeight({ date: today, body_weight: kg });
 
     setSaving(false);
-    if (dbError) setError(dbError.message);
+    if (result.error) setError(result.error);
     else onSave();
   }
 

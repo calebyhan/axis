@@ -8,6 +8,7 @@ import {
   getMonthActiveDays,
   getWeeklyMuscleCoverage,
 } from "@/lib/queries/dashboard";
+import { getCurrentWeekAdherence } from "@/lib/queries/adherence";
 import { getUserDisplayName, getUserUnits } from "@/lib/queries/profile";
 import { matchChecklist } from "@/lib/checklist";
 import { WeeklyStatsSummary } from "@/components/dashboard/WeeklyStatsSummary";
@@ -15,10 +16,11 @@ import { CalendarStreak } from "@/components/dashboard/CalendarStreak";
 import { WeekChecklist } from "@/components/dashboard/WeekChecklist";
 import { BodyWeightSparkline } from "@/components/dashboard/BodyWeightSparkline";
 import { WeeklyMuscleCoverage } from "@/components/dashboard/WeeklyMuscleCoverage";
+import { WeeklyAdherence } from "@/components/dashboard/WeeklyAdherence";
 import type { Activity, DayType, ScheduleOverride, WeeklyScheduleRow } from "@/types";
 
 export default async function DashboardPage() {
-  const [weeklyStats, weeklyMuscleCoverage, bodyWeightData, streak, checklistData, units, activeDays, displayName] = await Promise.all([
+  const [weeklyStats, weeklyMuscleCoverage, bodyWeightData, streak, checklistData, units, activeDays, displayName, adherence] = await Promise.all([
     getWeeklyStats(),
     getWeeklyMuscleCoverage(),
     getBodyWeightHistory(30),
@@ -27,6 +29,7 @@ export default async function DashboardPage() {
     getUserUnits(),
     getMonthActiveDays(),
     getUserDisplayName(),
+    getCurrentWeekAdherence(),
   ]);
 
   const todayLabel = new Intl.DateTimeFormat("en-US", {
@@ -68,8 +71,10 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className={`grid gap-5 ${checklistItems.length > 0 ? "md:grid-cols-3" : "grid-cols-1"}`}>
-        <div className={checklistItems.length > 0 ? "md:col-span-2" : ""}>
+      <WeeklyAdherence adherence={adherence} />
+
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="md:col-span-2">
           <CalendarStreak
             streak={streak}
             activities={activeDays.activities}
@@ -77,9 +82,7 @@ export default async function DashboardPage() {
             skipOverrides={activeDays.skipOverrides}
           />
         </div>
-        {checklistItems.length > 0 && (
-          <WeekChecklist items={checklistItems} dayTypes={checklistData.dayTypes as DayType[]} />
-        )}
+        <WeekChecklist items={checklistItems} dayTypes={checklistData.dayTypes as DayType[]} />
       </div>
 
       <div className="lg:hidden">

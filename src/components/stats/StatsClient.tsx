@@ -7,9 +7,10 @@ import { formatDistance } from "@/lib/units";
 import { useState } from "react";
 import type { TimeRange } from "@/lib/queries/stats";
 import type { TrainingLoadPoint } from "@/lib/training-load";
+import type { AdherenceWeek } from "@/lib/adherence";
 import type { Units } from "@/types";
 
-type Tab = "workout" | "running" | "body" | "load";
+type Tab = "workout" | "running" | "body" | "load" | "plan";
 
 const TIME_RANGES: { label: string; value: TimeRange }[] = [
   { label: "Week", value: "week" },
@@ -23,6 +24,7 @@ const TABS: { label: string; value: Tab }[] = [
   { label: "Running", value: "running" },
   { label: "Body", value: "body" },
   { label: "Load", value: "load" },
+  { label: "Plan", value: "plan" },
 ];
 
 const TabLoading = () => <div className="py-8 text-center text-muted text-sm">Loading…</div>;
@@ -31,6 +33,7 @@ const WorkoutTab = dynamic(() => import("./tabs/WorkoutTab"), { ssr: false, load
 const RunningTab = dynamic(() => import("./tabs/RunningTab"), { ssr: false, loading: TabLoading });
 const BodyTab = dynamic(() => import("./tabs/BodyTab"), { ssr: false, loading: TabLoading });
 const LoadTab = dynamic(() => import("./tabs/LoadTab"), { ssr: false, loading: TabLoading });
+const PlanTab = dynamic(() => import("./tabs/PlanTab"), { ssr: false, loading: TabLoading });
 
 interface WorkoutSummary {
   sessionCount: number;
@@ -53,6 +56,7 @@ interface Props {
   initialBodyData: { date: string; body_weight: number }[];
   workoutSummary: WorkoutSummary;
   trainingLoad: TrainingLoadPoint[];
+  adherence: AdherenceWeek[];
   units: Units;
 }
 
@@ -79,6 +83,7 @@ export function StatsClient({
   initialBodyData,
   workoutSummary,
   trainingLoad,
+  adherence,
   units,
 }: Props) {
   const router = useRouter();
@@ -200,7 +205,10 @@ export function StatsClient({
         />
       )}
       {activeTab === "load" && (
-        <LoadTab trainingLoad={trainingLoad} latestLoad={latestLoad} tsbInfo={tsbInfo} />
+        <LoadTab trainingLoad={trainingLoad} latestLoad={latestLoad} tsbInfo={tsbInfo} timeRange={timeRange} />
+      )}
+      {activeTab === "plan" && (
+        <PlanTab adherence={adherence} />
       )}
     </div>
   );

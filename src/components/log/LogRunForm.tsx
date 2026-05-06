@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/client";
+import { saveManualRun } from "@/app/(tabs)/log/actions";
 import { distanceUnit } from "@/lib/units";
 import type { Units } from "@/types";
 
@@ -49,22 +49,10 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
     }
 
     setSaving(true);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError("Not authenticated. Please reload and try again.");
-      setSaving(false);
-      return;
-    }
-
     const durationSecs = parsed.data.hours * 3600 + parsed.data.minutes * 60;
     const distanceM = units === "imperial" ? parsed.data.distance * 1609.344 : parsed.data.distance * 1000;
 
-    const { error: dbError } = await supabase.from("activities").insert({
-      user_id: user.id,
-      type: "manual_run",
-      source: "manual",
-      start_time: new Date().toISOString(),
+    const result = await saveManualRun({
       duration: durationSecs,
       distance: distanceM,
       suffer_score: (parsed.data.effort - 1) * 50,
@@ -72,7 +60,7 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
     });
 
     setSaving(false);
-    if (dbError) setError(dbError.message);
+    if (result.error) setError(result.error);
     else onSave();
   }
 

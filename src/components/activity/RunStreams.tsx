@@ -15,7 +15,14 @@ interface StreamsData {
 // Dynamic import - avoids bundling recharts in the initial chunk
 const rechartsModule = import("recharts");
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.error ?? "Failed to load streams");
+  }
+  return body;
+};
 
 function mpsToMinPerUnit(mps: number, units: Units): number {
   if (mps <= 0) return 0;
@@ -200,11 +207,23 @@ function PowerChart({ points }: { points: Point[] }) {
 }
 
 export function RunStreams({ stravaActivityId, units }: { stravaActivityId: number; units: Units }) {
-  const { data: streamData, isLoading } = useSWR<StreamsData>(`/api/strava/streams/${stravaActivityId}`, fetcher);
+  const { data: streamData, error, isLoading, mutate } = useSWR<StreamsData>(`/api/strava/streams/${stravaActivityId}`, fetcher);
   const { data: zonesData } = useSWR<{ hr?: HRZone[] }>("/api/strava/zones", fetcher);
 
   if (isLoading) return <div className="text-sm text-muted py-4 text-center">Loading charts...</div>;
-  if (!streamData || streamData.points.length === 0) return null;
+  if (error) {
+    return (
+      <div className="py-4 text-center">
+        <p className="text-sm text-muted">Could not load stream charts.</p>
+        <button type="button" onClick={() => void mutate()} className="mt-2 text-xs text-accent hover:opacity-80">
+          Retry
+        </button>
+      </div>
+    );
+  }
+  if (!streamData || streamData.points.length === 0) {
+    return <div className="text-sm text-muted py-4 text-center">No stream data available for this activity.</div>;
+  }
 
   const { points, available } = streamData;
   const hrZones = zonesData?.hr ?? null;

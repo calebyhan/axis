@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Stats — Axis", description: "Training trends and performance charts" };
 
 import { getVolumeOverTime, getRunningStats, getBodyWeightStats, getWorkoutSummary, getTrainingLoadHistory, type TimeRange } from "@/lib/queries/stats";
+import { getAdherenceHistory } from "@/lib/queries/adherence";
 import { getUserUnits } from "@/lib/queries/profile";
 import { StatsClient } from "@/components/stats/StatsClient";
 
@@ -19,12 +20,13 @@ export default async function StatsPage({
   const { range } = await searchParams;
   const timeRange = parseRange(range);
 
-  const [volumeData, runningData, bodyData, workoutSummary, trainingLoad, units] = await Promise.all([
+  const [volumeData, runningData, bodyData, workoutSummary, trainingLoad, adherence, units] = await Promise.all([
     getVolumeOverTime(timeRange),
     getRunningStats(timeRange),
     getBodyWeightStats(timeRange),
     getWorkoutSummary(timeRange),
-    getTrainingLoadHistory(),
+    getTrainingLoadHistory(timeRange),
+    getAdherenceHistory(timeRange),
     getUserUnits(),
   ]);
 
@@ -42,6 +44,7 @@ export default async function StatsPage({
         initialBodyData={bodyData}
         workoutSummary={workoutSummary}
         trainingLoad={trainingLoad}
+        adherence={adherence}
         units={units}
       />
     </div>

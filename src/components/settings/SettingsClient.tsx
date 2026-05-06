@@ -23,6 +23,10 @@ interface Props {
   schedule: WeeklyScheduleRow[];
   dayTypes: DayType[];
   stravaConnected: boolean;
+  stravaStatus: {
+    connected: boolean;
+    error: string | null;
+  };
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -44,7 +48,7 @@ async function deleteAxisCaches() {
   return axisKeys.length;
 }
 
-export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }: Props) {
+export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, stravaStatus }: Props) {
   const supabase = createClient();
   const router = useRouter();
   const [saveStatus, setSaveStatus] = useState<{ saving: boolean; saved: boolean; error: string | null }>({ saving: false, saved: false, error: null });
@@ -215,6 +219,16 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
 
   return (
     <div className="flex flex-col gap-8">
+      {stravaStatus.connected && (
+        <div className="px-4 py-2.5 bg-green-900/30 border border-green-700/40 rounded-lg text-sm text-green-400">
+          Strava connected.
+        </div>
+      )}
+      {stravaStatus.error && (
+        <div className="px-4 py-2.5 bg-red-900/30 border border-red-700/40 rounded-lg text-sm text-red-400">
+          {getStravaStatusError(stravaStatus.error)}
+        </div>
+      )}
       {saved && (
         <div className="px-4 py-2.5 bg-green-900/30 border border-green-700/40 rounded-lg text-sm text-green-400">
           Settings saved.
@@ -416,4 +430,12 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected }:
       </Section>
     </div>
   );
+}
+
+function getStravaStatusError(error: string): string {
+  if (error === "invalid_state") return "Strava connection could not be verified. Please try again.";
+  if (error === "access_denied") return "Strava connection was cancelled.";
+  if (error === "token_exchange_failed") return "Strava did not return valid access tokens. Please try again.";
+  if (error === "save_failed") return "Strava connected, but Axis could not save the connection. Please try again.";
+  return "Strava connection failed. Please try again.";
 }
