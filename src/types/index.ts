@@ -151,6 +151,7 @@ export interface Profile {
   units: Units;
   accent_color: AccentColor;
   display_name: string | null;
+  onboarding_completed_at: string | null;
   strava_access_token: string | null;
   strava_refresh_token: string | null;
   token_expires_at: string | null;

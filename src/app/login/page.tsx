@@ -36,7 +36,7 @@ export default function LoginPage() {
         <div className="mb-8 text-center">
           <div className="page-kicker">Axis</div>
           <h1 className="text-[2.4rem] font-semibold tracking-[-0.06em]">Personal athletic dashboard</h1>
-          <p className="text-muted text-sm mt-3">Matte-black glass UI for training, recovery, and long-term progress.</p>
+          <p className="text-muted text-sm mt-3">for training, recovery, and long-term progress.</p>
         </div>
 
         <div className="card p-6 flex flex-col gap-4">

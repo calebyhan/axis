@@ -6,17 +6,11 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { saveProfile, saveWeeklyScheduleDay } from "@/app/(tabs)/settings/actions";
 import { Select } from "@/components/ui/Select";
+import { ACCENT_COLORS } from "@/lib/accent-colors";
 import type { AccentColor, DayType, Profile, Units, WeeklyScheduleRow } from "@/types";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_DISPLAY_ORDER = [6, 0, 1, 2, 3, 4, 5];
-
-const ACCENT_COLORS: { value: AccentColor; label: string; hex: string }[] = [
-  { value: "blue", label: "Blue", hex: "#3B82F6" },
-  { value: "green", label: "Green", hex: "#22C55E" },
-  { value: "orange", label: "Orange", hex: "#F97316" },
-  { value: "purple", label: "Purple", hex: "#A855F7" },
-];
 
 interface Props {
   profile: Profile | null;
