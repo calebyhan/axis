@@ -6,8 +6,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { saveProfile, saveWeeklyScheduleDay } from "@/app/(tabs)/settings/actions";
 import { Select } from "@/components/ui/Select";
+import { MiniHeatmap } from "@/components/heatmap/MiniHeatmap";
 import { ACCENT_COLORS } from "@/lib/accent-colors";
-import type { AccentColor, DayType, Profile, Units, WeeklyScheduleRow } from "@/types";
+import { MUSCLE_GROUPS, type AccentColor, type DayType, type MuscleGroup, type Profile, type Units, type WeeklyScheduleRow } from "@/types";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_DISPLAY_ORDER = [6, 0, 1, 2, 3, 4, 5];
@@ -23,13 +24,27 @@ interface Props {
   };
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-xs font-medium text-muted uppercase tracking-wide">{title}</h2>
       {children}
     </section>
   );
+}
+
+function muscleLabel(muscle: MuscleGroup): string {
+  return muscle.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function isRestDayType(dayType: DayType | undefined): boolean {
+  return !dayType || dayType.name.toLowerCase() === "rest";
 }
 
 async function deleteAxisCaches() {
@@ -210,218 +225,305 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, s
 
   const strengthTypes = dayTypes.filter((dt) => dt.category === "strength");
   const runTypes = dayTypes.filter((dt) => dt.category === "run");
+  const dayTypeById = new Map(dayTypes.map((dt) => [dt.id, dt]));
+  const weeklyPlan = DAY_DISPLAY_ORDER.reduce(
+    (summary, dayIdx) => {
+      const strengthType = dayTypeById.get(planMaps.strength[dayIdx] ?? "");
+      const cardioType = dayTypeById.get(planMaps.cardio[dayIdx] ?? "");
+      const hasStrength = strengthType?.category === "strength" && !isRestDayType(strengthType);
+      const hasCardio = cardioType?.category === "run" && !isRestDayType(cardioType);
+
+      if (hasStrength) {
+        summary.strengthDays += 1;
+        for (const muscle of strengthType.muscle_focus ?? []) {
+          summary.muscleCoverage[muscle] = (summary.muscleCoverage[muscle] ?? 0) + 1;
+        }
+      }
+      if (hasCardio) summary.cardioDays += 1;
+      if (!hasStrength && !hasCardio) summary.fullRestDays += 1;
+      if (hasStrength || hasCardio) summary.activeDays += 1;
+
+      return summary;
+    },
+    {
+      strengthDays: 0,
+      cardioDays: 0,
+      fullRestDays: 0,
+      activeDays: 0,
+      muscleCoverage: {} as Partial<Record<MuscleGroup, number>>,
+    }
+  );
+  const focusedMuscles = MUSCLE_GROUPS
+    .map((muscle) => ({ muscle, count: weeklyPlan.muscleCoverage[muscle] ?? 0 }))
+    .filter((item) => item.count > 0)
+    .sort((a, b) => b.count - a.count || muscleLabel(a.muscle).localeCompare(muscleLabel(b.muscle)))
+    .slice(0, 6);
 
   return (
-    <div className="flex flex-col gap-8">
-      {stravaStatus.connected && (
-        <div className="px-4 py-2.5 bg-green-900/30 border border-green-700/40 rounded-lg text-sm text-green-400">
-          Strava connected.
-        </div>
-      )}
-      {stravaStatus.error && (
-        <div className="px-4 py-2.5 bg-red-900/30 border border-red-700/40 rounded-lg text-sm text-red-400">
-          {getStravaStatusError(stravaStatus.error)}
-        </div>
-      )}
-      {saved && (
-        <div className="px-4 py-2.5 bg-green-900/30 border border-green-700/40 rounded-lg text-sm text-green-400">
-          Settings saved.
-        </div>
-      )}
-      {saveError && (
-        <div className="px-4 py-2.5 bg-red-900/30 border border-red-700/40 rounded-lg text-sm text-red-400">
-          {saveError}
-        </div>
-      )}
-
-      <Section title="Strava">
-        <div className="card p-4 flex items-center justify-between">
-          <div>
-            <div className="font-medium text-sm">
-              {stravaConnected ? "Connected" : "Not connected"}
+    <div className="flex flex-col gap-5">
+      {(stravaStatus.connected || stravaStatus.error || saved || saveError) && (
+        <div className="flex flex-col gap-3">
+          {stravaStatus.connected && (
+            <div className="px-4 py-2.5 bg-green-900/30 border border-green-700/40 rounded-lg text-sm text-green-400">
+              Strava connected.
             </div>
-            <div className="text-xs text-muted mt-0.5">
-              {stravaConnected
-                ? "Activities sync automatically via webhook"
-                : "Connect to sync runs automatically"}
+          )}
+          {stravaStatus.error && (
+            <div className="px-4 py-2.5 bg-red-900/30 border border-red-700/40 rounded-lg text-sm text-red-400">
+              {getStravaStatusError(stravaStatus.error)}
             </div>
-          </div>
-          {stravaConnected ? (
-            <button
-              type="button"
-              onClick={handleDisconnectStrava}
-              disabled={disconnecting}
-              className="text-xs text-red-400 border border-red-400/30 rounded-lg px-3 py-1.5 disabled:opacity-50"
-            >
-              {disconnecting ? "Disconnecting…" : "Disconnect"}
-            </button>
-          ) : (
-            <Link
-              href="/api/strava/connect"
-              className="text-xs bg-[#FC4C02] text-white rounded-lg px-3 py-1.5 font-medium"
-            >
-              Connect Strava
-            </Link>
+          )}
+          {saved && (
+            <div className="px-4 py-2.5 bg-green-900/30 border border-green-700/40 rounded-lg text-sm text-green-400">
+              Settings saved.
+            </div>
+          )}
+          {saveError && (
+            <div className="px-4 py-2.5 bg-red-900/30 border border-red-700/40 rounded-lg text-sm text-red-400">
+              {saveError}
+            </div>
           )}
         </div>
-      </Section>
+      )}
 
-      <Section title="Units">
-        <div className="card p-4 flex gap-2" role="group" aria-label="Units">
-          {(["metric", "imperial"] as const).map((u) => (
-            <button
-              key={u}
-              type="button"
-              aria-pressed={units === u}
-              onClick={() => void handleUnitsChange(u)}
-              disabled={saving}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${
-                units === u ? "border-accent text-accent" : "border-border text-muted"
-              } disabled:opacity-50`}
-            >
-              {u}
-            </button>
-          ))}
-        </div>
-      </Section>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        <Section title="Weekly Schedule">
+          <div className="card overflow-hidden divide-y divide-border">
+            <div className="hidden md:grid grid-cols-[minmax(7rem,1fr)_minmax(9rem,10rem)_minmax(9rem,10rem)] items-center px-4 py-2 gap-4">
+              <span className="text-xs text-muted" />
+              <span className="text-xs text-muted text-center">Workout</span>
+              <span className="text-xs text-muted text-center">Cardio</span>
+            </div>
+            {DAY_DISPLAY_ORDER.map((dayIdx) => (
+              <div
+                key={`schedule-day-${dayIdx}`}
+                className="flex flex-col gap-3 px-4 py-3 md:grid md:grid-cols-[minmax(7rem,1fr)_minmax(9rem,10rem)_minmax(9rem,10rem)] md:items-center md:gap-4"
+              >
+                <span className="text-sm font-medium">{DAY_NAMES[dayIdx]}</span>
+                <div className="grid grid-cols-2 gap-3 md:contents">
+                  <div className="flex min-w-0 flex-col gap-1.5 md:w-auto">
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-muted md:hidden">Workout</span>
+                    <Select
+                      value={planMaps.strength[dayIdx] ?? ""}
+                      options={strengthTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
+                      placeholder="Rest"
+                      showEmptyOption={!strengthTypes.some((dt) => dt.name === "Rest")}
+                      onChange={(val) => {
+                        void handleScheduleChange(dayIdx, val);
+                      }}
+                    />
+                  </div>
+                  <div className="flex min-w-0 flex-col gap-1.5 md:w-auto">
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-muted md:hidden">Cardio</span>
+                    <Select
+                      value={planMaps.cardio[dayIdx] ?? ""}
+                      options={runTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
+                      placeholder="Rest"
+                      showEmptyOption={!runTypes.some((dt) => dt.name === "Rest")}
+                      onChange={(val) => {
+                        void handleCardioChange(dayIdx, val);
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
 
-      <Section title="Accent Color">
-        <div className="card p-4 flex gap-3" role="group" aria-label="Accent color">
-          {ACCENT_COLORS.map((c) => (
-            <button
-              key={c.value}
-              type="button"
-              aria-label={`${c.label} accent color`}
-              aria-pressed={accent === c.value}
-              onClick={() => void handleAccentChange(c.value)}
-              disabled={saving}
-              style={{ background: c.hex }}
-              className={`w-10 h-10 rounded-full border-2 transition-all ${
-                accent === c.value ? "border-white scale-110" : "border-transparent"
-              } disabled:opacity-50`}
-              title={c.label}
-            />
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Display Name">
-        <div className="card p-4 flex flex-col gap-3">
-          <div>
-            <div className="font-medium text-sm">Dashboard greeting</div>
-            <div className="text-xs text-muted mt-0.5">
-              Leave blank to use your Google account name automatically.
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-[max-content_max-content] justify-center gap-x-8 gap-y-1 px-1 text-xs text-muted sm:flex sm:flex-wrap sm:items-center sm:justify-start sm:gap-x-0 sm:text-sm">
+              {[
+                { label: "strength days", value: weeklyPlan.strengthDays },
+                { label: "cardio days", value: weeklyPlan.cardioDays },
+                { label: "active days", value: weeklyPlan.activeDays },
+                { label: "full rest days", value: weeklyPlan.fullRestDays },
+              ].map((item) => (
+                <span key={item.label} className="whitespace-nowrap sm:border-l sm:border-border sm:px-3 sm:first:border-l-0 sm:first:pl-0">
+                  <span className="font-medium text-white">{item.value}</span> {item.label}
+                </span>
+              ))}
+            </div>
+            <div className="card p-4 flex items-center gap-4 md:items-start">
+              <MiniHeatmap coverage={weeklyPlan.muscleCoverage} />
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium">Muscle focus</div>
+                {focusedMuscles.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {focusedMuscles.map(({ muscle, count }) => (
+                      <span
+                        key={muscle}
+                        className="rounded-full border border-border bg-white/[0.03] px-2 py-1 text-[11px] text-white/70"
+                      >
+                        {muscleLabel(muscle)} {count}x
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-1 text-xs text-muted">No strength focus scheduled.</div>
+                )}
+              </div>
             </div>
           </div>
-          <div className="flex gap-2">
-            <input
-              id="display-name"
-              type="text"
-              value={displayNameDraft}
-              onChange={(e) => setDisplayNameDraft(e.target.value)}
-              placeholder="Use Google name"
-              className="flex-1 rounded-xl border border-border bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-white/25 focus:border-border-strong focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => void handleDisplayNameSave()}
-              disabled={saving || displayNameDraft.trim() === displayName}
-              className="rounded-xl border border-border px-3 py-2 text-sm text-white/80 transition-colors hover:border-border-strong hover:text-white disabled:opacity-50"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </Section>
+        </Section>
 
-      <Section title="Weekly Schedule">
-        <div className="card divide-y divide-border">
-          <div className="hidden sm:flex items-center px-4 py-2 gap-4">
-            <span className="text-xs text-muted flex-1" />
-            <span className="text-xs text-muted w-[120px] text-center">Workout</span>
-            <span className="text-xs text-muted w-[120px] text-center">Cardio</span>
-          </div>
-          {DAY_DISPLAY_ORDER.map((dayIdx) => (
-            <div key={`schedule-day-${dayIdx}`} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-              <span className="text-sm font-medium sm:flex-1">{DAY_NAMES[dayIdx]}</span>
-              <div className="grid grid-cols-2 gap-3 sm:contents">
-                <div className="flex min-w-0 flex-col gap-1.5 sm:w-[120px] sm:items-center">
-                  <span className="text-[10px] uppercase tracking-[0.16em] text-muted sm:hidden">Workout</span>
-                  <Select
-                    value={planMaps.strength[dayIdx] ?? ""}
-                    options={strengthTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
-                    placeholder="Rest"
-                    showEmptyOption={!strengthTypes.some((dt) => dt.name === "Rest")}
-                    onChange={(val) => {
-                      void handleScheduleChange(dayIdx, val);
-                    }}
-                  />
+        <div className="flex flex-col gap-5">
+          <Section title="Profile">
+            <div className="card p-4 flex flex-col gap-3">
+              <div>
+                <div className="font-medium text-sm">Display name</div>
+                <div className="text-xs text-muted mt-0.5">
+                  Leave blank to use your Google account name automatically.
                 </div>
-                <div className="flex min-w-0 flex-col gap-1.5 sm:w-[120px] sm:items-center">
-                  <span className="text-[10px] uppercase tracking-[0.16em] text-muted sm:hidden">Cardio</span>
-                  <Select
-                    value={planMaps.cardio[dayIdx] ?? ""}
-                    options={runTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
-                    placeholder="Rest"
-                    showEmptyOption={!runTypes.some((dt) => dt.name === "Rest")}
-                    onChange={(val) => {
-                      void handleCardioChange(dayIdx, val);
-                    }}
-                  />
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+                <input
+                  id="display-name"
+                  type="text"
+                  value={displayNameDraft}
+                  onChange={(e) => setDisplayNameDraft(e.target.value)}
+                  placeholder="Use Google name"
+                  className="min-w-0 flex-1 rounded-xl border border-border bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-white/25 focus:border-border-strong focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleDisplayNameSave()}
+                  disabled={saving || displayNameDraft.trim() === displayName}
+                  className="rounded-xl border border-border px-3 py-2 text-sm text-white/80 transition-colors hover:border-border-strong hover:text-white disabled:opacity-50"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Preferences">
+            <div className="card p-4 flex flex-col gap-5">
+              <div className="flex flex-col gap-3">
+                <div className="font-medium text-sm">Units</div>
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="Units">
+                  {(["metric", "imperial"] as const).map((u) => (
+                    <button
+                      key={u}
+                      type="button"
+                      aria-pressed={units === u}
+                      onClick={() => void handleUnitsChange(u)}
+                      disabled={saving}
+                      className={`py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${
+                        units === u ? "border-accent text-accent" : "border-border text-muted"
+                      } disabled:opacity-50`}
+                    >
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="h-px bg-border" />
+
+              <div className="flex flex-col gap-3">
+                <div className="font-medium text-sm">Accent color</div>
+                <div className="flex flex-wrap gap-3" role="group" aria-label="Accent color">
+                  {ACCENT_COLORS.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      aria-label={`${c.label} accent color`}
+                      aria-pressed={accent === c.value}
+                      onClick={() => void handleAccentChange(c.value)}
+                      disabled={saving}
+                      style={{ background: c.hex }}
+                      className={`w-10 h-10 rounded-full border-2 transition-all ${
+                        accent === c.value ? "border-white scale-110" : "border-transparent"
+                      } disabled:opacity-50`}
+                      title={c.label}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      </Section>
+          </Section>
 
-      <Section title="Data">
-        <button
-          type="button"
-          onClick={exportData}
-          className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors"
-        >
-          Export all data as JSON
-        </button>
-      </Section>
-
-      <Section title="Offline Storage">
-        <div className="card p-4 flex flex-col gap-3">
-          <div>
-            <div className="font-medium text-sm">Cached app shell and data</div>
-            <div className="text-xs text-muted mt-0.5">
-              Clears offline pages, static assets, and cached read-only API responses.
+          <Section title="Strava">
+            <div className="card p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:flex-col lg:items-stretch xl:flex-row xl:items-center">
+              <div>
+                <div className="font-medium text-sm">
+                  {stravaConnected ? "Connected" : "Not connected"}
+                </div>
+                <div className="text-xs text-muted mt-0.5">
+                  {stravaConnected
+                    ? "Activities sync automatically via webhook"
+                    : "Connect to sync runs automatically"}
+                </div>
+              </div>
+              {stravaConnected ? (
+                <button
+                  type="button"
+                  onClick={handleDisconnectStrava}
+                  disabled={disconnecting}
+                  className="text-xs text-red-400 border border-red-400/30 rounded-lg px-3 py-2 disabled:opacity-50"
+                >
+                  {disconnecting ? "Disconnecting…" : "Disconnect"}
+                </button>
+              ) : (
+                <Link
+                  href="/api/strava/connect"
+                  className="text-center text-xs bg-[#FC4C02] text-white rounded-lg px-3 py-2 font-medium"
+                >
+                  Connect Strava
+                </Link>
+              )}
             </div>
-          </div>
-          {(cacheStatus.message || cacheStatus.error) && (
-            <div className={`text-xs ${cacheStatus.error ? "text-red-400" : "text-green-400"}`}>
-              {cacheStatus.error ?? cacheStatus.message}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() => void clearOfflineCache()}
-            disabled={cacheStatus.clearing}
-            className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
-          >
-            {cacheStatus.clearing ? "Clearing…" : "Clear offline cache"}
-          </button>
-        </div>
-      </Section>
+          </Section>
 
-      <Section title="Account">
-        <button
-          type="button"
-          onClick={async () => {
-            await deleteAxisCaches();
-            await supabase.auth.signOut();
-            router.push("/login");
-          }}
-          className="w-full border border-red-400/30 py-3 rounded-lg text-sm text-red-400 hover:border-red-400/60 transition-colors"
-        >
-          Sign out
-        </button>
-      </Section>
+          <Section title="Data & Storage">
+            <div className="card p-4 flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={exportData}
+                className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors"
+              >
+                Export all data as JSON
+              </button>
+
+              <div className="h-px bg-border" />
+
+              <div>
+                <div className="font-medium text-sm">Offline storage</div>
+                <div className="text-xs text-muted mt-0.5">
+                  Clears offline pages, static assets, and cached read-only API responses.
+                </div>
+              </div>
+              {(cacheStatus.message || cacheStatus.error) && (
+                <div className={`text-xs ${cacheStatus.error ? "text-red-400" : "text-green-400"}`}>
+                  {cacheStatus.error ?? cacheStatus.message}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => void clearOfflineCache()}
+                disabled={cacheStatus.clearing}
+                className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
+              >
+                {cacheStatus.clearing ? "Clearing…" : "Clear offline cache"}
+              </button>
+            </div>
+          </Section>
+
+          <Section title="Account">
+            <button
+              type="button"
+              onClick={async () => {
+                await deleteAxisCaches();
+                await supabase.auth.signOut();
+                router.push("/login");
+              }}
+              className="w-full border border-red-400/30 py-3 rounded-lg text-sm text-red-400 hover:border-red-400/60 transition-colors"
+            >
+              Sign out
+            </button>
+          </Section>
+        </div>
+      </div>
     </div>
   );
 }

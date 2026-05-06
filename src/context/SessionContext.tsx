@@ -17,6 +17,7 @@ interface SessionContextValue {
   session: SessionState | null;
   isActive: boolean;
   hasDraft: boolean;
+  draft: SessionState | null;
   draftKey: string | null;
   autosaveFailed: boolean;
   draftSaveStatus: DraftSaveStatus;
@@ -194,6 +195,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         session,
         isActive: session !== null,
         hasDraft,
+        draft: draftData,
         draftKey,
         autosaveFailed,
         draftSaveStatus,
