@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { classifyTrend } from "@/lib/body-weight-trend";
 import { formatDistance } from "@/lib/units";
 import { useState } from "react";
-import type { TimeRange } from "@/lib/queries/stats";
+import type { HistoricalPlanCalendarData, TimeRange } from "@/lib/queries/stats";
 import type { TrainingLoadPoint } from "@/lib/training-load";
 import type { AdherenceWeek } from "@/lib/adherence";
 import type { BestEffort, MuscleGroup, MuscleHeatmapDetails, Units } from "@/types";
@@ -62,6 +62,7 @@ interface Props {
   workoutSummary: WorkoutSummary;
   trainingLoad: TrainingLoadPoint[];
   adherence: AdherenceWeek[];
+  planCalendarData: HistoricalPlanCalendarData;
   units: Units;
 }
 
@@ -89,6 +90,7 @@ export function StatsClient({
   workoutSummary,
   trainingLoad,
   adherence,
+  planCalendarData,
   units,
 }: Props) {
   const router = useRouter();
@@ -226,7 +228,7 @@ export function StatsClient({
         <LoadTab trainingLoad={trainingLoad} latestLoad={latestLoad} tsbInfo={tsbInfo} timeRange={timeRange} />
       )}
       {activeTab === "plan" && (
-        <PlanTab adherence={adherence} />
+        <PlanTab adherence={adherence} planCalendarData={planCalendarData} timeRange={timeRange} />
       )}
     </div>
   );

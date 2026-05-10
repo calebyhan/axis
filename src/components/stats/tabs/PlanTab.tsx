@@ -9,15 +9,20 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import { CalendarMonth } from "@/components/calendar/CalendarMonth";
 import { CHART_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
+import { buildCalendarActiveDays } from "@/lib/calendar";
 import type { AdherenceWeek } from "@/lib/adherence";
 import { localDateStr } from "@/lib/planner";
+import type { HistoricalPlanCalendarData, TimeRange } from "@/lib/queries/stats";
 
 interface Props {
   adherence: AdherenceWeek[];
+  planCalendarData: HistoricalPlanCalendarData;
+  timeRange: TimeRange;
 }
 
-export default function PlanTab({ adherence }: Props) {
+export default function PlanTab({ adherence, planCalendarData, timeRange }: Props) {
   const latest = adherence[adherence.length - 1] ?? null;
   const todayStr = localDateStr(new Date());
   const totals = adherence.reduce(
@@ -42,6 +47,7 @@ export default function PlanTab({ adherence }: Props) {
   const currentWeekDone = latest ? latest.summary.completed + latest.summary.swapped : 0;
   const currentWeekLabel =
     latest && latest.summary.planned > 0 ? `${currentWeekDone}/${latest.summary.planned} done` : "No planned sessions";
+  const calendarMonths = timeRange === "all" ? buildPlanCalendarMonths(adherence, planCalendarData) : [];
 
   return (
     <div className="flex flex-col gap-5">
@@ -51,6 +57,23 @@ export default function PlanTab({ adherence }: Props) {
         <StatCard label="Missed" value={String(totals.missed)} />
         <StatCard label="Skipped" value={String(totals.skipped)} />
       </div>
+
+      {calendarMonths.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h3 className="text-sm font-medium">Historical Calendar</h3>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {calendarMonths.map((month) => (
+              <CalendarMonth
+                key={month.key}
+                year={month.year}
+                month={month.month}
+                activeDays={month.activeDays}
+                badge={month.badge}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card p-4">
         <h3 className="text-sm font-medium mb-4">Weekly Plan Follow-through</h3>
@@ -114,6 +137,14 @@ export default function PlanTab({ adherence }: Props) {
 
 type CurrentWeekSlot = AdherenceWeek["slots"][number];
 
+interface PlanCalendarMonth {
+  key: string;
+  year: number;
+  month: number;
+  activeDays: Map<string, number>;
+  badge: string | null;
+}
+
 const STATUS_STYLES: Record<CurrentWeekSlot["status"], { shell: string; badge: string }> = {
   completed: {
     shell: "border-green-500/25 bg-green-500/[0.08]",
@@ -152,6 +183,95 @@ function groupSlotsByDay(slots: AdherenceWeek["slots"]) {
   }
 
   return Array.from(days.values()).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function parseLocalDate(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function monthKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getOrCreateMonth(
+  months: Map<string, { year: number; month: number; planned: number; completed: number; activeDays: Map<string, number> }>,
+  date: Date
+) {
+  const key = monthKey(date);
+  const month = months.get(key) ?? {
+    year: date.getFullYear(),
+    month: date.getMonth(),
+    planned: 0,
+    completed: 0,
+    activeDays: new Map<string, number>(),
+  };
+  months.set(key, month);
+  return month;
+}
+
+function buildPlanCalendarMonths(
+  adherence: AdherenceWeek[],
+  planCalendarData: HistoricalPlanCalendarData
+): PlanCalendarMonth[] {
+  const months = new Map<string, { year: number; month: number; planned: number; completed: number; activeDays: Map<string, number> }>();
+  const activeDays = buildCalendarActiveDays(
+    planCalendarData.activities,
+    planCalendarData.dayPlans,
+    planCalendarData.skipOverrides
+  );
+  let firstDate: Date | null = null;
+
+  for (const week of adherence) {
+    for (const item of week.slots) {
+      const date = parseLocalDate(item.slot.date);
+      const month = getOrCreateMonth(months, date);
+
+      if (item.status !== "skipped") month.planned += 1;
+
+      if (item.status === "completed" || item.status === "swapped") {
+        month.completed += 1;
+      }
+
+      if (!firstDate || date < firstDate) firstDate = date;
+    }
+  }
+
+  for (const [date, count] of activeDays) {
+    const dateValue = parseLocalDate(date);
+    getOrCreateMonth(months, dateValue).activeDays.set(date, count);
+    if (!firstDate || dateValue < firstDate) firstDate = dateValue;
+  }
+
+  if (!firstDate) return [];
+
+  const today = new Date();
+  const cursor = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+  const final = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  while (cursor <= final) {
+    const key = monthKey(cursor);
+    if (!months.has(key)) {
+      months.set(key, {
+        year: cursor.getFullYear(),
+        month: cursor.getMonth(),
+        planned: 0,
+        completed: 0,
+        activeDays: new Map<string, number>(),
+      });
+    }
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return Array.from(months.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([key, month]) => ({
+      key,
+      year: month.year,
+      month: month.month,
+      activeDays: month.activeDays,
+      badge: month.planned > 0 ? `${month.completed}/${month.planned} done` : null,
+    }));
 }
 
 function SlotCell({ item }: { item: CurrentWeekSlot }) {

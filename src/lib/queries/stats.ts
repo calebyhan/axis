@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { computeE1RM } from "@/lib/e1rm";
+import { localDateKey, type CalendarActivity, type CalendarDayPlan, type CalendarSkipOverride } from "@/lib/calendar";
 import { computeATLCTLTSB, normalizeStrengthTL, type DailyLoad } from "@/lib/training-load";
 import type { MuscleGroup, MuscleHeatmapDetails } from "@/types";
 
@@ -289,6 +290,71 @@ export async function getTrainingLoadHistory(range: TimeRange = "month") {
   }
 
   return computeATLCTLTSB(loads);
+}
+
+export interface HistoricalPlanCalendarData {
+  activities: CalendarActivity[];
+  dayPlans: CalendarDayPlan[];
+  skipOverrides: CalendarSkipOverride[];
+}
+
+export async function getHistoricalPlanCalendarData(range: TimeRange): Promise<HistoricalPlanCalendarData> {
+  const supabase = await createClient();
+  const since = getStartDate(range);
+  const today = new Date();
+  const todayStr = localDateKey(today);
+
+  let activitiesQuery = supabase
+    .from("activities")
+    .select("start_time, type")
+    .lte("start_time", today.toISOString())
+    .order("start_time", { ascending: true });
+
+  let overridesQuery = supabase
+    .from("schedule_overrides")
+    .select("date, slot")
+    .lte("date", todayStr)
+    .is("day_type_id", null);
+
+  if (since) {
+    activitiesQuery = activitiesQuery.gte("start_time", since);
+    overridesQuery = overridesQuery.gte("date", since.split("T")[0]);
+  }
+
+  const [activitiesRes, plansRes, overridesRes] = await Promise.all([
+    activitiesQuery,
+    supabase
+      .from("weekly_schedule")
+      .select(
+        "day_of_week, day_type:day_types!weekly_schedule_day_type_id_fkey(name), cardio_day_type:day_types!weekly_schedule_cardio_day_type_id_fkey(name)"
+      )
+      .eq("active", true),
+    overridesQuery,
+  ]);
+
+  if (activitiesRes.error) console.error("[query] getHistoricalPlanCalendarData activities failed", activitiesRes.error.message);
+  if (plansRes.error) console.error("[query] getHistoricalPlanCalendarData plans failed", plansRes.error.message);
+  if (overridesRes.error) console.error("[query] getHistoricalPlanCalendarData overrides failed", overridesRes.error.message);
+
+  const dayPlans: CalendarDayPlan[] = (plansRes.data ?? []).map((row) => {
+    const raw = row as { day_of_week: number; day_type?: unknown; cardio_day_type?: unknown };
+    const dayType = normalizeRelation<{ name: string }>(raw.day_type);
+    const cardioDayType = normalizeRelation<{ name: string }>(raw.cardio_day_type);
+
+    return {
+      dayOfWeek: raw.day_of_week,
+      hasWorkoutSlot: true,
+      hasCardioSlot: !!cardioDayType?.name,
+      workoutSatisfiedByRest: !dayType?.name || dayType.name === "Rest",
+      cardioSatisfiedByRest: cardioDayType?.name === "Rest",
+    };
+  });
+
+  return {
+    activities: (activitiesRes.data ?? []) as CalendarActivity[],
+    dayPlans,
+    skipOverrides: (overridesRes.data ?? []) as CalendarSkipOverride[],
+  };
 }
 
 function getISOWeek(date: Date): string {
