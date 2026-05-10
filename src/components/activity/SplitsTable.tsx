@@ -1,17 +1,22 @@
 "use client";
 
-import type { Split, Units } from "@/types";
-import { formatPace } from "@/lib/units";
+import type { ActivitySplits, Units } from "@/types";
+import { resolveSplitsForUnits } from "@/lib/splits";
+import { distanceUnit, formatPace } from "@/lib/units";
 
 function formatElevDiff(m: number): string {
   const sign = m >= 0 ? "+" : "";
   return `${sign}${Math.round(m)}m`;
 }
 
-export function SplitsTable({ splits, units }: { splits: Split[]; units: Units }) {
-  if (!splits.length) return null;
+export function SplitsTable({ splits, units }: { splits: ActivitySplits; units: Units }) {
+  const displaySplits = resolveSplitsForUnits(splits, units);
 
-  const hasGAP = splits.some(
+  if (!displaySplits.length) return null;
+
+  const splitUnit = distanceUnit(units);
+  const splitHeader = splitUnit === "mi" ? "Mi" : "Km";
+  const hasGAP = displaySplits.some(
     (s) => s.average_grade_adjusted_speed != null && s.average_grade_adjusted_speed > 0
   );
 
@@ -24,13 +29,13 @@ export function SplitsTable({ splits, units }: { splits: Split[]; units: Units }
             hasGAP ? "grid-cols-5" : "grid-cols-4"
           }`}
         >
-          <span>#</span>
+          <span>{splitHeader}</span>
           <span>Pace</span>
           {hasGAP && <span>GAP</span>}
           <span>Avg HR</span>
           <span>Elev</span>
         </div>
-        {splits.map((s) => {
+        {displaySplits.map((s) => {
           const paceSecsPerKm = s.average_speed > 0 ? 1000 / s.average_speed : null;
           const gapSecsPerKm =
             s.average_grade_adjusted_speed && s.average_grade_adjusted_speed > 0

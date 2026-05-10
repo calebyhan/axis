@@ -24,6 +24,22 @@ export function isSupportedCardioSport(sportType: string | null | undefined): bo
   return mapStravaSportType(sportType) !== null;
 }
 
+function mapSplits(splits: unknown) {
+  return Array.isArray(splits)
+    ? splits.map((s: Record<string, unknown>) => ({
+        split: s.split,
+        distance: s.distance,
+        elapsed_time: s.elapsed_time,
+        moving_time: s.moving_time,
+        elevation_difference: s.elevation_difference,
+        average_speed: s.average_speed,
+        average_grade_adjusted_speed: s.average_grade_adjusted_speed ?? null,
+        average_heartrate: s.average_heartrate ?? null,
+        pace_zone: s.pace_zone ?? null,
+      }))
+    : null;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildActivityRow(userId: string, stravaId: number, a: Record<string, any>) {
   const type = mapStravaSportType(a.sport_type);
@@ -41,19 +57,15 @@ export function buildActivityRow(userId: string, stravaId: number, a: Record<str
       }))
     : null;
 
-  const splits = Array.isArray(a.splits_metric)
-    ? a.splits_metric.map((s: Record<string, unknown>) => ({
-        split: s.split,
-        distance: s.distance,
-        elapsed_time: s.elapsed_time,
-        moving_time: s.moving_time,
-        elevation_difference: s.elevation_difference,
-        average_speed: s.average_speed,
-        average_grade_adjusted_speed: s.average_grade_adjusted_speed ?? null,
-        average_heartrate: s.average_heartrate ?? null,
-        pace_zone: s.pace_zone ?? null,
-      }))
-    : null;
+  const splitsMetric = mapSplits(a.splits_metric);
+  const splitsStandard = mapSplits(a.splits_standard);
+  const splits =
+    splitsMetric || splitsStandard
+      ? {
+          metric: splitsMetric ?? [],
+          standard: splitsStandard ?? [],
+        }
+      : null;
 
   return {
     user_id: userId,

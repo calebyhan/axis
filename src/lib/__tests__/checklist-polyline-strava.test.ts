@@ -273,6 +273,19 @@ describe("Strava activity mapping", () => {
           average_speed: 3.39,
         },
       ],
+      splits_standard: [
+        {
+          split: 1,
+          distance: 1609,
+          elapsed_time: 480,
+          moving_time: 475,
+          elevation_difference: 6,
+          average_speed: 3.39,
+          average_grade_adjusted_speed: 3.4,
+          average_heartrate: 151,
+          pace_zone: 2,
+        },
+      ],
       best_efforts: [
         {
           name: "1k",
@@ -303,19 +316,34 @@ describe("Strava activity mapping", () => {
       name: "Morning Run",
       summary_polyline: "abc123",
       average_temp: 18,
-      splits: [
-        {
-          split: 1,
-          distance: 1000,
-          elapsed_time: 300,
-          moving_time: 295,
-          elevation_difference: 4,
-          average_speed: 3.39,
-          average_grade_adjusted_speed: null,
-          average_heartrate: null,
-          pace_zone: null,
-        },
-      ],
+      splits: {
+        metric: [
+          {
+            split: 1,
+            distance: 1000,
+            elapsed_time: 300,
+            moving_time: 295,
+            elevation_difference: 4,
+            average_speed: 3.39,
+            average_grade_adjusted_speed: null,
+            average_heartrate: null,
+            pace_zone: null,
+          },
+        ],
+        standard: [
+          {
+            split: 1,
+            distance: 1609,
+            elapsed_time: 480,
+            moving_time: 475,
+            elevation_difference: 6,
+            average_speed: 3.39,
+            average_grade_adjusted_speed: 3.4,
+            average_heartrate: 151,
+            pace_zone: 2,
+          },
+        ],
+      },
       best_efforts: [
         {
           name: "1k",

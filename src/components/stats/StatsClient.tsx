@@ -8,7 +8,7 @@ import { useState } from "react";
 import type { TimeRange } from "@/lib/queries/stats";
 import type { TrainingLoadPoint } from "@/lib/training-load";
 import type { AdherenceWeek } from "@/lib/adherence";
-import type { MuscleGroup, MuscleHeatmapDetails, Units } from "@/types";
+import type { BestEffort, MuscleGroup, MuscleHeatmapDetails, Units } from "@/types";
 
 type Tab = "workout" | "running" | "body" | "load" | "plan";
 
@@ -48,12 +48,15 @@ interface Props {
   timeRange: TimeRange;
   initialVolumeData: { week: string; volume: number }[];
   initialRunningData: {
+    id: string;
+    name: string | null;
     start_time: string;
     distance: number | null;
     avg_pace: number | null;
     suffer_score: number | null;
     avg_heartrate?: number | null;
     duration?: number | null;
+    best_efforts?: BestEffort[] | null;
   }[];
   initialBodyData: { date: string; body_weight: number }[];
   workoutSummary: WorkoutSummary;
@@ -117,6 +120,18 @@ export function StatsClient({
   const hrChartData = initialRunningData
     .filter((r) => r.avg_heartrate != null)
     .map((r) => ({ date: r.start_time.split("T")[0], hr: r.avg_heartrate ?? null }));
+  const personalRecords = initialRunningData.flatMap((r) =>
+    (r.best_efforts ?? [])
+      .filter((effort) => effort.pr_rank === 1)
+      .map((effort) => ({
+        activityId: r.id,
+        activityName: r.name,
+        startTime: r.start_time,
+        effortName: effort.name,
+        elapsedTime: effort.elapsed_time,
+        distance: effort.distance,
+      }))
+  );
 
   // ── Body ──────────────────────────────────────────────────────────────────
   const convertedBodyData = initialBodyData.map((d) => ({
@@ -190,6 +205,7 @@ export function StatsClient({
           runCount={runCount}
           bestPace={bestPace}
           avgHR={avgHR}
+          personalRecords={personalRecords}
           units={units}
         />
       )}

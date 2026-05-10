@@ -109,6 +109,13 @@ export interface Split {
   pace_zone: number | null;
 }
 
+export interface ActivitySplitsByUnit {
+  metric?: Split[] | null;
+  standard?: Split[] | null;
+}
+
+export type ActivitySplits = Split[] | ActivitySplitsByUnit;
+
 export interface BestEffort {
   name: string;
   elapsed_time: number;
@@ -137,7 +144,7 @@ export interface Activity {
   // enriched run fields
   name: string | null;
   summary_polyline: string | null;
-  splits: Split[] | null;
+  splits: ActivitySplits | null;
   best_efforts: BestEffort[] | null;
   avg_cadence: number | null;
   avg_watts: number | null;

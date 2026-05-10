@@ -4,11 +4,12 @@ export const metadata = { title: "Activity — Axis", description: "Activity det
 import { getActivityWithSets } from "@/lib/queries/activity";
 import { getUserUnits } from "@/lib/queries/profile";
 import { computeE1RM } from "@/lib/e1rm";
+import { hasSplits } from "@/lib/splits";
 import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
 import { formatWeight, formatDistance, formatPace, weightUnit, distanceUnit } from "@/lib/units";
 import { RunStreams } from "@/components/activity/RunStreams";
 import { SplitsTable } from "@/components/activity/SplitsTable";
-import type { MuscleGroup, MuscleHeatmapDetails, BestEffort } from "@/types";
+import type { MuscleGroup, MuscleHeatmapDetails, BestEffort, Units } from "@/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -27,30 +28,103 @@ const BEST_EFFORT_ORDER = [
   "15k", "10 mile", "20k", "Half-Marathon", "Marathon",
 ];
 
-function BestEfforts({ efforts }: { efforts: BestEffort[] }) {
-  const prs = efforts.filter((e) => e.pr_rank === 1);
-  if (!prs.length) return null;
+function formatClockDuration(secs: number): string {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function bestEffortSortIndex(name: string): number {
+  const index = BEST_EFFORT_ORDER.indexOf(name);
+  return index === -1 ? BEST_EFFORT_ORDER.length : index;
+}
+
+function achievementMeta(rank: number | null) {
+  if (rank === 1) {
+    return {
+      label: "Gold",
+      detail: "PR",
+      dot: "bg-amber-300",
+      text: "text-amber-200",
+      row: "bg-amber-300/[0.045]",
+    };
+  }
+  if (rank === 2) {
+    return {
+      label: "Silver",
+      detail: "2nd best",
+      dot: "bg-zinc-300",
+      text: "text-zinc-200",
+      row: "",
+    };
+  }
+  if (rank === 3) {
+    return {
+      label: "Bronze",
+      detail: "3rd best",
+      dot: "bg-orange-400",
+      text: "text-orange-200",
+      row: "",
+    };
+  }
+  return null;
+}
+
+function RunAchievements({ efforts, units }: { efforts: BestEffort[]; units: Units }) {
+  const achievements = efforts
+    .filter((effort) => achievementMeta(effort.pr_rank) !== null)
+    .sort((a, b) => bestEffortSortIndex(a.name) - bestEffortSortIndex(b.name) || a.name.localeCompare(b.name));
+
+  if (!achievements.length) return null;
 
   return (
     <div>
-      <div className="text-xs text-muted uppercase tracking-wider mb-2">Personal Records</div>
-      <div className="flex flex-wrap gap-2">
-        {prs
-          .sort((a, b) => BEST_EFFORT_ORDER.indexOf(a.name) - BEST_EFFORT_ORDER.indexOf(b.name))
-          .map((e) => {
-            const m = Math.floor(e.elapsed_time / 60);
-            const s = e.elapsed_time % 60;
-            return (
-              <div
-                key={e.name}
-                className="card px-3 py-2 flex flex-col items-center gap-0.5"
-              >
-                <span className="text-[10px] text-amber-400 uppercase tracking-wider">PR</span>
-                <span className="text-sm font-semibold">{e.name}</span>
-                <span className="text-xs text-muted">{m}:{String(s).padStart(2, "0")}</span>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="text-xs text-muted uppercase tracking-wider">Achievements</div>
+        <div className="text-xs text-muted">
+          {achievements.length} {achievements.length === 1 ? "medal" : "medals"}
+        </div>
+      </div>
+      <div className="card overflow-hidden">
+        <div className="hidden sm:grid grid-cols-[6rem_minmax(0,1fr)_6rem_7rem] px-3 py-2 text-[10px] text-muted uppercase tracking-wider border-b border-border">
+          <span>Medal</span>
+          <span>Distance</span>
+          <span className="text-right">Time</span>
+          <span className="text-right">Pace</span>
+        </div>
+        {achievements.map((effort) => {
+          const meta = achievementMeta(effort.pr_rank);
+          if (!meta) return null;
+
+          const pace =
+            effort.distance > 0 ? formatPace(effort.elapsed_time / (effort.distance / 1000), units) : "—";
+
+          return (
+            <div
+              key={`${effort.name}-${effort.pr_rank}`}
+              className={`grid gap-2 px-3 py-3 border-b border-border/50 last:border-0 sm:grid-cols-[6rem_minmax(0,1fr)_6rem_7rem] sm:items-center sm:gap-3 ${meta.row}`}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${meta.dot}`} aria-hidden="true" />
+                <span className={`text-xs font-medium ${meta.text}`}>{meta.label}</span>
               </div>
-            );
-          })}
+              <div className="min-w-0">
+                <div className="text-sm font-medium truncate">{effort.name}</div>
+                <div className="text-xs text-muted">{meta.detail}</div>
+              </div>
+              <div className="flex items-baseline justify-between gap-3 sm:block sm:text-right">
+                <span className="text-[10px] text-muted uppercase tracking-wider sm:hidden">Time</span>
+                <span className="text-sm font-medium">{formatClockDuration(effort.elapsed_time)}</span>
+              </div>
+              <div className="flex items-baseline justify-between gap-3 sm:block sm:text-right">
+                <span className="text-[10px] text-muted uppercase tracking-wider sm:hidden">Pace</span>
+                <span className="text-sm text-muted">{pace}</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -127,6 +201,9 @@ export default async function ActivityDetailPage({
     activity.elapsed_time && activity.duration
       ? activity.elapsed_time - activity.duration
       : null;
+  const bestEfforts = Array.isArray(activity.best_efforts) ? (activity.best_efforts as BestEffort[]) : [];
+  const medalCount =
+    bestEfforts.filter((effort) => achievementMeta(effort.pr_rank) !== null).length;
 
   return (
     <div className="page-shell flex flex-col gap-6">
@@ -190,6 +267,9 @@ export default async function ActivityDetailPage({
             {activity.suffer_score != null && (
               <StatCard label="Suffer" value={`${activity.suffer_score}`} />
             )}
+            {medalCount > 0 && (
+              <StatCard label="Medals" value={`${medalCount}`} />
+            )}
             {stoppedTime != null && stoppedTime > 30 && (
               <StatCard label="Stopped" value={formatDuration(stoppedTime)} />
             )}
@@ -199,7 +279,7 @@ export default async function ActivityDetailPage({
           </div>
 
           {/* Splits */}
-          {activity.splits && activity.splits.length > 0 && (
+          {hasSplits(activity.splits) && (
             <SplitsTable splits={activity.splits} units={units} />
           )}
 
@@ -216,8 +296,8 @@ export default async function ActivityDetailPage({
           )}
 
           {/* Best efforts / PRs */}
-          {activity.best_efforts && activity.best_efforts.length > 0 && (
-            <BestEfforts efforts={activity.best_efforts} />
+          {bestEfforts.length > 0 && (
+            <RunAchievements efforts={bestEfforts} units={units} />
           )}
 
           {/* Notes */}

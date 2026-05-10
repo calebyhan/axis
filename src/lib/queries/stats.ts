@@ -73,7 +73,7 @@ export async function getRunningStats(range: TimeRange) {
 
   let query = supabase
     .from("activities")
-    .select("start_time, distance, avg_pace, suffer_score, duration, avg_heartrate")
+    .select("id, name, start_time, distance, avg_pace, suffer_score, duration, avg_heartrate, best_efforts")
     .in("type", ["run", "manual_run"])
     .order("start_time");
 

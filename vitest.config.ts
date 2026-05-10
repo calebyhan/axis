@@ -20,6 +20,7 @@ export default defineConfig({
         "src/lib/e1rm.ts",
         "src/lib/planner.ts",
         "src/lib/polyline.ts",
+        "src/lib/splits.ts",
         "src/lib/strava/activity-row.ts",
         "src/lib/training-load.ts",
         "src/lib/units.ts",
