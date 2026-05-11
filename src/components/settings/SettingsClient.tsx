@@ -465,12 +465,12 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, s
                   {disconnecting ? "Disconnecting…" : "Disconnect"}
                 </button>
               ) : (
-                <Link
+                <a
                   href="/api/strava/connect"
                   className="text-center text-xs bg-[#FC4C02] text-white rounded-lg px-3 py-2 font-medium"
                 >
                   Connect Strava
-                </Link>
+                </a>
               )}
             </div>
           </Section>

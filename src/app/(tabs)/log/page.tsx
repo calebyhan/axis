@@ -283,9 +283,9 @@ function StravaImportPreview({
       {!state.loading && !state.error && !state.connected && (
         <div className="flex flex-col gap-3">
           <div className="text-sm text-muted">Connect Strava to import recent runs.</div>
-          <Link href="/api/strava/connect" className="text-sm text-accent">
+          <a href="/api/strava/connect" className="text-sm text-accent">
             Connect Strava
-          </Link>
+          </a>
         </div>
       )}
 
