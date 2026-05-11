@@ -27,7 +27,7 @@ export function getAppUrl() {
   if (!value) {
     throw new Error("Missing required environment variable: NEXT_PUBLIC_APP_URL");
   }
-  return value;
+  return value.replace(/\/$/, "");
 }
 
 export function getStravaClientId() {
