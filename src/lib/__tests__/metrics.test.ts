@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 import { classifyTrend } from "../body-weight-trend";
 import { computeE1RM } from "../e1rm";
 import {
+  displayWeightToKg,
   distanceUnit,
   formatDistance,
   formatPace,
   formatWeight,
+  kgToDisplayWeight,
+  roundDisplayWeight,
   weightUnit,
 } from "../units";
 import { computeATLCTLTSB, normalizeStrengthTL } from "../training-load";
@@ -43,6 +46,14 @@ describe("unit labels and formatters", () => {
   it("formats imperial weights after converting from kilograms", () => {
     expect(formatWeight(100, "imperial")).toBe("220.5");
     expect(formatWeight(500, "imperial")).toBe("1.1k");
+  });
+
+  it("converts editable weight values between storage kg and display units", () => {
+    expect(kgToDisplayWeight(10, "metric")).toBe(10);
+    expect(displayWeightToKg(10, "metric")).toBe(10);
+    expect(kgToDisplayWeight(10, "imperial")).toBeCloseTo(22.0462, 4);
+    expect(displayWeightToKg(22.0462, "imperial")).toBeCloseTo(10, 4);
+    expect(roundDisplayWeight(22.0462)).toBe(22);
   });
 
   it("formats metric and imperial distances to two decimals", () => {

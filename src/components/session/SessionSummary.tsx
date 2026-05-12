@@ -42,8 +42,9 @@ function getDuration(session: SessionState): string {
 }
 
 export function SessionSummary({ session, onClose, units }: Props) {
-  const totalSets = session.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
-  const totalVolume = session.exercises.reduce(
+  const loggedExercises = session.exercises.filter((ex) => ex.sets.length > 0);
+  const totalSets = loggedExercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+  const totalVolume = loggedExercises.reduce(
     (sum, ex) => sum + ex.sets.reduce((s, set) => s + set.weight * set.reps, 0),
     0
   );
@@ -94,7 +95,7 @@ export function SessionSummary({ session, onClose, units }: Props) {
       <div>
         <p className="text-xs text-muted mb-2 uppercase tracking-wide">Exercises</p>
         <div className="flex flex-col gap-2">
-          {session.exercises.map((ex) => {
+          {loggedExercises.map((ex) => {
             const bestE1RM = ex.sets.length > 0
               ? Math.max(...ex.sets.map((s) => computeE1RM(s.weight, s.reps)))
               : 0;

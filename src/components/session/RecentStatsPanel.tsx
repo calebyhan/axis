@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { computeE1RM } from "@/lib/e1rm";
-import { weightUnit } from "@/lib/units";
+import { displayWeightToKg, kgToDisplayWeight, roundDisplayWeight, weightUnit } from "@/lib/units";
 import type { Exercise, Units } from "@/types";
 
 interface SetRecord {
@@ -17,7 +17,7 @@ interface SetRecord {
 
 interface Props {
   exercise: Exercise;
-  weightIncrement: number; // kg
+  weightIncrement: number; // active display unit
   units: Units;
   onAcceptSuggestion: (set: { weight: number; reps: number; rpe: number }) => void;
   onDismiss: () => void;
@@ -69,12 +69,11 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
   );
 
   // Suggestion
-  const suggestion = computeSuggestion(sessions, weightIncrement);
+  const suggestion = computeSuggestion(sessions, displayWeightToKg(weightIncrement, units));
 
   const unit = weightUnit(units);
   function d(kg: number) {
-    const v = units === "imperial" ? kg * 2.20462 : kg;
-    return v % 1 === 0 ? Math.round(v) : Math.round(v * 10) / 10;
+    return roundDisplayWeight(kgToDisplayWeight(kg, units));
   }
 
   if (loading) {

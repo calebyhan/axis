@@ -1,5 +1,7 @@
 import type { Units } from "@/types";
 
+export const POUNDS_PER_KG = 2.20462;
+
 export function weightUnit(units: Units): string {
   return units === "imperial" ? "lbs" : "kg";
 }
@@ -9,8 +11,20 @@ export function distanceUnit(units: Units): string {
 }
 
 export function formatWeight(kg: number, units: Units): string {
-  const value = units === "imperial" ? kg * 2.20462 : kg;
+  const value = kgToDisplayWeight(kg, units);
   return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value % 1 === 0 ? String(Math.round(value)) : value.toFixed(1);
+}
+
+export function kgToDisplayWeight(kg: number, units: Units): number {
+  return units === "imperial" ? kg * POUNDS_PER_KG : kg;
+}
+
+export function displayWeightToKg(weight: number, units: Units): number {
+  return units === "imperial" ? weight / POUNDS_PER_KG : weight;
+}
+
+export function roundDisplayWeight(weight: number): number {
+  return Math.round(weight * 10) / 10;
 }
 
 export function formatDistance(km: number, units: Units): string {

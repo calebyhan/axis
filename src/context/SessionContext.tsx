@@ -140,6 +140,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const addExercise = useCallback((exercise: Omit<SessionExercise, "sets">) => {
     setSession((prev) => {
       if (!prev) return prev;
+      if (prev.exercises.some((existing) => existing.exerciseId === exercise.exerciseId)) return prev;
       return { ...prev, exercises: [...prev.exercises, { ...exercise, sets: [] }] };
     });
   }, []);

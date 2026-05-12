@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { saveWorkoutSession } from "@/app/(tabs)/log/actions";
 import { clearDraft, saveDraft } from "@/lib/idb/session-draft";
 import { getTodayPlannedSlots, localDateStr, toISODayOfWeek } from "@/lib/planner";
-import type { DayType, Exercise, MuscleGroup, ScheduleOverride, SessionSet, SessionState, Units, WeeklyScheduleRow } from "@/types";
+import type { DayType, Exercise, MuscleGroup, ScheduleOverride, SessionExercise, SessionSet, SessionState, Units, WeeklyScheduleRow } from "@/types";
 import { useSession } from "@/context/SessionContext";
 import type { DraftSaveStatus } from "@/context/SessionContext";
 import { ExerciseSearch } from "./ExerciseSearch";
@@ -60,6 +60,7 @@ function SessionHeader({ session, saving, draftSaveStatus, hasLoggedSets, onCanc
     saved: "Draft saved",
     error: "Draft save failed",
   }[draftSaveStatus];
+  const loggedExerciseCount = session?.exercises.filter((exercise) => exercise.sets.length > 0).length ?? 0;
 
   return (
     <div className="flex items-center gap-3 px-4 pb-4 border-b border-border" style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))" }}>
@@ -70,7 +71,7 @@ function SessionHeader({ session, saving, draftSaveStatus, hasLoggedSets, onCanc
         <h2 id="workout-session-title" className="font-semibold">Workout Session</h2>
         {session && (
           <p className="text-xs text-muted mt-0.5">
-            {session.exercises.length} exercise{session.exercises.length !== 1 ? "s" : ""}
+            {loggedExerciseCount} exercise{loggedExerciseCount !== 1 ? "s" : ""}
             {statusText ? ` · ${statusText}` : ""}
           </p>
         )}
@@ -160,7 +161,17 @@ export function SessionFlow({ onClose, onComplete }: Props) {
   const { saving, error: saveError, finalSession } = saveState;
   const { units, todayMuscles, todayDayType } = userSetup;
 
-  const activeExercise = session?.exercises.find((e) => e.exerciseId === activeExerciseId) ?? null;
+  const activeExerciseRecord = activeExerciseId ? exercises.find((e) => e.id === activeExerciseId) ?? null : null;
+  const sessionExercise = session?.exercises.find((e) => e.exerciseId === activeExerciseId) ?? null;
+  const activeExercise: SessionExercise | null = sessionExercise ?? (activeExerciseRecord
+    ? {
+        exerciseId: activeExerciseRecord.id,
+        name: activeExerciseRecord.name,
+        primaryMuscles: activeExerciseRecord.primary_muscles,
+        secondaryMuscles: activeExerciseRecord.secondary_muscles,
+        sets: [],
+      }
+    : null);
   const activeSuggestedSet = activeExerciseId ? suggestedSets[activeExerciseId] ?? null : null;
   const hasLoggedSets = (session?.exercises.some((ex) => ex.sets.length > 0) ?? false);
 
@@ -225,9 +236,6 @@ export function SessionFlow({ onClose, onComplete }: Props) {
   }, [todayDayType]);
 
   function handleExerciseSelect(ex: Exercise) {
-    if (!session?.exercises.some((existing) => existing.exerciseId === ex.id)) {
-      addExercise({ exerciseId: ex.id, name: ex.name, primaryMuscles: ex.primary_muscles, secondaryMuscles: ex.secondary_muscles });
-    }
     setUiState((prev) => ({ ...prev, step: "logging", activeExerciseId: ex.id, showRecentStats: true }));
   }
 
@@ -238,6 +246,17 @@ export function SessionFlow({ onClose, onComplete }: Props) {
   }
 
   function handleAddSet(exerciseId: string, set: SessionSet) {
+    const existing = session?.exercises.some((ex) => ex.exerciseId === exerciseId) ?? false;
+    if (!existing) {
+      const exercise = exercises.find((ex) => ex.id === exerciseId);
+      if (!exercise) return;
+      addExercise({
+        exerciseId: exercise.id,
+        name: exercise.name,
+        primaryMuscles: exercise.primary_muscles,
+        secondaryMuscles: exercise.secondary_muscles,
+      });
+    }
     addSet(exerciseId, set);
     setSuggestedSets((prev) => {
       if (!prev[exerciseId]) return prev;
@@ -268,10 +287,11 @@ export function SessionFlow({ onClose, onComplete }: Props) {
 
     const captured = session;
     const key = captured.startTime.toISOString();
-    const workedMuscles = captured.exercises.flatMap((ex) => ex.primaryMuscles);
+    const loggedExercises = captured.exercises.filter((ex) => ex.sets.length > 0);
+    const workedMuscles = loggedExercises.flatMap((ex) => ex.primaryMuscles);
     const inferredDayType = inferDayType(workedMuscles, captured.dayType ?? null);
 
-    const sets = captured.exercises.flatMap((ex) =>
+    const sets = loggedExercises.flatMap((ex) =>
       ex.sets.map((s, setIdx) => ({
         exercise_id: ex.exerciseId,
         set_number: setIdx + 1,
@@ -351,6 +371,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
             <SetLogger
               key={[
                 activeExercise.exerciseId,
+                units,
                 activeSuggestedSet?.weight ?? "manual",
                 activeSuggestedSet?.reps ?? "manual",
                 activeSuggestedSet?.rpe ?? "manual",
@@ -389,9 +410,9 @@ export function SessionFlow({ onClose, onComplete }: Props) {
         <LoggedExercisesList session={session} onSelect={(exerciseId) => setUiState((prev) => ({ ...prev, step: "logging", activeExerciseId: exerciseId }))} />
       </div>
 
-      {showRecentStats && activeExerciseId && (
+      {showRecentStats && activeExerciseRecord && (
         <RecentStatsPanel
-          exercise={exercises.find((e) => e.id === activeExerciseId)!}
+          exercise={activeExerciseRecord}
           weightIncrement={2.5}
           units={units}
           onAcceptSuggestion={handleAcceptSuggestion}

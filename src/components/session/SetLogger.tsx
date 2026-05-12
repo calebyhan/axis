@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { computeE1RM } from "@/lib/e1rm";
-import { weightUnit } from "@/lib/units";
+import { displayWeightToKg, kgToDisplayWeight, roundDisplayWeight, weightUnit } from "@/lib/units";
 import type { SessionSet, Units } from "@/types";
 
 interface Props {
   exerciseName: string;
   sets: SessionSet[];
   suggestedSet: SessionSet | null;
-  weightIncrement: number; // always kg
+  weightIncrement: number; // active display unit
   units: Units;
   onAddSet: (set: { reps: number; weight: number; rpe: number }) => void; // weight always kg
 }
@@ -20,14 +20,11 @@ export function SetLogger({ exerciseName, sets, suggestedSet, weightIncrement, u
   const unit = weightUnit(units);
 
   function kgToDisplay(kg: number) {
-    return units === "imperial" ? Math.round(kg * 2.20462 * 10) / 10 : kg;
+    return roundDisplayWeight(kgToDisplayWeight(kg, units));
   }
   function displayToKg(v: number) {
-    return units === "imperial" ? v / 2.20462 : v;
+    return displayWeightToKg(v, units);
   }
-  const dispIncrement = units === "imperial"
-    ? Math.round(weightIncrement * 2.20462 * 10) / 10
-    : weightIncrement;
 
   const [repsStr, setRepsStr] = useState(String(seedSet?.reps ?? 8));
   const [weightStr, setWeightStr] = useState(String(kgToDisplay(seedSet?.weight ?? 0)));
@@ -68,22 +65,23 @@ export function SetLogger({ exerciseName, sets, suggestedSet, weightIncrement, u
             <button
               type="button"
               aria-label="Decrease weight"
-              onClick={() => setWeightStr(String(Math.max(0, Math.round((weightDisplay - dispIncrement) * 10) / 10)))}
+              onClick={() => setWeightStr(String(Math.max(0, roundDisplayWeight(weightDisplay - weightIncrement))))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >−</button>
             <input
               id="set-weight-input"
               type="number"
               inputMode="decimal"
+              step={weightIncrement}
               value={weightStr}
               onChange={(e) => setWeightStr(e.target.value)}
-              onBlur={() => setWeightStr(String(Math.max(0, parseFloat(weightStr) || 0)))}
+              onBlur={() => setWeightStr(String(Math.max(0, roundDisplayWeight(parseFloat(weightStr) || 0))))}
               className="flex-1 w-0 min-w-0 bg-surface border border-border rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:border-[var(--accent)]"
             />
             <button
               type="button"
               aria-label="Increase weight"
-              onClick={() => setWeightStr(String(Math.round((weightDisplay + dispIncrement) * 10) / 10))}
+              onClick={() => setWeightStr(String(roundDisplayWeight(weightDisplay + weightIncrement)))}
               className="w-7 h-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >+</button>
           </div>

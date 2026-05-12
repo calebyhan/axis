@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -112,9 +111,10 @@ function runMeta(activity: RecentActivity, units: Units): string {
 }
 
 function sessionCounts(session: SessionState): { exercises: number; sets: number } {
+  const loggedExercises = session.exercises.filter((exercise) => exercise.sets.length > 0);
   return {
-    exercises: session.exercises.length,
-    sets: session.exercises.reduce((total, exercise) => total + exercise.sets.length, 0),
+    exercises: loggedExercises.length,
+    sets: loggedExercises.reduce((total, exercise) => total + exercise.sets.length, 0),
   };
 }
 
