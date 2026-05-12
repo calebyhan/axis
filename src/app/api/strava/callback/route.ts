@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
   const tokenRes = await fetch("https://www.strava.com/oauth/token", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    cache: "no-store",
     body: JSON.stringify({
       client_id: getStravaClientId(),
       client_secret: getStravaClientSecret(),

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/supabase/server";
 
 interface WorkoutSetPayload {
   exercise_id: string;
@@ -31,8 +31,7 @@ interface SaveBodyWeightPayload {
 }
 
 export async function saveWorkoutSession(payload: SaveWorkoutPayload): Promise<{ activityId: string | null; error: string | null }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getSession();
   if (!user) return { activityId: null, error: "Not authenticated" };
 
   const startTime = new Date(payload.start_time);
@@ -94,8 +93,7 @@ export async function saveWorkoutSession(payload: SaveWorkoutPayload): Promise<{
 }
 
 export async function saveManualRun(payload: SaveManualRunPayload): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getSession();
   if (!user) return { error: "Not authenticated" };
 
   if (!Number.isFinite(payload.duration) || payload.duration <= 0) {
@@ -129,8 +127,7 @@ export async function saveManualRun(payload: SaveManualRunPayload): Promise<{ er
 }
 
 export async function saveBodyWeight(payload: SaveBodyWeightPayload): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getSession();
   if (!user) return { error: "Not authenticated" };
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(payload.date)) {

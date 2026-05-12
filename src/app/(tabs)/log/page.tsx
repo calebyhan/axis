@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -155,8 +156,8 @@ function LogAction({
           {description}
         </div>
       </div>
-      <span className="shrink-0 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/[0.08] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-colors group-hover:border-white/30 group-hover:bg-white/[0.12]">
-        <ActionArrow className="w-5 h-5" />
+      <span className="shrink-0 flex size-10 items-center justify-center rounded-full border border-white/20 bg-white/[0.08] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-colors group-hover:border-white/30 group-hover:bg-white/[0.12]">
+        <ActionArrow className="size-5" />
       </span>
     </button>
   );
@@ -276,9 +277,9 @@ function StravaImportPreview({
       {!state.loading && !state.error && !state.connected && (
         <div className="flex flex-col gap-3">
           <div className="text-sm text-muted">Connect Strava to import recent runs.</div>
-          <a href="/api/strava/connect" className="text-sm text-accent">
+          <Link href="/api/strava/connect" className="text-sm text-accent">
             Connect Strava
-          </a>
+          </Link>
         </div>
       )}
 
@@ -386,7 +387,7 @@ const SessionFlow = dynamic(
 );
 
 export default function LogPage() {
-  const router = useRouter();
+  const { refresh } = useRouter();
   const { session, isActive, hasDraft, draft, resumeDraft } = useSession();
   const [panel, setPanel] = useState<Panel>(null);
   const [saved, setSaved] = useState<string | null>(null);
@@ -514,7 +515,7 @@ export default function LogPage() {
   function onSaved(msg: string) {
     setSaved(msg);
     setPanel(null);
-    router.refresh();
+    refresh();
     void loadLogContext();
     void loadStravaPreview();
     setTimeout(() => setSaved(null), 3000);
@@ -633,9 +634,9 @@ export default function LogPage() {
                 type="button"
                 onClick={() => setPanel(null)}
                 aria-label="Close log run"
-                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors"
+                className="shrink-0 size-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors"
               >
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="size-4">
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
@@ -656,9 +657,9 @@ export default function LogPage() {
                 type="button"
                 onClick={() => setPanel(null)}
                 aria-label="Close body weight"
-                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors"
+                className="shrink-0 size-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors"
               >
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="size-4">
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>

@@ -107,7 +107,7 @@ function RunAchievements({ efforts, units }: { efforts: BestEffort[]; units: Uni
               className={`grid gap-2 px-3 py-3 border-b border-border/50 last:border-0 sm:grid-cols-[6rem_minmax(0,1fr)_6rem_7rem] sm:items-center sm:gap-3 ${meta.row}`}
             >
               <div className="flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${meta.dot}`} aria-hidden="true" />
+                <span className={`size-2.5 rounded-full ${meta.dot}`} aria-hidden="true" />
                 <span className={`text-xs font-medium ${meta.text}`}>{meta.label}</span>
               </div>
               <div className="min-w-0">
@@ -227,9 +227,9 @@ export default async function ActivityDetailPage({
         <Link
           href="/activity"
           aria-label="Back to activity"
-          className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors"
+          className="shrink-0 size-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors"
         >
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="size-4">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </Link>
@@ -239,7 +239,7 @@ export default async function ActivityDetailPage({
         <DeleteActivityButton activityId={activity.id} />
       </div>
 
-      <div className="text-sm text-muted">
+      <div className="text-sm text-muted" suppressHydrationWarning>
         {new Date(activity.start_time).toLocaleDateString("en-US", {
           weekday: "long",
           year: "numeric",
@@ -303,7 +303,7 @@ export default async function ActivityDetailPage({
             <div>
               <div className="text-xs text-muted uppercase tracking-wider mb-3">Charts</div>
               <div className="card p-4">
-                <Suspense fallback={<div className="text-sm text-muted py-4 text-center">Loading charts...</div>}>
+                <Suspense fallback={<div className="text-sm text-muted py-4 text-center">Loading charts…</div>}>
                   <RunStreams stravaActivityId={activity.strava_activity_id} units={units} />
                 </Suspense>
               </div>

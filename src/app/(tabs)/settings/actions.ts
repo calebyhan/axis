@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/supabase/server";
 import type { AccentColor, Units } from "@/types";
 
 interface ProfilePayload {
@@ -21,7 +21,7 @@ function startOfWeek(today = new Date()): Date {
   return sunday;
 }
 
-async function invalidateCurrentAndFuturePlannedSlots(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+async function invalidateCurrentAndFuturePlannedSlots(supabase: Awaited<ReturnType<typeof getSession>>["supabase"], userId: string) {
   const { error } = await supabase
     .from("planned_slots")
     .delete()
@@ -31,8 +31,7 @@ async function invalidateCurrentAndFuturePlannedSlots(supabase: Awaited<ReturnTy
 }
 
 export async function saveProfile(payload: ProfilePayload): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getSession();
   if (!user) return { error: "Not authenticated" };
 
   const { error } = await supabase
@@ -54,8 +53,7 @@ export async function saveWeeklyScheduleDay(payload: {
   day_type_id: string | null;
   cardio_day_type_id: string | null;
 }): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getSession();
   if (!user) return { error: "Not authenticated" };
 
   if (!payload.day_type_id && !payload.cardio_day_type_id) {

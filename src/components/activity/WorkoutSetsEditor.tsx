@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateWorkoutSession } from "@/app/(tabs)/activity/actions";
 import { ExerciseSearch } from "@/components/session/ExerciseSearch";
@@ -58,7 +58,7 @@ function groupSets(rows: EditableWorkoutSet[]): ExerciseGroup[] {
 
   return Array.from(groups.values()).map((group) => ({
     ...group,
-    sets: [...group.sets].sort((a, b) => a.set_number - b.set_number),
+    sets: group.sets.toSorted((a, b) => a.set_number - b.set_number),
   }));
 }
 
@@ -89,7 +89,7 @@ function findLastExerciseIndex(rows: EditableWorkoutSet[], exerciseId: string) {
 }
 
 export function WorkoutSetsEditor({ activityId, initialSets, units }: Props) {
-  const router = useRouter();
+  const { refresh } = useRouter();
   const unit = weightUnit(units);
   const [editing, setEditing] = useState(false);
   const [committedSets, setCommittedSets] = useState<EditableWorkoutSet[]>(initialSets);
@@ -97,7 +97,7 @@ export function WorkoutSetsEditor({ activityId, initialSets, units }: Props) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [nextId, setNextId] = useState(0);
+  const nextIdRef = useRef(0);
 
   useEffect(() => {
     if (!editing || exercises.length > 0) return;
@@ -128,7 +128,7 @@ export function WorkoutSetsEditor({ activityId, initialSets, units }: Props) {
   function addSetForGroup(group: ExerciseGroup) {
     const previous = group.sets[group.sets.length - 1];
     const newSet: EditableWorkoutSet = {
-      row_id: `new-${nextId}`,
+      row_id: `new-${nextIdRef.current++}`,
       exercise_id: group.exerciseId,
       exercise_name: group.name,
       primary_muscles: group.primaryMuscles,
@@ -138,7 +138,6 @@ export function WorkoutSetsEditor({ activityId, initialSets, units }: Props) {
       weight: previous?.weight ?? 0,
       rpe: previous?.rpe ?? 7,
     };
-    setNextId((value) => value + 1);
     setDraftSets((prev) => {
       const insertAfter = findLastExerciseIndex(prev, group.exerciseId);
       if (insertAfter === -1) return normalizeRows([...prev, newSet]);
@@ -154,7 +153,7 @@ export function WorkoutSetsEditor({ activityId, initialSets, units }: Props) {
     }
 
     const newSet: EditableWorkoutSet = {
-      row_id: `new-${nextId}`,
+      row_id: `new-${nextIdRef.current++}`,
       exercise_id: exercise.id,
       exercise_name: exercise.name,
       primary_muscles: exercise.primary_muscles,
@@ -164,7 +163,6 @@ export function WorkoutSetsEditor({ activityId, initialSets, units }: Props) {
       weight: 0,
       rpe: 7,
     };
-    setNextId((value) => value + 1);
     setDraftSets((prev) => normalizeRows([...prev, newSet]));
   }
 
@@ -189,7 +187,7 @@ export function WorkoutSetsEditor({ activityId, initialSets, units }: Props) {
     setDraftSets(normalized);
     setSaving(false);
     setEditing(false);
-    router.refresh();
+    refresh();
   }
 
   if (!editing) {
@@ -204,10 +202,10 @@ export function WorkoutSetsEditor({ activityId, initialSets, units }: Props) {
               setError("");
               setEditing(true);
             }}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-white/55 hover:border-white/20 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-full border border-white/10 text-white/55 hover:border-white/20 hover:text-white"
             aria-label="Edit workout"
           >
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="size-4">
               <path d="M12 20h9" />
               <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
             </svg>
@@ -328,7 +326,7 @@ function EditableSetRow({
   onChange: (patch: Partial<Pick<EditableWorkoutSet, "reps" | "weight" | "rpe">>) => void;
   onDelete: () => void;
 }) {
-  const [weightStr, setWeightStr] = useState(displayNumber(kgToDisplayWeight(set.weight, units)));
+  const [weightStr, setWeightStr] = useState(() => displayNumber(kgToDisplayWeight(set.weight, units)));
   const [repsStr, setRepsStr] = useState(String(set.reps));
   const [rpeStr, setRpeStr] = useState(String(set.rpe));
 
@@ -400,9 +398,9 @@ function EditableSetRow({
         type="button"
         onClick={onDelete}
         aria-label={`Delete set ${set.set_number}`}
-        className="mb-0.5 flex h-8 w-8 items-center justify-center rounded-full border border-red-400/20 text-red-300 hover:border-red-300/40 hover:text-red-200"
+        className="mb-0.5 flex size-8 items-center justify-center rounded-full border border-red-400/20 text-red-300 hover:border-red-300/40 hover:text-red-200"
       >
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-3.5 w-3.5">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="size-3.5">
           <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
         </svg>
       </button>

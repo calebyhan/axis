@@ -10,25 +10,16 @@ interface Props {
   units: Units;
 }
 
+const PUSH_MUSCLES = new Set(["chest", "front_delt", "triceps"]);
+const PULL_MUSCLES = new Set(["upper_back", "lats", "biceps", "rear_delt"]);
+
 function getPushPullSplit(session: SessionState): { push: number; pull: number } {
   let push = 0;
   let pull = 0;
   for (const ex of session.exercises) {
     const sets = ex.sets.length;
-    if (
-      ex.primaryMuscles.some((m) =>
-        ["chest", "front_delt", "triceps"].includes(m)
-      )
-    ) {
-      push += sets;
-    }
-    if (
-      ex.primaryMuscles.some((m) =>
-        ["upper_back", "lats", "biceps", "rear_delt"].includes(m)
-      )
-    ) {
-      pull += sets;
-    }
+    if (ex.primaryMuscles.some((m) => PUSH_MUSCLES.has(m))) push += sets;
+    if (ex.primaryMuscles.some((m) => PULL_MUSCLES.has(m))) pull += sets;
   }
   return { push, pull };
 }

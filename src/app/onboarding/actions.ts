@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/supabase/server";
 import { isAccentColor } from "@/lib/accent-colors";
 import type { AccentColor } from "@/types";
 
@@ -11,8 +11,7 @@ interface CompleteOnboardingPayload {
 }
 
 export async function completeOnboarding(payload: CompleteOnboardingPayload): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getSession();
   if (!user) return { error: "Not authenticated" };
 
   const displayName = payload.display_name.trim();

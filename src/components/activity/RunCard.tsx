@@ -45,7 +45,7 @@ export function RunCard({ activity, units }: Props) {
                 </span>
               )}
             </div>
-            <div className="text-sm font-medium mt-0.5">
+            <div className="text-sm font-medium mt-0.5" suppressHydrationWarning>
               {new Date(activity.start_time).toLocaleDateString("en-US", {
                 weekday: "short",
                 month: "short",
@@ -56,9 +56,9 @@ export function RunCard({ activity, units }: Props) {
           {medals > 0 && (
             <div className="flex shrink-0 items-center gap-1.5 rounded-md border border-amber-300/20 bg-amber-300/[0.06] px-2 py-1 text-xs text-amber-200">
               <span className="flex items-center gap-0.5" aria-hidden="true">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
-                <span className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
-                <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
+                <span className="size-1.5 rounded-full bg-amber-300" />
+                <span className="size-1.5 rounded-full bg-zinc-300" />
+                <span className="size-1.5 rounded-full bg-orange-400" />
               </span>
               <span className="font-medium">{medals}</span>
               <span className="hidden text-amber-200/70 min-[430px]:inline">{medals === 1 ? "medal" : "medals"}</span>

@@ -103,7 +103,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-medium">{exercise.name}</h3>
-          <button type="button" onClick={onDismiss} className="text-muted text-sm">Done</button>
+          <button type="button" onClick={onDismiss} className="text-muted text-sm">Close</button>
         </div>
 
         {sets.length === 0 ? (

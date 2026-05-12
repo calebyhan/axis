@@ -28,7 +28,7 @@ const INSTALL_STEPS = {
 };
 
 export function OnboardingClient({ initialDisplayName, initialAccent, nextPath }: Props) {
-  const router = useRouter();
+  const { push, refresh } = useRouter();
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [accent, setAccent] = useState<AccentColor>(initialAccent);
   const [error, setError] = useState("");
@@ -55,8 +55,8 @@ export function OnboardingClient({ initialDisplayName, initialAccent, nextPath }
         return;
       }
 
-      router.push(nextPath);
-      router.refresh();
+      push(nextPath);
+      refresh();
     });
   }
 
@@ -82,8 +82,8 @@ export function OnboardingClient({ initialDisplayName, initialAccent, nextPath }
                   Axis works best from your home screen.
                 </p>
               </div>
-              <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border bg-white/[0.04] text-accent sm:flex">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+              <div className="hidden size-11 shrink-0 items-center justify-center rounded-2xl border border-border bg-white/[0.04] text-accent sm:flex">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
                   <rect x="7" y="2.75" width="10" height="18.5" rx="2.2" />
                   <path d="M10 18.25h4" />
                 </svg>
@@ -132,7 +132,7 @@ export function OnboardingClient({ initialDisplayName, initialAccent, nextPath }
                   >
                     <span
                       aria-hidden="true"
-                      className="h-8 w-8 rounded-full border border-white/20"
+                      className="size-8 rounded-full border border-white/20"
                       style={{ background: color.hex }}
                     />
                   </button>
@@ -164,7 +164,7 @@ function InstallInstructions({ title, steps }: { title: string; steps: string[] 
       <ol className="mt-4 flex flex-col gap-3">
         {steps.map((step, index) => (
           <li key={step} className="flex gap-3 text-sm text-white/72">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-xs text-white/55">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-xs text-white/55">
               {index + 1}
             </span>
             <span className="leading-6">{step}</span>

@@ -2,8 +2,8 @@
 
 import {
   createContext,
+  use,
   useCallback,
-  useContext,
   useEffect,
   useRef,
   useState,
@@ -245,7 +245,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useSession() {
-  const ctx = useContext(SessionContext);
+  const ctx = use(SessionContext);
   if (!ctx) throw new Error("useSession must be used within SessionProvider");
   return ctx;
 }

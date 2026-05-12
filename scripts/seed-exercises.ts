@@ -383,12 +383,17 @@ async function main() {
 
   console.log(`Inserting ${EXERCISES.length} exercises…`);
 
+  const batches = [];
   for (let i = 0; i < EXERCISES.length; i += 50) {
-    const batch = EXERCISES.slice(i, i + 50);
-    const { error } = await supabase.from("exercises").insert(batch);
-    if (error) console.error(`Batch ${Math.floor(i / 50) + 1} error:`, error.message);
-    else console.log(`  Batch ${Math.floor(i / 50) + 1}: ${batch.length} exercises`);
+    batches.push(EXERCISES.slice(i, i + 50));
   }
+  await Promise.all(
+    batches.map(async (batch, idx) => {
+      const { error } = await supabase.from("exercises").insert(batch);
+      if (error) console.error(`Batch ${idx + 1} error:`, error.message);
+      else console.log(`  Batch ${idx + 1}: ${batch.length} exercises`);
+    })
+  );
 
   console.log("Done!");
 }

@@ -125,7 +125,7 @@ function HRChart({ points, hrMin, hrMax, hrZones, zoneAreas }: { points: Point[]
         <div className="flex items-center gap-3 mt-1 flex-wrap text-[10px] text-muted">
           {zoneAreas.map((_, zoneIdx) => (
             <span key={`zone-label-${zoneIdx}`} className="flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-sm" style={{ background: ZONE_COLORS[zoneIdx], opacity: 0.7 }} />
+              <span className="inline-block size-2 rounded-sm" style={{ background: ZONE_COLORS[zoneIdx], opacity: 0.7 }} />
               Z{zoneIdx + 1} {hrZones[zoneIdx].min}-{hrZones[zoneIdx].max === -1 ? "max" : hrZones[zoneIdx].max}
             </span>
           ))}
@@ -210,7 +210,7 @@ export function RunStreams({ stravaActivityId, units }: { stravaActivityId: numb
   const { data: streamData, error, isLoading, mutate } = useSWR<StreamsData>(`/api/strava/streams/${stravaActivityId}`, fetcher);
   const { data: zonesData } = useSWR<{ hr?: HRZone[] }>("/api/strava/zones", fetcher);
 
-  if (isLoading) return <div className="text-sm text-muted py-4 text-center">Loading charts...</div>;
+  if (isLoading) return <div className="text-sm text-muted py-4 text-center">Loading charts…</div>;
   if (error) {
     return (
       <div className="py-4 text-center">
@@ -234,11 +234,16 @@ export function RunStreams({ stravaActivityId, units }: { stravaActivityId: numb
   const hasCadence = available.includes("cadence");
   const hasPower = available.includes("watts");
 
-  const altValues = hasAlt ? points.map((p) => p.altitude).filter((v): v is number => v != null) : [];
+  const altValues = hasAlt
+    ? points.reduce<number[]>((acc, p) => { if (p.altitude != null) acc.push(p.altitude); return acc; }, [])
+    : [];
   const altMin = altValues.length ? Math.min(...altValues) : 0;
   const altMax = altValues.length ? Math.max(...altValues) : 100;
-  const hrMin = hasHR ? Math.min(...points.map((p) => p.heartrate ?? 999).filter((v) => v !== 999)) - 5 : 0;
-  const hrMax = hasHR ? Math.max(...points.map((p) => p.heartrate ?? 0)) + 5 : 220;
+  const hrValues = hasHR
+    ? points.reduce<number[]>((acc, p) => { if (p.heartrate != null) acc.push(p.heartrate); return acc; }, [])
+    : [];
+  const hrMin = hrValues.length ? Math.min(...hrValues) - 5 : 0;
+  const hrMax = hrValues.length ? Math.max(...hrValues) + 5 : 220;
   const zoneAreas = hrZones ? hrZones.map((z, idx) => ({ y1: z.min, y2: z.max === -1 ? 220 : z.max, fill: ZONE_COLORS[idx] ?? ZONE_COLORS[4] })) : null;
 
   return (

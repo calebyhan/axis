@@ -64,8 +64,8 @@ function SessionHeader({ session, saving, draftSaveStatus, hasLoggedSets, onCanc
 
   return (
     <div className="flex items-center gap-3 px-4 pb-4 border-b border-border" style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))" }}>
-      <button type="button" onClick={onCancel} aria-label="Close workout session" className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors">
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path d="M18 6L6 18M6 6l12 12" /></svg>
+      <button type="button" onClick={onCancel} aria-label="Close workout session" className="shrink-0 size-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="size-4"><path d="M18 6L6 18M6 6l12 12" /></svg>
       </button>
       <div className="flex-1 min-w-0">
         <h2 id="workout-session-title" className="font-semibold">Workout Session</h2>
@@ -116,7 +116,7 @@ function CloseSessionPrompt({ saving, error, onKeepDraft, onDiscard, onReturn }:
 
 function DraftPrompt({ onResume, onDiscard }: { onResume: () => void; onDiscard: () => void }) {
   return (
-    <div className="px-4 py-4 border-b border-border">
+    <div className="p-4 border-b border-border">
       <p className="text-sm mb-3">Resume previous session?</p>
       <div className="flex gap-2">
         <button type="button" onClick={onResume} className="flex-1 bg-accent py-2 rounded-lg text-sm font-medium">Resume</button>
@@ -130,12 +130,13 @@ function LoggedExercisesList({ session, onSelect }: {
   session: ReturnType<typeof useSession>["session"];
   onSelect: (exerciseId: string) => void;
 }) {
-  if (!session || !session.exercises.some((e) => e.sets.length > 0)) return null;
+  const logged = session?.exercises.filter((e) => e.sets.length > 0) ?? [];
+  if (!logged.length) return null;
   return (
     <div>
       <p className="text-xs text-muted mb-2 uppercase tracking-wide">Logged</p>
       <div className="flex flex-col gap-2">
-        {session.exercises.filter((ex) => ex.sets.length > 0).map((ex) => (
+        {logged.map((ex) => (
           <button key={ex.exerciseId} type="button" onClick={() => onSelect(ex.exerciseId)} className="card p-3 text-left flex justify-between items-center">
             <span className="text-sm font-medium">{ex.name}</span>
             <span className="text-xs text-muted">{ex.sets.length} sets</span>
@@ -343,9 +344,9 @@ export function SessionFlow({ onClose, onComplete }: Props) {
       <div className="fixed inset-0 z-50 flex flex-col bg-background md:bg-black/60 md:items-center md:justify-center md:p-6" role="dialog" aria-modal="true" aria-labelledby="session-complete-title">
         <div className="flex flex-col w-full h-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-2xl md:rounded-3xl md:bg-[#0A0A0A] md:border md:border-[#1F1F1F] md:overflow-hidden">
           <div className="flex items-center gap-3 px-4 pb-4 border-b border-border" style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))" }}>
-            <div className="w-9 h-9 shrink-0" />
+            <div className="size-9 shrink-0" />
             <h2 id="session-complete-title" className="flex-1 font-semibold text-center">Session Complete</h2>
-            <div className="w-9 h-9 shrink-0" />
+            <div className="size-9 shrink-0" />
           </div>
           <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav md:pb-6">
             {saveError && <p className="text-yellow-400 text-xs mb-4 px-3 py-2 bg-yellow-400/10 rounded-lg border border-yellow-400/20">{saveError}</p>}
@@ -365,7 +366,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
       {saveError && <div className="px-4 py-2 bg-red-900/30 border-b border-red-700/40 text-xs text-red-400">{saveError}</div>}
       {hasDraft && <DraftPrompt onResume={resumeDraft} onDiscard={discardDraft} />}
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-nav flex flex-col gap-6">
+      <div className="flex-1 overflow-y-auto p-4 pb-nav flex flex-col gap-6">
         {step === "logging" && activeExercise && session && (
           <div className="card p-4">
             <SetLogger

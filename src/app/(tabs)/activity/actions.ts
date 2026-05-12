@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -13,8 +13,7 @@ interface WorkoutSetPayload {
 }
 
 export async function deleteActivity(activityId: string): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getSession();
   if (!user) return { error: "Not authenticated" };
 
   // session_sets cascade deletes via FK, so deleting the activity is sufficient
@@ -32,8 +31,7 @@ export async function updateWorkoutSession(
   activityId: string,
   setsPayload: WorkoutSetPayload[]
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getSession();
   if (!user) return { error: "Not authenticated" };
 
   if (!activityId) {

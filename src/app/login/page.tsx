@@ -2,17 +2,17 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const searchParams = useSearchParams();
+  const { get: getParam } = useSearchParams();
   const supabase = createClient();
-  const next = sanitizeNextPath(searchParams.get("next"));
-  const callbackError = searchParams.get("error");
+  const next = sanitizeNextPath(getParam("next"));
+  const callbackError = getParam("error");
   const visibleError = error || getCallbackErrorMessage(callbackError);
 
   async function handleGoogleLogin() {
@@ -60,6 +60,14 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
 

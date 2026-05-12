@@ -106,7 +106,7 @@ export function PendingStravaLinks({ links: initialLinks }: Props) {
         <div key={link.id} className="card p-4 border-amber-400/20 flex flex-col gap-3">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <div className="text-xs text-amber-400 uppercase tracking-[0.16em] mb-1">Watch Workout — Link?</div>
+              <div className="text-xs text-amber-400 uppercase tracking-[0.16em] mb-1">Watch Workout: Link?</div>
               <div className="text-sm font-medium">{link.strava_data.name ?? "Workout"}</div>
               <div className="text-xs text-white/45 mt-0.5">{formatTime(link.strava_data.start_time)}</div>
             </div>

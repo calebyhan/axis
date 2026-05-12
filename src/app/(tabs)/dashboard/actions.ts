@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/supabase/server";
 
 function localDateFromString(date: string): Date {
   const [year, month, day] = date.split("-").map(Number);
@@ -20,7 +20,7 @@ function startOfWeek(today: Date): Date {
 }
 
 async function invalidatePlannedSlotWeek(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof getSession>>["supabase"],
   userId: string,
   date: string
 ) {
@@ -37,8 +37,7 @@ export async function upsertOverride(
   slot: "workout" | "cardio",
   dayTypeId: string | null
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getSession();
   if (!user) return { error: "Not authenticated" };
 
   const { error } = await supabase
@@ -59,8 +58,7 @@ export async function deleteOverride(
   date: string,
   slot: "workout" | "cardio"
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getSession();
   if (!user) return { error: "Not authenticated" };
 
   const { error } = await supabase
