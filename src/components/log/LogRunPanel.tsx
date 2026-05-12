@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import useSWR from "swr";
 import { createClient } from "@/lib/supabase/client";
+import { formatRelativeCalendarDate } from "@/lib/dates";
 import { formatDistance, distanceUnit } from "@/lib/units";
 import { LogRunForm } from "./LogRunForm";
 import type { Units } from "@/types";
@@ -23,12 +24,10 @@ function formatDuration(secs: number): string {
 }
 
 function formatRelativeDate(isoDate: string): string {
-  const date = new Date(isoDate);
-  const diffMs = Date.now() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return formatRelativeCalendarDate(isoDate, new Date(), {
+    weekday: false,
+    fallback: { weekday: "short", month: "short", day: "numeric" },
+  });
 }
 
 const RECENT_MS = 48 * 60 * 60 * 1000;

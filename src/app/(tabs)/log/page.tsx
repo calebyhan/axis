@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { formatRelativeCalendarDate } from "@/lib/dates";
 import { getTodayPlannedSlots, localDateStr, toISODayOfWeek, type PlannedSlot } from "@/lib/planner";
 import { distanceUnit, formatDistance, formatWeight, weightUnit } from "@/lib/units";
 import { useSession } from "@/context/SessionContext";
@@ -73,15 +74,7 @@ function formatDuration(secs: number): string {
 }
 
 function formatRelativeDate(value: string | Date): string {
-  const date = value instanceof Date ? value : new Date(value);
-  const diffMs = Date.now() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays > 1 && diffDays < 7) {
-    return date.toLocaleDateString("en-US", { weekday: "long" });
-  }
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return formatRelativeCalendarDate(value, new Date(), { weekday: "long" });
 }
 
 function isRestPlan(dayType: DayType | null | undefined): boolean {
@@ -371,7 +364,7 @@ function RecentActivityContext({
           <RecentItem
             label="Weight"
             title={weight ? `${formatWeight(weight.body_weight, units)} ${weightUnit(units)}` : "No weigh-in yet"}
-            meta={weight ? formatRelativeDate(`${weight.date}T00:00:00`) : "—"}
+            meta={weight ? formatRelativeDate(weight.date) : "—"}
           />
         </div>
       )}
