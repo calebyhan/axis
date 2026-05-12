@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { FocusEvent, PointerEvent } from "react";
 import type { MuscleGroup, MuscleHeatmapDetails } from "@/types";
 
@@ -39,6 +40,8 @@ const BODY_DARK = "#181818";
 const DETAIL = "#101010";
 const FALLBACK_ACCENT = "#3B82F6";
 const TOOLTIP_LIMIT = 6;
+const TOOLTIP_OFFSET = 10;
+const TOOLTIP_MARGIN = 8;
 
 const MUSCLE_LABELS: Record<MuscleGroup, string> = {
   chest: "Chest",
@@ -345,25 +348,39 @@ function renderDetails(paths: string[]) {
 }
 
 function getPointerPosition(event: PointerEvent<SVGGElement>): { x: number; y: number } {
-  const svg = event.currentTarget.ownerSVGElement;
-  if (!svg) return { x: 0, y: 0 };
-
-  const rect = svg.getBoundingClientRect();
   return {
-    x: event.clientX - rect.left,
-    y: event.clientY - rect.top,
+    x: event.clientX,
+    y: event.clientY,
   };
 }
 
 function getFocusPosition(event: FocusEvent<SVGGElement>): { x: number; y: number } {
   const groupRect = event.currentTarget.getBoundingClientRect();
-  const svg = event.currentTarget.ownerSVGElement;
-  if (!svg) return { x: groupRect.width / 2, y: groupRect.height / 2 };
 
-  const svgRect = svg.getBoundingClientRect();
   return {
-    x: groupRect.left + groupRect.width / 2 - svgRect.left,
-    y: groupRect.top + groupRect.height / 2 - svgRect.top,
+    x: groupRect.left + groupRect.width / 2,
+    y: groupRect.top + groupRect.height / 2,
+  };
+}
+
+function getTooltipPosition(
+  anchor: ActiveTooltip,
+  tooltip: HTMLDivElement
+): { left: number; top: number } {
+  const rect = tooltip.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const prefersLeft = anchor.x > viewportWidth / 2;
+  const minLeft = TOOLTIP_MARGIN;
+  const maxLeft = viewportWidth - rect.width - TOOLTIP_MARGIN;
+  const minTop = TOOLTIP_MARGIN;
+  const maxTop = viewportHeight - rect.height - TOOLTIP_MARGIN;
+  const unclampedLeft = prefersLeft ? anchor.x - rect.width - TOOLTIP_OFFSET : anchor.x + TOOLTIP_OFFSET;
+  const unclampedTop = anchor.y - rect.height / 2;
+
+  return {
+    left: Math.min(Math.max(unclampedLeft, minLeft), Math.max(minLeft, maxLeft)),
+    top: Math.min(Math.max(unclampedTop, minTop), Math.max(minTop, maxTop)),
   };
 }
 
@@ -385,6 +402,7 @@ export function MuscleHeatmap({
   tooltipContext,
 }: Props) {
   const reactId = useId();
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip | null>(null);
   const idPrefix = `muscle-map-${reactId.replace(/:/g, "")}`;
   const max = Math.max(1, ...Object.values(coverage).filter((v): v is number => typeof v === "number" && Number.isFinite(v)));
@@ -401,12 +419,21 @@ export function MuscleHeatmap({
   const activeMuscle = activeTooltip?.muscle ?? null;
   const tooltipItems = activeMuscle ? tooltipDetails?.[activeMuscle]?.items ?? [] : [];
   const visibleTooltipItems = tooltipItems.slice(0, TOOLTIP_LIMIT);
+  const visibleTooltipText = visibleTooltipItems.join("\n");
   const hiddenTooltipCount = Math.max(0, tooltipItems.length - visibleTooltipItems.length);
   const activeCount = activeMuscle ? countFor(activeMuscle) : 0;
-  const tooltipTransform =
-    activeTooltip && activeTooltip.x > width * 0.52
-      ? "translate(calc(-100% - 10px), -50%)"
-      : "translate(10px, -50%)";
+
+  useLayoutEffect(() => {
+    if (!activeTooltip) return;
+
+    const tooltip = tooltipRef.current;
+    if (!tooltip) return;
+
+    const nextPosition = getTooltipPosition(activeTooltip, tooltip);
+    tooltip.style.left = `${nextPosition.left}px`;
+    tooltip.style.top = `${nextPosition.top}px`;
+    tooltip.style.visibility = "visible";
+  }, [activeTooltip, activeCount, hiddenTooltipCount, tooltipContext, visibleTooltipText]);
 
   const handlers: MuscleHandlers = {
     onPointerEnter: (muscle, event) => {
@@ -443,13 +470,16 @@ export function MuscleHeatmap({
         {renderDetails(definitionLines)}
       </svg>
 
-      {activeTooltip && (
+      {activeTooltip && typeof document !== "undefined" && createPortal(
         <div
-          className="pointer-events-none absolute z-50 w-max max-w-64 rounded-lg border border-white/12 bg-[#080808]/95 px-3 py-2 text-left shadow-xl shadow-black/35 backdrop-blur"
+          ref={tooltipRef}
+          className="pointer-events-none fixed z-50 w-max rounded-lg border border-white/12 bg-[#080808]/95 px-3 py-2 text-left shadow-xl shadow-black/35 backdrop-blur"
           style={{
-            left: activeTooltip.x,
-            top: activeTooltip.y,
-            transform: tooltipTransform,
+            left: 0,
+            top: 0,
+            maxHeight: "calc(100vh - 16px)",
+            maxWidth: "min(16rem, calc(100vw - 16px))",
+            visibility: "hidden",
           }}
         >
           <div className="text-xs font-semibold text-white">{MUSCLE_LABELS[activeTooltip.muscle]}</div>
@@ -468,7 +498,8 @@ export function MuscleHeatmap({
               )}
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -202,6 +202,7 @@ export async function getWeeklyStats() {
 export async function getWeeklyMuscleCoverageSummary(): Promise<{
   coverage: Partial<Record<MuscleGroup, number>>;
   details: MuscleHeatmapDetails;
+  totalSets: number;
 }> {
   const supabase = await createClient();
   const weekStart = startOfCurrentWeek().toISOString();
@@ -215,6 +216,7 @@ export async function getWeeklyMuscleCoverageSummary(): Promise<{
 
   const coverage: Partial<Record<MuscleGroup, number>> = {};
   const detailBuckets: Partial<Record<MuscleGroup, Map<string, { label: string; count: number; sortTime: number }>>> = {};
+  const totalSets = sets?.length ?? 0;
 
   for (const set of sets ?? []) {
     const exercise = normalizeRelation<{ name: string | null; primary_muscles: MuscleGroup[] }>(set.exercise);
@@ -249,7 +251,7 @@ export async function getWeeklyMuscleCoverageSummary(): Promise<{
     ])
   ) as MuscleHeatmapDetails;
 
-  return { coverage, details };
+  return { coverage, details, totalSets };
 }
 
 export async function getWeeklyMuscleCoverage(): Promise<Partial<Record<MuscleGroup, number>>> {

@@ -4,6 +4,7 @@ import type { MuscleGroup, MuscleHeatmapDetails } from "@/types";
 interface Props {
   coverage: Partial<Record<MuscleGroup, number>>;
   details?: MuscleHeatmapDetails;
+  totalSets?: number;
 }
 
 const MUSCLE_LABELS: Record<MuscleGroup, string> = {
@@ -27,12 +28,12 @@ const MUSCLE_LABELS: Record<MuscleGroup, string> = {
   obliques: "Obliques",
 };
 
-export function WeeklyMuscleCoverage({ coverage, details }: Props) {
+export function WeeklyMuscleCoverage({ coverage, details, totalSets }: Props) {
   const activeMuscles = Object.entries(coverage)
     .filter((entry): entry is [MuscleGroup, number] => entry[1] > 0)
     .sort((a, b) => b[1] - a[1]);
 
-  const totalHits = activeMuscles.reduce((sum, [, count]) => sum + count, 0);
+  const actualSetCount = totalSets ?? activeMuscles.reduce((sum, [, count]) => sum + count, 0);
 
   return (
     <div className="card p-5 sm:p-6">
@@ -40,12 +41,12 @@ export function WeeklyMuscleCoverage({ coverage, details }: Props) {
         <div>
           <div className="text-[11px] uppercase tracking-[0.24em] text-white/45">Muscle Map</div>
           <div className="mt-2 text-sm text-white/60">
-            {totalHits > 0 ? `${activeMuscles.length} groups hit this week` : "No strength sets logged yet"}
+            {actualSetCount > 0 ? `${activeMuscles.length} groups hit this week` : "No strength sets logged yet"}
           </div>
         </div>
-        {totalHits > 0 && (
+        {actualSetCount > 0 && (
           <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-accent">
-            {totalHits} set{totalHits === 1 ? "" : "s"}
+            {actualSetCount} set{actualSetCount === 1 ? "" : "s"}
           </div>
         )}
       </div>

@@ -67,7 +67,11 @@ export default async function DashboardPage() {
           <WeeklyStatsSummary {...weeklyStats} units={units} />
         </div>
         <div className="hidden lg:block">
-          <WeeklyMuscleCoverage coverage={weeklyMuscleCoverageSummary.coverage} details={weeklyMuscleCoverageSummary.details} />
+          <WeeklyMuscleCoverage
+            coverage={weeklyMuscleCoverageSummary.coverage}
+            details={weeklyMuscleCoverageSummary.details}
+            totalSets={weeklyMuscleCoverageSummary.totalSets}
+          />
         </div>
       </div>
 
@@ -86,7 +90,11 @@ export default async function DashboardPage() {
       </div>
 
       <div className="lg:hidden">
-        <WeeklyMuscleCoverage coverage={weeklyMuscleCoverageSummary.coverage} details={weeklyMuscleCoverageSummary.details} />
+        <WeeklyMuscleCoverage
+          coverage={weeklyMuscleCoverageSummary.coverage}
+          details={weeklyMuscleCoverageSummary.details}
+          totalSets={weeklyMuscleCoverageSummary.totalSets}
+        />
       </div>
 
       <BodyWeightSparkline data={bodyWeightData} units={units} />
