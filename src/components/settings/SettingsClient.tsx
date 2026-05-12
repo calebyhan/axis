@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { saveProfile, saveWeeklyScheduleDay } from "@/app/(tabs)/settings/actions";
 import { Select } from "@/components/ui/Select";
@@ -44,8 +43,25 @@ function muscleLabel(muscle: MuscleGroup): string {
   return muscle.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function isRestName(name: string): boolean {
+  return name.trim().toLowerCase() === "rest";
+}
+
 function isRestDayType(dayType: DayType | undefined): boolean {
-  return !dayType || dayType.name.toLowerCase() === "rest";
+  return !dayType || isRestName(dayType.name);
+}
+
+function sortScheduleDayTypes(types: DayType[]): DayType[] {
+  return [...types].sort((a, b) => {
+    const aRest = isRestName(a.name);
+    const bRest = isRestName(b.name);
+    if (aRest !== bRest) return aRest ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function findRestTypeId(types: DayType[], category: DayType["category"]): string | undefined {
+  return types.find((dt) => dt.category === category && isRestName(dt.name))?.id;
 }
 
 async function deleteAxisCaches() {
@@ -61,6 +77,8 @@ async function deleteAxisCaches() {
 export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, stravaStatus }: Props) {
   const supabase = createClient();
   const router = useRouter();
+  const workoutRestTypeId = findRestTypeId(dayTypes, "strength");
+  const cardioRestTypeId = findRestTypeId(dayTypes, "run");
   const [saveStatus, setSaveStatus] = useState<{ saving: boolean; saved: boolean; error: string | null }>({ saving: false, saved: false, error: null });
   const [disconnecting, setDisconnecting] = useState(false);
   const [cacheStatus, setCacheStatus] = useState<{
@@ -171,16 +189,16 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, s
   }
 
   async function handleScheduleChange(dayIndex: number, val: string) {
-    const previousWorkout = planMaps.strength[dayIndex] ?? "";
+    const previousWorkout = getWorkoutSelection(dayIndex);
     setPlanMaps((prev) => ({ ...prev, strength: { ...prev.strength, [dayIndex]: val } }));
-    const ok = await persistScheduleRow(dayIndex, val || null, planMaps.cardio[dayIndex] ?? null);
+    const ok = await persistScheduleRow(dayIndex, val || null, getCardioSelection(dayIndex) || null);
     if (!ok) setPlanMaps((prev) => ({ ...prev, strength: { ...prev.strength, [dayIndex]: previousWorkout } }));
   }
 
   async function handleCardioChange(dayIndex: number, val: string) {
-    const previousCardio = planMaps.cardio[dayIndex] ?? "";
+    const previousCardio = getCardioSelection(dayIndex);
     setPlanMaps((prev) => ({ ...prev, cardio: { ...prev.cardio, [dayIndex]: val } }));
-    const ok = await persistScheduleRow(dayIndex, planMaps.strength[dayIndex] ?? null, val || null);
+    const ok = await persistScheduleRow(dayIndex, getWorkoutSelection(dayIndex) || null, val || null);
     if (!ok) setPlanMaps((prev) => ({ ...prev, cardio: { ...prev.cardio, [dayIndex]: previousCardio } }));
   }
 
@@ -224,13 +242,21 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, s
     }
   }
 
-  const strengthTypes = dayTypes.filter((dt) => dt.category === "strength");
-  const runTypes = dayTypes.filter((dt) => dt.category === "run");
+  function getWorkoutSelection(dayIndex: number): string {
+    return planMaps.strength[dayIndex] ?? workoutRestTypeId ?? "";
+  }
+
+  function getCardioSelection(dayIndex: number): string {
+    return planMaps.cardio[dayIndex] ?? cardioRestTypeId ?? "";
+  }
+
+  const strengthTypes = sortScheduleDayTypes(dayTypes.filter((dt) => dt.category === "strength"));
+  const runTypes = sortScheduleDayTypes(dayTypes.filter((dt) => dt.category === "run"));
   const dayTypeById = new Map(dayTypes.map((dt) => [dt.id, dt]));
   const weeklyPlan = DAY_DISPLAY_ORDER.reduce(
     (summary, dayIdx) => {
-      const strengthType = dayTypeById.get(planMaps.strength[dayIdx] ?? "");
-      const cardioType = dayTypeById.get(planMaps.cardio[dayIdx] ?? "");
+      const strengthType = dayTypeById.get(getWorkoutSelection(dayIdx));
+      const cardioType = dayTypeById.get(getCardioSelection(dayIdx));
       const hasStrength = strengthType?.category === "strength" && !isRestDayType(strengthType);
       const hasCardio = cardioType?.category === "run" && !isRestDayType(cardioType);
 
@@ -308,10 +334,10 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, s
                   <div className="flex min-w-0 flex-col gap-1.5 md:w-auto">
                     <span className="text-[10px] uppercase tracking-[0.16em] text-muted md:hidden">Workout</span>
                     <Select
-                      value={planMaps.strength[dayIdx] ?? ""}
+                      value={getWorkoutSelection(dayIdx)}
                       options={strengthTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
                       placeholder="Rest"
-                      showEmptyOption={!strengthTypes.some((dt) => dt.name === "Rest")}
+                      showEmptyOption={!strengthTypes.some((dt) => isRestName(dt.name))}
                       onChange={(val) => {
                         void handleScheduleChange(dayIdx, val);
                       }}
@@ -320,10 +346,10 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, s
                   <div className="flex min-w-0 flex-col gap-1.5 md:w-auto">
                     <span className="text-[10px] uppercase tracking-[0.16em] text-muted md:hidden">Cardio</span>
                     <Select
-                      value={planMaps.cardio[dayIdx] ?? ""}
+                      value={getCardioSelection(dayIdx)}
                       options={runTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
                       placeholder="Rest"
-                      showEmptyOption={!runTypes.some((dt) => dt.name === "Rest")}
+                      showEmptyOption={!runTypes.some((dt) => isRestName(dt.name))}
                       onChange={(val) => {
                         void handleCardioChange(dayIdx, val);
                       }}
