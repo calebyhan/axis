@@ -1,104 +1,174 @@
 # Strava Integration
 
-Axis uses Strava API v3 with a webhook-first architecture — no polling ever.
+Axis uses Strava API v3 with OAuth, webhooks, and a manual sync fallback.
 
 ---
 
 ## Authentication & Tokens
 
-- OAuth 2.0 flow — access tokens expire every **6 hours**
-- Tokens stored in Supabase via the **Vault extension** (`vault.secrets`); the frontend never touches tokens directly
-- Silent token refresh handled by Supabase Edge Functions before every Strava API call
-- Required scopes: `activity:read_all`, `profile:read_all`
-- Personal tool — **no app review required**; token accessible directly from `strava.com/settings/api`
+- OAuth starts at `GET /api/strava/connect`.
+- Callback handling lives at `GET /api/strava/callback`.
+- Required scopes: `activity:read_all,profile:read_all`.
+- OAuth state is stored in the `strava_oauth_state` HTTP-only cookie for 10 minutes.
+- Access and refresh tokens are stored on the authenticated user's `profiles` row.
+- `getValidStravaToken()` refreshes tokens if they expire within five minutes.
+
+Required environment variables:
+
+```env
+NEXT_PUBLIC_APP_URL
+STRAVA_CLIENT_ID
+STRAVA_CLIENT_SECRET
+STRAVA_WEBHOOK_VERIFY_TOKEN
+```
+
+`STRAVA_WEBHOOK_SIGNING_SECRET` is optional and falls back to `STRAVA_CLIENT_SECRET`.
 
 ---
 
 ## Rate Limits
 
-- **200 requests per 15 minutes**, up to **2,000 per day**
-- Webhook-first architecture eliminates polling; effective request rate is very low for a single user
+Strava's default application limits are currently:
+
+- Overall: 200 requests per 15 minutes and 2,000 requests per day.
+- Non-upload/read: 100 requests per 15 minutes and 1,000 requests per day.
+
+Limits reset on natural 15-minute boundaries and at midnight UTC. See [Strava rate limits](https://developers.strava.com/docs/rate-limits/).
+
+Axis keeps usage low by relying on webhooks and fetching streams only when a detail page needs them.
 
 ---
 
-## Key Endpoints
+## Supported Strava Activity Types
 
-| Endpoint | Returns | When Used |
+`src/lib/strava/activity-row.ts` maps:
+
+- Runs: `Run`, `VirtualRun` -> `activities.type = 'run'`
+- Rides: `Ride`, `VirtualRide`, `EBikeRide`, `EMountainBikeRide`, `GravelRide`, `MountainBikeRide` -> `activities.type = 'ride'`
+
+Other Strava sport types are not inserted as feed cardio activities. If an unsupported Strava activity overlaps a logged workout, Axis tries to merge biometric fields into the workout instead.
+
+---
+
+## API Wrapper
+
+`src/lib/strava/client.ts` wraps direct `fetch()` calls:
+
+| Helper | Endpoint | Used For |
 |---|---|---|
-| `GET /athlete/activities` | Paginated activity list with summary fields | Initial sync, Activity feed |
-| `GET /activities/{id}` | Full activity detail | Detailed activity view |
-| `GET /activities/{id}/streams` | Raw time-series data | On-demand when linking a Strava activity to a strength session |
-| `GET /athlete/zones` | Configured HR zones | Zone breakdown on Stats screen |
-| `GET /athletes/{id}/stats` | Lifetime + YTD totals | Stats screen aggregates |
-
-### Activity Summary Fields
-
-Available on every synced activity with no extra API calls:
-
-`distance`, `moving_time`, `elapsed_time`, `average_heartrate`, `max_heartrate`, `total_elevation_gain`, `calories`, `suffer_score`, `sport_type`, `start_date`, `start_date_local`, `pr_count`, `device_name`
-
-These are stored as typed columns on the `activities` table (not in the JSONB blob) to enable efficient sorting and filtering.
-
-### Activity Streams
-
-Raw time-series data fetched **on demand only** — never pre-fetched for all activities.
-
-Available types: `time`, `latlng`, `distance`, `altitude`, `velocity_smooth`, `heartrate`, `cadence`, `watts`, `temp`, `moving`, `grade_smooth`
-
-**Cost:** 2 API calls per activity. Only fetched when user explicitly links a Strava activity to a strength session.
-
-**Caveat:** streams only exist if the data was recorded — no HR stream without an HR monitor. Handle missing data gracefully; never throw on absent streams.
+| `getActivities` | `GET /athlete/activities` | Manual recent-activity sync |
+| `getActivity` | `GET /activities/{id}` | Manual import and webhook processing |
+| `getStreams` | `GET /activities/{id}/streams` | Activity detail stream charts |
+| `getAthleteZones` | `GET /athlete/zones` | HR zone overlays |
+| `getAthleteStats` | `GET /athletes/{id}/stats` | Available helper; not currently surfaced in UI |
 
 ---
 
 ## Webhooks
 
-Push model — Strava POSTs to Axis immediately after any activity is saved.
+Route: `GET|POST /api/strava/webhook`
 
-### Flow
+### Subscription Verification
 
-1. Workout saved in Strava
-2. Strava POSTs to Supabase Edge Function webhook URL
-3. Payload contains `object_type`, `aspect_type: "create"`, and `object_id`
-4. Edge Function verifies `X-Hub-Signature` (see Security below)
-5. Edge Function fetches activity summary via `GET /activities/{id}`
-6. Writes to `activities` table
-7. Activity appears in Axis feed automatically
+The GET handler accepts Strava's `hub.mode`, `hub.verify_token`, and `hub.challenge` query parameters. It echoes `hub.challenge` when the verify token matches `STRAVA_WEBHOOK_VERIFY_TOKEN`.
 
-### Requirements
+### Event Handling
 
-- HTTPS in production (ngrok for local dev — see [CONTRIBUTING.md](../CONTRIBUTING.md))
-- Respond with `200 OK` within 2 seconds — minimal handler work, async queue for DB write
-- One webhook subscription per Strava app
+The POST handler:
 
-### Security
+1. Reads the raw request body.
+2. Verifies the `X-Strava-Signature` header.
+3. Parses the webhook payload.
+4. Returns quickly with `{ "status": "ok" }`.
+5. Uses `after()` to process the event asynchronously.
 
-Verify the `X-Hub-Signature` header on every incoming POST using HMAC-SHA256 with your `STRAVA_CLIENT_SECRET`. Reject any request that fails verification before processing the payload.
+Processing behavior:
 
-```typescript
-import { createHmac } from 'crypto'
+- Athlete deauthorization clears stored Strava tokens.
+- Activity delete removes matching feed rows and pending workout links.
+- Activity create/update fetches the full activity from Strava.
+- Supported runs/rides upsert into `activities`.
+- Unsupported activities are checked as possible workout biometric sources.
 
-function verifyStravaWebhook(body: string, signature: string, secret: string): boolean {
-  const expected = 'sha256=' + createHmac('sha256', secret).update(body).digest('hex')
-  return expected === signature
-}
+The callback must return `200 OK` within two seconds; Strava retries failed event deliveries.
+
+### Signature Verification
+
+The current verifier expects the modern Strava signature format:
+
+```text
+X-Strava-Signature: t=<unix_seconds>,v1=<hex_hmac>
 ```
 
----
+It rejects missing/invalid signatures, timestamps outside a five-minute tolerance, and mismatched HMACs over:
 
-## Session-to-Strava Linking Flow
+```text
+<timestamp>.<raw_body>
+```
 
-Links a strength session to a concurrent Strava activity to merge HR stream data.
-
-1. Axis stores `session_start_time` when "Start Session" is tapped
-2. At session end, user taps "Link Strava Activity"
-3. Axis calls `GET /athlete/activities?after={start}&before={end}`
-4. Surfaces the most likely candidate activity
-5. User confirms
-6. Axis fetches HR stream (`GET /activities/{id}/streams?keys=heartrate`) and merges into the session record in Supabase
+See [Strava webhook docs](https://developers.strava.com/docs/webhooks/).
 
 ---
 
-## SDK
+## Manual Sync
 
-Uses `strava-v3` npm package for API request construction and response typing. Token refresh and webhook signature verification are implemented in Edge Functions directly, not delegated to the SDK.
+Route: `GET|POST /api/strava/sync`
+
+- `GET` fetches up to 50 Strava activities from the last 90 days, filters supported cardio types, and returns only activities not already imported.
+- `POST` imports one selected activity by fetching full details and upserting the normalized row.
+
+This is a fallback path for missed webhook events or first-time setup.
+
+---
+
+## Activity Rows
+
+`buildActivityRow()` stores Strava summary/detail fields as typed columns:
+
+```text
+name, start_time, duration, elapsed_time, distance, avg_pace,
+avg_heartrate, max_heartrate, suffer_score, calories, elevation_gain,
+avg_cadence, avg_watts, max_speed, average_temp,
+summary_polyline, splits, best_efforts
+```
+
+GPS polyline, splits, and best efforts power activity detail views and running PR stats.
+
+---
+
+## Streams And Zones
+
+Streams are fetched on demand from:
+
+```text
+GET /api/strava/streams/{strava_activity_id}
+```
+
+Requested keys:
+
+```text
+time, distance, altitude, heartrate, cadence, watts, velocity_smooth, grade_smooth
+```
+
+The response is zipped into chart-ready points and downsampled to 400 points. Missing streams are handled as unavailable data.
+
+Heart-rate zones are fetched from:
+
+```text
+GET /api/strava/zones
+```
+
+Both read-only endpoints are eligible for service-worker data caching.
+
+---
+
+## Workout Biometric Linking
+
+When a Strava activity is not a supported cardio feed type, the webhook attempts to merge workout biometrics:
+
+1. Find workout candidates within 90 minutes of the Strava start time.
+2. Prefer candidates with at least 10 minutes of overlap or 40% overlap of the shorter activity.
+3. If exactly one candidate exists, copy `avg_heartrate`, `max_heartrate`, `calories`, `suffer_score`, and `strava_activity_id` onto the workout.
+4. If multiple candidates exist, insert `pending_strava_links` for user resolution in Activity.
+
+Pending links can be resolved through `POST /api/strava/link-workout` or dismissed through `POST /api/strava/link-workout/dismiss`.

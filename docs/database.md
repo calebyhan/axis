@@ -1,185 +1,258 @@
 # Database
 
-Supabase (PostgreSQL) with Row Level Security on every table.
+Supabase Postgres is the source of truth. User-owned tables are protected by Row Level Security and keyed directly or indirectly to `auth.uid()`.
 
 ---
 
-## Schema
+## Core Tables
+
+### `profiles`
+
+Created automatically by `public.handle_new_user()` when a Supabase Auth user signs up.
 
 ```sql
--- Auth & Strava token storage
--- Strava tokens stored via Supabase Vault extension (vault.secrets); never exposed to frontend
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users,
-  strava_access_token TEXT,        -- encrypted via Vault
-  strava_refresh_token TEXT,       -- encrypted via Vault
-  token_expires_at TIMESTAMPTZ,
-  units TEXT DEFAULT 'metric'      -- 'metric' | 'imperial'
-);
-
--- Core activity log (both Strava and manual)
-CREATE TABLE activities (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES profiles(id),
-  strava_activity_id BIGINT UNIQUE,
-  type TEXT,                       -- 'run' | 'ride' | 'workout' | 'manual_run'
-  day_type_id UUID REFERENCES day_types(id),  -- NULL for unplanned/Strava-only activities
-  start_time TIMESTAMPTZ,
-  duration INT,                    -- seconds (moving_time for runs)
-  source TEXT,                     -- 'strava' | 'manual'
-  -- Strava summary fields (NULL for manual entries where not applicable)
-  distance NUMERIC,                -- meters
-  avg_heartrate NUMERIC,
-  max_heartrate NUMERIC,
-  suffer_score INT,
-  calories INT,
-  elevation_gain NUMERIC,          -- meters
-  avg_pace NUMERIC,                -- seconds per km (runs only)
-  tags TEXT[],                     -- ['felt heavy', 'race sim', etc.]
-  notes TEXT
-);
-
--- Flexible type-specific data per activity
-CREATE TABLE activity_details (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  activity_id UUID REFERENCES activities(id),
-  data JSONB                       -- GPS polylines, HR streams, summary stats
-);
-
--- Granular strength session data
-CREATE TABLE session_sets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  activity_id UUID REFERENCES activities(id),
-  exercise_id UUID REFERENCES exercises(id),
-  set_number INT,
-  reps INT,
-  weight NUMERIC,
-  rpe NUMERIC,                     -- 1–10
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Exercise taxonomy (seeded from Wger open dataset + custom)
-CREATE TABLE exercises (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT,
-  category TEXT,                   -- 'push' | 'pull' | 'legs' | 'core'
-  primary_muscles TEXT[],          -- ["chest", "front_delt", "triceps"]
-  secondary_muscles TEXT[],
-  movement_pattern TEXT,           -- 'horizontal_push' | 'vertical_pull' | 'hinge' etc.
-  equipment TEXT,                  -- 'barbell' | 'dumbbell' | 'bodyweight' etc.
-  is_custom BOOLEAN DEFAULT false  -- false = Wger seed; true = user-created (safe to delete/edit)
-);
-
--- Antagonist movement pairs (for balance warnings)
-CREATE TABLE antagonist_pairs (
-  pattern_a TEXT,                  -- 'horizontal_push'
-  pattern_b TEXT                   -- 'horizontal_pull'
-);
-
--- Named day types
-CREATE TABLE day_types (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT,                       -- "Push", "Long Run", "Intervals"
-  category TEXT,                   -- 'strength' | 'run'
-  muscle_focus TEXT[]              -- NULL for run types
-);
-
--- Weekly repeating schedule
--- day_of_week convention: 0 = Monday … 6 = Sunday (ISO week order, NOT JS Date.getDay())
--- Frontend must convert: jsDay => (jsDay + 6) % 7
-CREATE TABLE weekly_schedule (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  day_of_week INT,                 -- 0 = Monday ... 6 = Sunday
-  day_type_id UUID REFERENCES day_types(id),
-  active BOOLEAN DEFAULT true
-);
-
--- Body weight log
-CREATE TABLE daily_checkins (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES profiles(id),
-  date DATE,
-  body_weight NUMERIC,
-  notes TEXT,
-  UNIQUE (user_id, date)           -- one weigh-in per day; upsert on re-entry
-);
-
--- Week in Review summaries (written by Sunday pg_cron job — requires Supabase Pro plan)
-CREATE TABLE weekly_summaries (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES profiles(id),
-  week_start DATE,
-  data JSONB,
-  UNIQUE (user_id, week_start)     -- idempotent re-runs safe
-);
+id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE
+strava_athlete_id BIGINT UNIQUE
+strava_access_token TEXT
+strava_refresh_token TEXT
+token_expires_at TIMESTAMPTZ
+units TEXT NOT NULL DEFAULT 'imperial' CHECK (units IN ('metric', 'imperial'))
+accent_color TEXT NOT NULL DEFAULT 'blue' CHECK (accent_color IN ('blue', 'green', 'orange', 'purple'))
+long_run_distance_threshold NUMERIC NOT NULL DEFAULT 16
+display_name TEXT
+onboarding_completed_at TIMESTAMPTZ
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
----
+Current implementation stores Strava tokens on `profiles`; Vault is not used in this repo.
 
-## Row Level Security
+### `activities`
 
-All tables use Supabase RLS — every query is automatically scoped to the authenticated user. No query can access another user's rows.
+Single activity feed for Strava cardio, manual runs, and strength workouts.
 
----
-
-## Derived Data (Computed, Not Stored)
-
-These are computed at query time or client-side; not persisted as columns.
-
-### e1RM (Epley formula)
-```
-e1rm = weight × (1 + reps / 30.0)
-```
-Computed client-side per set.
-
-### Weekly volume per lift
 ```sql
-SUM(sets × reps × weight) GROUP BY week
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE
+strava_activity_id BIGINT UNIQUE
+type TEXT NOT NULL CHECK (type IN ('run', 'ride', 'workout', 'manual_run'))
+day_type_id UUID REFERENCES day_types(id)
+start_time TIMESTAMPTZ NOT NULL
+duration INT
+source TEXT NOT NULL CHECK (source IN ('strava', 'manual'))
+distance NUMERIC
+avg_heartrate NUMERIC
+max_heartrate NUMERIC
+suffer_score INT
+calories INT
+elevation_gain NUMERIC
+avg_pace NUMERIC
+tags TEXT[]
+notes TEXT
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+-- Strava detail fields added by later migrations
+name TEXT
+summary_polyline TEXT
+splits JSONB
+best_efforts JSONB
+avg_cadence NUMERIC
+avg_watts NUMERIC
+elapsed_time INT
+max_speed NUMERIC
+average_temp NUMERIC
 ```
 
-### 7-day rolling average body weight
-Rolling query over `daily_checkins`.
+### `session_sets`
 
-### ATL / CTL / TSB (Training Load Model)
+Granular strength-session data. Workouts are saved through `save_workout_session()` and edited through `update_workout_session()`.
 
-Daily training load (TL) combines run and strength signals on the same scale:
-
-- **Run TL** = `suffer_score` (Strava-provided, 0–200 scale)
-- **Strength TL** = `SUM(sets × reps × weight × rpe) / 1000` per session, normalized to 0–200 via a fixed divisor (tune once against real data)
-- **Daily TL** = run TL + strength TL (additive; zero on rest days)
-
-Exponentially weighted averages:
-```
-ATL_today = ATL_yesterday × (1 - 1/7)  + TL_today × (1/7)    -- 7-day EWA (fatigue)
-CTL_today = CTL_yesterday × (1 - 1/42) + TL_today × (1/42)   -- 42-day EWA (fitness)
-TSB       = CTL - ATL                                          -- form
+```sql
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+activity_id UUID NOT NULL REFERENCES activities(id) ON DELETE CASCADE
+exercise_id UUID NOT NULL REFERENCES exercises(id)
+set_number INT NOT NULL
+reps INT NOT NULL
+weight NUMERIC NOT NULL
+rpe NUMERIC CHECK (rpe >= 1 AND rpe <= 10)
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
-Computed over the last 90 days on page load. Cache in a Postgres materialized view if query time becomes unacceptable.
+Later hardening adds non-validated constraints for positive set number/reps and non-negative weight.
 
-### Muscle group coverage per session
-Aggregated from `session_sets` joined to `exercises.primary_muscles` and `exercises.secondary_muscles`.
+### `exercises`
 
-### Body weight trend classification
-Linear regression over last 14 days of `daily_checkins`:
-- Slope > +0.2 kg/week → **gaining**
-- Slope < −0.2 kg/week → **losing**
-- Otherwise → **maintaining**
+Global exercise taxonomy seeded by `npm run seed:exercises`.
+
+```sql
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+name TEXT NOT NULL UNIQUE
+category TEXT NOT NULL CHECK (category IN ('push', 'pull', 'legs', 'core', 'other'))
+primary_muscles TEXT[] NOT NULL DEFAULT '{}'
+secondary_muscles TEXT[] NOT NULL DEFAULT '{}'
+movement_pattern TEXT NOT NULL CHECK (movement_pattern IN (
+  'horizontal_push', 'horizontal_pull', 'vertical_push', 'vertical_pull',
+  'quad_dominant', 'hip_hinge', 'elbow_flexion', 'elbow_extension',
+  'carry', 'core', 'other'
+))
+equipment TEXT NOT NULL DEFAULT 'bodyweight'
+is_custom BOOLEAN NOT NULL DEFAULT false
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
+### `day_types`
+
+Global day-type library. Built-ins are Push, Pull, Legs, Upper, Full Body, Easy, Long, Intervals, and Rest.
+
+```sql
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+name TEXT NOT NULL
+category TEXT NOT NULL CHECK (category IN ('strength', 'run'))
+muscle_focus TEXT[]
+```
+
+### `weekly_schedule`
+
+Repeating plan. A row can hold one workout slot, one cardio slot, or both.
+
+```sql
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE
+day_of_week INT NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6)
+day_type_id UUID REFERENCES day_types(id)
+cardio_day_type_id UUID REFERENCES day_types(id)
+active BOOLEAN NOT NULL DEFAULT true
+UNIQUE (user_id, day_of_week)
+```
+
+`day_of_week` uses ISO weekday order: `0 = Monday ... 6 = Sunday`. Week ranges in the UI are displayed Sunday-Saturday, so date mapping must account for both conventions.
+
+### `schedule_overrides`
+
+Per-date changes from the repeating schedule.
+
+```sql
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE
+date DATE NOT NULL
+slot TEXT NOT NULL CHECK (slot IN ('workout', 'cardio'))
+day_type_id UUID REFERENCES day_types(id) ON DELETE SET NULL
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+UNIQUE (user_id, date, slot)
+```
+
+`day_type_id = NULL` means the slot is skipped for that date.
+
+### `planned_slots`
+
+Historical adherence snapshots. Current/future weeks are regenerated when the repeating schedule or an override changes; older weeks remain stable.
+
+```sql
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE
+week_start DATE NOT NULL
+date DATE NOT NULL
+day_of_week INT NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6)
+slot TEXT NOT NULL CHECK (slot IN ('workout', 'cardio'))
+planned_day_type_id UUID REFERENCES day_types(id) ON DELETE SET NULL
+effective_day_type_id UUID REFERENCES day_types(id) ON DELETE SET NULL
+is_overridden BOOLEAN NOT NULL DEFAULT false
+is_skipped BOOLEAN NOT NULL DEFAULT false
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+UNIQUE (user_id, date, slot)
+```
+
+### Other Tables
+
+```sql
+activity_details(id, activity_id, data)
+daily_checkins(id, user_id, date, body_weight, notes, created_at)
+weekly_summaries(id, user_id, week_start, data, created_at)
+pending_strava_links(id, user_id, strava_activity_id, strava_data, candidate_ids, created_at)
+antagonist_pairs(pattern_a, pattern_b)
+```
+
+`activity_details` and `weekly_summaries` exist for flexible detail/summary data, but the current UI primarily reads typed columns on `activities`.
+
+---
+
+## RPCs
+
+### `save_workout_session(p_start_time, p_duration, p_day_type_id, p_sets)`
+
+Validates authentication, start time, non-negative duration, at least one set, positive reps/set numbers, non-negative weight, and RPE in `1..10`. Inserts one `activities` row with `type = 'workout'`, then inserts all `session_sets` in one database function call.
+
+### `update_workout_session(p_activity_id, p_sets)`
+
+Validates ownership and workout type, validates the replacement sets, deletes existing sets for the workout, and inserts the replacement set list.
+
+---
+
+## RLS
+
+User-owned tables are scoped to `auth.uid()`:
+
+- Direct ownership: `profiles`, `activities`, `weekly_schedule`, `daily_checkins`, `weekly_summaries`, `schedule_overrides`, `planned_slots`, `pending_strava_links`
+- Indirect ownership through `activities`: `activity_details`, `session_sets`
+- Global read-mostly tables: `exercises`, `antagonist_pairs`, `day_types`
+
+Authenticated users and `service_role` receive explicit grants for app tables; RLS still enforces ownership for authenticated clients.
+
+---
+
+## Derived Data
+
+### e1RM
+
+```text
+e1rm = weight * (1 + reps / 30)
+```
+
+Computed in TypeScript with `computeE1RM()`. One-rep sets return the actual weight.
+
+### Training Load
+
+Daily training load combines run and strength signals:
+
+- Run TL: sum of `suffer_score`, capped at 200 per day in the query.
+- Strength TL: `SUM(reps * weight * rpe) / 1000`, capped at 200.
+- Daily TL: `runTL + strengthTL`.
+
+```text
+ATL = ATL_previous * (1 - 1/7)  + dailyTL * (1/7)
+CTL = CTL_previous * (1 - 1/42) + dailyTL * (1/42)
+TSB = CTL - ATL
+```
+
+The Stats load tab computes the window on demand: 7 days, 30 days, 365 days, or 730 days.
+
+### Body Weight Trend
+
+Linear regression over the selected body-weight points in stored kilograms:
+
+- `> +0.2 kg/week`: gaining
+- `< -0.2 kg/week`: losing
+- otherwise: maintaining
+
+### Muscle Coverage
+
+Coverage uses `session_sets -> exercises.primary_muscles`. Secondary muscles are stored and used in search/filtering, but coverage counts are currently based on primary muscles.
+
+### Plan Adherence
+
+`deriveAdherence()` greedily assigns activities to effective planned slots by type match and temporal proximity. A matched activity on the planned date is `completed`; a match on another date in the same week is `swapped`; past unmatched slots are `missed`; future unmatched slots are `pending`; skipped overrides are `skipped`.
 
 ---
 
 ## Seed Data
 
-### Antagonist pairs
+Antagonist movement pairs:
+
 ```sql
-INSERT INTO antagonist_pairs VALUES
-  ('horizontal_push', 'horizontal_pull'),
-  ('vertical_push',   'vertical_pull'),
-  ('quad_dominant',   'hip_hinge'),
-  ('elbow_flexion',   'elbow_extension');
+('horizontal_push', 'horizontal_pull')
+('vertical_push', 'vertical_pull')
+('quad_dominant', 'hip_hinge')
+('elbow_flexion', 'elbow_extension')
 ```
 
-### Exercise taxonomy
-Seeded from the [Wger open dataset](https://wger.de/en/software/api). Run `npm run seed:exercises` on first setup. This is the critical upfront investment — the muscle mappings power the entire smart feature layer. Verify mappings after seeding; Wger quality is variable.
-
-Custom exercises added by the user have `is_custom = true` and can be safely deleted or renamed. Wger-seeded exercises (`is_custom = false`) should not be deleted as they may be referenced by historical session sets.
+Exercise taxonomy is seeded from the Wger open dataset plus local mapping logic in `scripts/seed-exercises.ts`.

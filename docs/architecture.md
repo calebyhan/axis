@@ -1,22 +1,22 @@
 # Architecture
 
-## Model
+## Runtime Model
 
-Axis uses an **aggregator-dashboard model** — hardware sends data to Strava, Strava pushes to Supabase, Next.js reads from Supabase.
+Axis is a Next.js PWA backed by Supabase. Strava pushes webhook events into a Next.js API route; the route fetches the current activity from Strava, then writes normalized rows into Supabase.
 
 ```
-Hardware (Watch / Device)
+Watch / device
         ↓
-    Strava App
-        ↓  (OAuth 2.0 + Webhooks)
-  Supabase Edge Function  ←→  Strava API v3
+     Strava
+        ↓ OAuth + webhook
+Next.js API routes / Server Actions
         ↓
-  Supabase (PostgreSQL + RLS)
+Supabase Auth + Postgres + RLS
         ↓
-  Next.js / React PWA
+Next.js / React PWA
 ```
 
-No polling. Strava webhooks push new activities automatically. The frontend never touches Strava tokens.
+The app avoids polling for normal sync. A manual sync endpoint exists as a fallback for recent Strava activities.
 
 ---
 
@@ -24,54 +24,56 @@ No polling. Strava webhooks push new activities automatically. The frontend neve
 
 | Layer | Technology | Purpose |
 |---|---|---|
-| Frontend | Next.js / React | PWA capabilities, routing, UI |
-| Backend / Database | Supabase (PostgreSQL + RLS + Edge Functions) | Auth, storage, webhooks, token management |
-| Strava Integration | Strava API v3 + Webhooks | Automated activity ingestion |
-| Visualizations | Recharts | Charts, trends, effort metrics |
-| Data Validation | Zod | Consistency across manual and automated inputs |
-| Strava SDK | `strava-v3` | API request construction and typing |
-| Fuzzy Search | `fuse.js` | Client-side exercise name matching |
-
-Token refresh and webhook HMAC verification are implemented in Edge Functions, not in `strava-v3` itself.
+| App | Next.js App Router / React | Routing, UI, server components |
+| Backend | API routes + Server Actions | Strava OAuth/webhooks, mutations, cache revalidation |
+| Database/Auth | Supabase Postgres, Auth, RLS | User rows, activity storage, auth session handling |
+| Strava API | Direct `fetch` wrapper in `src/lib/strava` | Token refresh, activity fetches, streams, zones |
+| Charts | Recharts | Stats and training load visualizations |
+| Validation | Server-side guards + Zod dependency | Manual input and API payload consistency |
+| Exercise search | Fuse.js | Client-side exercise filtering |
+| Offline | Custom service worker + IndexedDB | Page/data caching and workout draft recovery |
 
 ---
 
-## PWA Specifications
+## Auth And Routing
 
-- **Offline persistence** via Workbox / Service Workers + IndexedDB local cache
-- **Session draft autosave** to IndexedDB every 60 seconds (crash recovery)
-- **Mobile:** thumb-optimized bottom tab navigation
-- **Desktop:** 240px left sidebar navigation
-- **Installable** via `manifest.json` on iOS Safari and Desktop Chrome/Safari
-- **Deep linking** — workout and activity views are bookmarkable by the logged-in user (auth required; links are not publicly shareable)
+- Supabase Auth handles login and session cookies.
+- `src/proxy.ts` protects app routes and allows `/login`, `/auth/callback`, and `/api/strava/webhook`.
+- Server components and server actions use `@supabase/ssr`.
+- Admin-only operations use `SUPABASE_SECRET_KEY` through `createAdminClient()`.
+
+---
+
+## PWA Behavior
+
+- `public/manifest.json` makes the app installable.
+- `public/sw.js` is registered only in production.
+- The service worker cache-firsts static assets, network-firsts pages, and caches read-only Strava stream/zone API responses.
+- Workout session drafts are stored in IndexedDB (`axis/session_drafts`) and can be cleared from Settings.
+- Mobile layouts reserve bottom-nav and safe-area space; desktop uses a left sidebar.
 
 ### iOS PWA Limitations
 
-Push notifications and background sync are not available in iOS Safari PWAs. Week in Review and any alert-style notifications are displayed in-app only, not as system notifications.
+Push notifications and background sync are not implemented. Alerts and weekly summaries are in-app experiences.
 
 ---
 
 ## Navigation Structure
 
-Five tabs, each with a single clear responsibility:
-
-| Tab | Purpose |
+| Route | Purpose |
 |---|---|
-| **Dashboard** | At-a-glance weekly overview, streak, checklist |
-| **Activity** | Full history feed — runs and workouts |
-| **Log** | All manual input — sessions, runs, body weight |
-| **Stats** | All charts and trends — filtered by time range |
-| **Settings** | Strava connection, units, schedule, preferences |
-
-**Mobile:** bottom tab bar with icons.  
-**Desktop:** 240px left sidebar with the same items vertically.
+| `/dashboard` | Weekly overview, streak, checklist, muscle coverage, body weight |
+| `/activity` | Feed of runs, rides, manual runs, and workouts |
+| `/activity/[id]` | Activity detail, editable workouts, run streams |
+| `/log` | Workout session flow, manual run, body weight |
+| `/stats` | Workout, running, body, load, and plan tabs |
+| `/settings` | Profile, units, schedule, Strava, export, offline cache |
 
 ---
 
-## Key Design Constraints
+## Constraints
 
-- **Single user** — no multi-tenancy, no social features
-- **No HealthKit dependency** — avoids native iOS development and Apple Developer Program costs
-- **No LLM APIs** — all smart features are rule-based SQL + client-side JavaScript; zero recurring AI cost
-- **Strava-only automated ingestion** — Strava bridges Apple HealthKit natively, solving hardware data without custom device integration
-- **Minimal manual input** — only strength sessions and body weight require manual entry
+- Single-user product shape; RLS still scopes every user-owned table by `auth.uid()`.
+- No HealthKit dependency; Strava bridges supported devices.
+- No LLM APIs; insights are rule-based SQL and TypeScript.
+- Strava tokens are currently stored on `profiles`; server routes use them for Strava API requests.

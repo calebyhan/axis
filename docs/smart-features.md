@@ -1,74 +1,110 @@
 # Smart Features
 
-All intelligence is rule-based — SQL queries and client-side JavaScript. No LLM APIs, no external AI services.
+Axis intelligence is rule-based TypeScript and SQL. There are no LLM APIs or external AI services in the current implementation.
 
 ---
 
-## Pre-Session
+## Implemented
 
-Shown on the session start screen before the first exercise is added.
+### Workout Context
 
-| Feature | Logic |
-|---|---|
-| Muscle recency map | `MAX(session_date)` per muscle group — visual grid showing days since each muscle was last trained |
-| Push/pull balance warning | If `push_sets > pull_sets × 1.5` over last 14 days, surface a flag |
-| ATL context | If weekly load > 120% of 4-week average, surface a recovery note |
-| Day type context | Today's planned day type shown; biases exercise suggestions and next-exercise chip ordering |
+- Today's effective workout day type is loaded from `weekly_schedule` plus `schedule_overrides`.
+- Exercise search defaults to the scheduled strength day type's `muscle_focus` when available.
+- Exercise search uses Fuse.js over exercise name/category after muscle filtering.
+
+### Recent Stats Panel
+
+When an exercise has prior logged sets, the session flow shows:
+
+- Last session sets.
+- All-time best e1RM.
+- Last five session e1RM trend.
+- One suggested set based on recent e1RM trend.
+
+### Session Coverage
+
+The live session mini heatmap counts primary-muscle sets in the current in-memory session.
+
+### Weekly Muscle Coverage
+
+Dashboard and Stats summarize primary-muscle coverage from saved `session_sets`.
+
+### Plan Adherence
+
+Adherence is computed from effective planned slots and logged activities:
+
+- `completed`: matched on planned date.
+- `swapped`: matched in the same week on a different date.
+- `missed`: unmatched past slot.
+- `pending`: unmatched current/future slot.
+- `skipped`: intentional skip override.
+
+### Training Load
+
+Stats Load computes:
+
+- Daily TL = run TL + normalized strength TL.
+- ATL = 7-day exponential weighted average.
+- CTL = 42-day exponential weighted average.
+- TSB = CTL - ATL.
+- TSB labels: Fresh, Neutral, Fatigued, Overreaching.
+
+### Running PRs
+
+Strava `best_efforts` with `pr_rank = 1` are surfaced in the Running stats tab and link back to the activity detail page.
+
+### Body Weight Trend
+
+The Body stats tab classifies weight trend with linear regression over stored kilograms:
+
+- `> +0.2 kg/week` -> gaining.
+- `< -0.2 kg/week` -> losing.
+- otherwise -> maintaining.
+
+### Strava Workout Biometrics
+
+Unsupported Strava activity types can enrich a workout if they overlap by time. One clear candidate is auto-linked; multiple candidates create a pending link for user resolution.
 
 ---
 
-## Mid-Session
+## Planned / Not Yet Implemented
 
-Real-time feedback as sets are logged.
+These ideas are referenced by product direction but are not current behavior:
 
-| Feature | Logic |
-|---|---|
-| Live coverage tracker | In-memory set count per muscle group from session state; renders as mini heatmap |
-| Antagonist pairing flag | If push sets logged and zero pull sets after 20 min, surface a nudge |
-| Volume ceiling warning | If any muscle group exceeds 10 sets, flag it (threshold user-configurable via volume landmarks in Settings) |
-| Next exercise suggestion | Score each exercise: `score = (target_sets - current_sets) × 2 + days_since_last_trained`. Rank descending. Surface top 3–4 chips. Falls back to all exercises in category if no history exists. |
-| Exercise search ranking | Same scoring applied to unfiltered list before user types; fuse.js re-ranks by query match on top |
-
----
-
-## Post-Session
-
-Shown in the session summary after "End Session."
-
-| Feature | Logic |
-|---|---|
-| Session balance score | "70% push, 30% pull — last 3 sessions have been push-dominant" |
-| Progressive overload flag | Linear regression over last 5 e1RM values; flag if slope is flat or negative for 3+ sessions |
-| RPE trend per exercise | If RPE trending up at same weight over recent sessions, flag fatigue |
-| Set completion rate | If using a template: planned sets vs. logged sets; flag chronic shortfall |
+- Push/pull imbalance warnings.
+- Antagonist pairing nudges during a session.
+- User-configurable volume ceilings.
+- Next-exercise ranked suggestions beyond the current exercise search filtering.
+- Post-session balance score.
+- Progressive overload warnings outside the recent-stats panel.
+- Template-based set completion rate.
+- Automated weekly summary generation through `weekly_summaries`.
+- Distance-threshold and suffer-score-median plan matching.
+- Strength-ratio tracking thresholds.
+- Deload detection.
 
 ---
 
-## Weekly
+## Core Formulas
 
-Computed by a Supabase Edge Function triggered by `pg_cron` every Sunday (requires Supabase Pro plan). Results stored in `weekly_summaries` and displayed in-app on next open.
+### e1RM
 
-| Feature | Logic |
-|---|---|
-| Week in Review | Template-based string summary (see examples below) |
-| Interference warning | High-suffer run within 24 hr of a leg session — threshold derived from personal suffer score median |
-| Body weight trend | Linear regression over last 14 days — slope > +0.2 kg/week = gaining, < −0.2 kg/week = losing, else maintaining |
-| Strength ratio tracking | OHP ≈ 65% bench, deadlift ≈ 120% squat — track actuals vs. configurable benchmarks |
-| Deload detection | High volume for 3+ consecutive weeks + stalling e1RMs simultaneously → suggest deload |
-
-### Week in Review Template Examples
-
+```text
+weight * (1 + reps / 30)
 ```
-"You've had ${n} hard weeks in a row — consider a down week next week."
-"Pull volume has been low for 2 weeks — posterior chain may be underserved."
-"Your running load is up ${pct}% this week — go easy on legs tomorrow."
-"You set ${n} personal records this week — great week."
+
+### Strength Training Load
+
+```text
+min(200, SUM(reps * weight * rpe) / 1000)
 ```
 
----
+### ATL / CTL / TSB
 
-## Training Load Model (ATL / CTL / TSB)
+```text
+ATL = previousATL * (1 - 1/7)  + dailyTL * (1/7)
+CTL = previousCTL * (1 - 1/42) + dailyTL * (1/42)
+TSB = CTL - ATL
+```
 
-Used by the ATL context warning pre-session and the interference warning weekly.
-
-See [Database — Derived Data](database.md#atl--ctl--tsb-training-load-model) for the full formula.
+See [Database — Derived Data](database.md#derived-data) for details.

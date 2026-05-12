@@ -1,12 +1,6 @@
 # Axis
 
-Personal athletic dashboard PWA. Unifies endurance data (Strava) and strength training on a single timeline with a single load model.
-
-**Strava is the sensor layer. Axis is the intelligence layer.**
-
-No existing app combines Strava-automated run ingestion with manual strength logging, cross-discipline load tracking (ATL/CTL), and rule-based insights - all without LLM APIs or recurring AI costs.
-
-Single user. Own your data. No social features, no SaaS, no app review required.
+Personal athletic dashboard PWA. Axis combines Strava-synced endurance activity, manual strength sessions, body weight tracking, weekly planning, and rule-based training insights.
 
 ---
 
@@ -14,25 +8,27 @@ Single user. Own your data. No social features, no SaaS, no app review required.
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js / React (PWA) |
-| Backend / Database | Supabase (PostgreSQL + RLS + Edge Functions) |
-| Strava Integration | Strava API v3 + Webhooks via `strava-v3` |
+| App | Next.js App Router / React |
+| Backend | Next.js API routes + Server Actions |
+| Database / Auth | Supabase Postgres, Auth, and RLS |
+| Strava Integration | Strava API v3 + webhooks |
 | Charts | Recharts |
 | Validation | Zod |
-| Exercise search | Fuse.js (client-side) |
+| Exercise search | Fuse.js |
+| Offline support | Custom service worker + IndexedDB |
 
 ---
 
 ## Docs
 
-- [Architecture](docs/architecture.md) — stack, data flow, PWA specs
-- [Database](docs/database.md) — schema, RLS, derived data
-- [Strava Integration](docs/strava-integration.md) — OAuth, webhooks, linking flow
-- [Screens](docs/screens.md) — all five tab specs
-- [Session Flow](docs/session-flow.md) — workout lifecycle, state shape, recent stats panel
-- [Smart Features](docs/smart-features.md) — rule-based intelligence (pre/mid/post/weekly)
-- [Schedule & Day Types](docs/schedule.md) — weekly schedule, checklist matching algorithm
-- [Design System](docs/design-system.md) — visual tokens, muscle heatmap
+- [Architecture](docs/architecture.md) — runtime model, data flow, auth, PWA behavior
+- [Database](docs/database.md) — current schema, RLS, RPCs, derived data
+- [Strava Integration](docs/strava-integration.md) — OAuth, webhooks, manual sync, workout linking
+- [Screens](docs/screens.md) — current tab and route specs
+- [Session Flow](docs/session-flow.md) — workout lifecycle, draft persistence, recent stats
+- [Smart Features](docs/smart-features.md) — implemented rule-based intelligence and planned ideas
+- [Schedule & Day Types](docs/schedule.md) — weekly schedule, overrides, adherence snapshots
+- [Design System](docs/design-system.md) — tokens, layout rules, muscle heatmap
 
 ---
 

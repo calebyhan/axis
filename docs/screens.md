@@ -1,93 +1,106 @@
 # Screen Specifications
 
-Five tabs. Each has a single clear responsibility.
+Main authenticated routes are Dashboard, Activity, Log, Stats, and Settings.
 
 ---
 
 ## Dashboard
 
-At-a-glance view of the current week.
+Weekly overview for the signed-in user.
 
-**Calendar with streak** — monthly mini-calendar, days with logged activity filled. Streak counter for consecutive active days. Tapping a day navigates to that day's activities.
-
-**Weekly stats summary** — compact row: total distance, sessions completed, total volume lifted, body weight delta vs. last week.
-
-**Week checklist** — driven by `weekly_schedule`. Each planned day type shown for the current week. Auto-checked when a matching session is logged (see [Schedule & Day Types](schedule.md) for matching algorithm). Flexible — swapping days around is handled by the greedy matching algorithm.
-
-**Body weight sparkline** — last 30 days, 7-day rolling average overlaid.
-
-**"Start Session" CTA** — primary accent color, full width on mobile. Same entry point as the Log tab.
+- **Weekly stats summary:** run distance, workout count, lifted volume, and body-weight delta.
+- **Weekly adherence:** current week plan completion from `planned_slots`/adherence logic.
+- **Calendar streak:** current-month calendar with active-day intensity and streak count. Planned rest/skip days can satisfy the calendar where appropriate.
+- **Planned sessions:** workout/cardio checklist from `weekly_schedule` plus `schedule_overrides`. Tapping a pill opens an override modal for that date/slot.
+- **Weekly muscle coverage:** front/back heatmap for primary muscles trained this week.
+- **Body weight sparkline:** last 30 days with rolling context.
 
 ---
 
 ## Activity
 
-Chronological feed of all activities — runs and workouts interleaved.
+Chronological feed of Strava runs/rides, manual runs, and workouts.
 
-**Filter chips:** All / Runs / Workouts
+**Filters:** All / Runs / Workouts
 
-### Run cards
-- Map thumbnail (GPS polyline from Strava)
-- Distance, moving time, avg pace, avg HR, suffer score
-- Tap → full view: full-size map, splits table, HR chart, HR zone breakdown, elevation profile
+### Run/Ride Cards
 
-### Workout cards
-- Muscle heatmap thumbnail — front/back body silhouette, worked muscles highlighted by volume intensity (see [Design System](design-system.md))
-- Session duration, total volume, number of exercises
-- Tap → full view: exercise-by-exercise breakdown with sets/reps/weight/RPE, e1RM achieved, linked Strava HR data if available
+- Route thumbnail when `summary_polyline` exists.
+- Distance, duration, pace/speed context, heart rate, suffer score, elevation/cadence where available.
+- Detail view includes full map, splits, best efforts, HR/stream charts, and zone overlays when available.
 
-### Manual run cards
-- Same as run cards without map thumbnail
+### Workout Cards
+
+- Muscle heatmap thumbnail from `session_sets -> exercises.primary_muscles`.
+- Duration, total volume, and exercise count.
+- Detail view shows exercise-by-exercise sets/reps/weight/RPE and supports editing sets.
+- Workouts can receive linked Strava biometric fields through webhook auto-linking or pending-link resolution.
+
+### Pending Strava Links
+
+When one Strava activity could match multiple workouts, Activity surfaces a resolution panel. The user can link it to one candidate or dismiss it.
 
 ---
 
 ## Log
 
-Three entry points:
+Primary manual input surface.
 
-**Start Workout Session** — primary CTA, initiates full session flow (see [Session Flow](session-flow.md)).
-
-**Log Run** — manual fallback form: distance, duration, perceived effort (1–5), notes. Stored as `source: 'manual'`.
-
-**Log Body Weight** — single number field, timestamp auto-set to now. Upserts on `(user_id, date)` — re-entry replaces same-day value.
+- **Today's plan:** workout/cardio slots for the current date, after overrides.
+- **Resume draft:** appears when an active or saved workout draft exists.
+- **Start Workout Session:** opens the full session flow.
+- **Log Run:** imports recent Strava activities or saves a manual run.
+- **Log Body Weight:** upserts one body-weight value per date.
+- **Strava import preview:** shows the newest unimported supported Strava activity from the last 90 days.
+- **Recent context:** most recent workout, run, and weigh-in.
 
 ---
 
 ## Stats
 
-Time filter: **Weekly** (default) / Monthly / Yearly / All Time
+Time filter: Week / Month / Year / All.
 
-### Workout tab
-- Volume over time
-- e1RM per lift (movement dropdown selector)
-- Muscle group frequency heatmap
-- Push/pull/legs balance (stacked bar)
-- PB timeline
-- Session length trends
-- Strength ratio tracking (OHP vs bench, deadlift vs squat — thresholds configurable in Settings)
+### Workout Tab
 
-### Running tab
-- Weekly distance
-- Pace trends
-- Suffer score history
-- HR zone breakdown
-- Long run progression
+- Session count, total sets, total volume.
+- Muscle coverage heatmap for the selected range.
+- Weekly volume chart.
+- Top exercises by lifted volume.
 
-### Body tab
-- Weight line chart with 7-day rolling average
-- Trend classification (gaining / maintaining / losing) via linear regression
-- Recent weigh-in log
+### Running Tab
+
+- Total distance, run count, best pace, average HR.
+- Personal records from Strava best efforts.
+- Distance, pace, suffer score, and heart-rate trend charts.
+
+### Body Tab
+
+- Current weight, range change, min/max.
+- Body-weight chart with 7-day rolling average.
+- Trend classification from linear regression.
+- Recent weigh-in list.
+
+### Load Tab
+
+- CTL, ATL, and TSB cards.
+- Fitness/fatigue chart, form chart, and daily training-load bar chart.
+- TSB labels: Fresh, Neutral, Fatigued, Overreaching.
+
+### Plan Tab
+
+- Adherence, completed, missed, and skipped totals.
+- Historical calendar for the All range.
+- Weekly plan follow-through chart.
+- Current-week slot table with completed/swapped/missed/pending/skipped states.
 
 ---
 
 ## Settings
 
-- **Strava** — connect / disconnect, sync status, last synced timestamp
-- **Units** — metric / imperial
-- **Weight increments** — upper body (default 2.5 kg), lower body (default 5 kg)
-- **Weekly schedule** — 7-day grid, assign day types, toggle days on/off
-- **Day types** — view/edit Push/Pull/Legs/Easy/Long/Intervals library, add custom types
-- **Volume landmarks** — min/max sets per muscle group per week (configurable)
-- **Strength ratios** — OHP/bench and deadlift/squat target percentages (defaults: 65%, 120%)
-- **Accent color** — 4 options
-- **Data export** — download all activities, sessions, and body weight as JSON
+- **Weekly schedule:** Sunday-first display with separate Workout and Cardio selectors. Stored with ISO `day_of_week` values.
+- **Schedule summary:** strength days, cardio days, active days, full rest days, and weekly muscle-focus heatmap.
+- **Profile:** display name override.
+- **Preferences:** units and accent color.
+- **Strava:** connect/disconnect state.
+- **Data & Storage:** JSON export and offline-cache clearing.
+- **Account:** sign out.

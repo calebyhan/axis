@@ -1,56 +1,102 @@
 # Design System
 
+Axis is dark-only with a restrained, data-focused interface.
+
 ---
 
-## Visual Tokens
+## Tokens
 
-| Property | Value |
+Defined primarily in `src/app/globals.css` and `tailwind.config.ts`.
+
+| Token | Value |
 |---|---|
-| Background | `#0A0A0A` |
-| Card surface | `#141414` |
-| Border | `1px solid #1F1F1F` |
+| `--background` | `#050505` |
+| `--surface` | `rgba(18, 18, 18, 0.72)` |
+| `--surface-strong` | `rgba(20, 20, 20, 0.9)` |
+| `--surface-soft` | `rgba(255, 255, 255, 0.03)` |
+| `--border` | `rgba(255, 255, 255, 0.1)` |
+| `--border-strong` | `rgba(255, 255, 255, 0.16)` |
+| `--muted` | `#9A9A9A` |
 | Primary text | `#FFFFFF` |
-| Muted text | `#666666` |
-| Accent | `#3B82F6` (electric blue, user-selectable from 4 options) |
-| Chart axes | `#2A2A2A` |
-| Typography | Inter or Geist |
+| Default accent | `#3B82F6` |
 
-**Principles:** Matte black, minimalist, generous negative space. No gradients, no glassmorphism, no drop shadows. Accent used sparingly — CTAs and active states only.
+Accent variants:
+
+```text
+blue   #3B82F6
+green  #22C55E
+orange #F97316
+purple #A855F7
+```
+
+`data-accent` on the document drives `--accent` and `--accent-rgb`.
+
+---
+
+## Typography
+
+Font stack:
+
+```css
+"SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+var(--font-geist-sans, Inter, system-ui, sans-serif)
+```
+
+Tailwind also defines Geist/Inter-based `sans` and Geist Mono `mono` families.
+
+---
+
+## Layout
+
+- `.page-shell`: max width `72rem`, centered, safe-area top padding, bottom-nav padding.
+- Mobile reserves `--nav-h` for the bottom tab bar and `--top-h` for iOS status-bar space.
+- Desktop uses a sidebar; mobile uses a bottom tab bar.
+- Common cards use `.card`: `--surface-strong`, `1px solid --border`, `0.75rem` radius.
+- `.card-soft` is used for lighter framed surfaces.
+
+---
+
+## PWA Safe Areas
+
+Global helpers:
+
+- `.pb-nav` prevents bottom sheets and scroll containers from sitting behind the bottom nav.
+- `.pt-top` offsets content from mobile safe-area top.
+- `.mobile-top-fade` keeps scrolled content readable beneath the iOS status area.
 
 ---
 
 ## Muscle Heatmap
 
-Front/back body SVG with named paths per muscle group. Used on:
-- Workout cards in the Activity feed (thumbnail)
-- Mid-session live coverage tracker
-- Pre-session muscle recency map
+Implemented in `src/components/heatmap/MuscleHeatmap.tsx` as inline SVG. It renders front and back body views from path data; no image assets are required.
 
-**Shading:** Each muscle path is shaded from `#1F1F1F` (untrained / zero sets) to the accent color (high volume). Intensity is driven by set count relative to the session or period total.
+Each muscle group renders as:
 
-**Implementation:** Pure SVG — each muscle group renders as a uniquely-prefixed `<g data-muscle="chest">`, `<g data-muscle="hamstrings">`, etc. with one or more anatomical paths inside. Color is applied inline. No image assets, works fully offline.
-
-**Muscle group IDs used across the system:**
-
+```html
+<g id="{prefix}-{muscle}" data-muscle="{muscle}">
 ```
-chest, front_delt, rear_delt, triceps, biceps, forearm
-upper_back, lats, traps, lower_back
-glutes, quads, hamstrings, calves, hip_flexors, adductors
+
+Color interpolates from empty `#1f1f1f` to the current accent based on set count relative to the max count in the displayed period.
+
+Interactive heatmaps can show tooltip detail buckets built from recent workout data.
+
+### Muscle IDs
+
+```text
+chest, front_delt, rear_delt, triceps, biceps, forearm,
+upper_back, lats, traps, lower_back,
+glutes, quads, hamstrings, calves, hip_flexors, adductors,
 abs, obliques
 ```
 
-These IDs must match `exercises.primary_muscles` and `exercises.secondary_muscles` values exactly for coverage calculation to work correctly.
+These IDs must match `exercises.primary_muscles` and `exercises.secondary_muscles`.
 
 ---
 
-## Mobile Layout
+## Components And Patterns
 
-- Bottom tab bar with icons — Dashboard, Activity, Log, Stats, Settings
-- Thumb-optimized tap targets (minimum 44 × 44 px)
-- Full-width CTAs (Start Session, End Session)
-- Bottom sheets for panels (Recent Stats, session summary)
-
-## Desktop Layout
-
-- 240 px left sidebar with same navigation items vertically
-- Main content area takes remaining width
+- Segmented buttons are used for units, time ranges, and active tabs.
+- Accent color swatches are circular buttons.
+- Settings schedule rows use select menus for workout and cardio slots.
+- Modal/bottom-sheet shells use fixed full-screen overlays on mobile and constrained centered panels on desktop.
+- Activity and dashboard visualizations use Recharts with shared tooltip props from `src/components/stats/chartTheme.ts`.
