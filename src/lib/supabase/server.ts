@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/env";
+import { getSupabasePublishableKey, getSupabaseSecretKey, getSupabaseUrl } from "@/lib/env";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -25,4 +26,13 @@ export async function createClient() {
       },
     }
   );
+}
+
+export function createAdminClient() {
+  return createSupabaseClient(getSupabaseUrl(), getSupabaseSecretKey(), {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 }

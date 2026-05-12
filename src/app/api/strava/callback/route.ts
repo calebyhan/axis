@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { getStravaClientId, getStravaClientSecret } from "@/lib/env";
@@ -39,6 +39,11 @@ export async function GET(request: NextRequest) {
   }
 
   const tokens = await tokenRes.json();
+  const stravaAthleteId = tokens.athlete?.id;
+  if (!stravaAthleteId || !tokens.access_token || !tokens.refresh_token || !tokens.expires_at) {
+    return NextResponse.redirect(`${origin}/settings?strava_error=token_exchange_failed`);
+  }
+
   const supabase = await createClient();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -49,13 +54,31 @@ export async function GET(request: NextRequest) {
 
   const profileData = {
     id: user.id,
-    strava_athlete_id: tokens.athlete?.id ?? null,
+    strava_athlete_id: stravaAthleteId,
     strava_access_token: tokens.access_token,
     strava_refresh_token: tokens.refresh_token,
     token_expires_at: new Date(tokens.expires_at * 1000).toISOString(),
   };
 
-  const { error: upsertError } = await supabase
+  const adminSupabase = createAdminClient();
+  const { error: unlinkError } = await adminSupabase
+    .from("profiles")
+    .update({
+      strava_athlete_id: null,
+      strava_access_token: null,
+      strava_refresh_token: null,
+      token_expires_at: null,
+    })
+    .eq("strava_athlete_id", stravaAthleteId)
+    .neq("id", user.id);
+
+  if (unlinkError) {
+    console.error("[callback] Failed to clear previous Strava connection", unlinkError.code, unlinkError.message);
+    const detail = encodeURIComponent(unlinkError.code ?? unlinkError.message);
+    return NextResponse.redirect(`${origin}/settings?strava_error=save_failed&detail=${detail}`);
+  }
+
+  const { error: upsertError } = await adminSupabase
     .from("profiles")
     .upsert(profileData, { onConflict: "id" });
 
