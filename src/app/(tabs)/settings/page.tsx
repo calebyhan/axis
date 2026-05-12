@@ -7,7 +7,7 @@ import { SettingsClient } from "@/components/settings/SettingsClient";
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ strava_connected?: string; strava_error?: string }>;
+  searchParams: Promise<{ strava_connected?: string; strava_error?: string; detail?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createClient();
@@ -42,6 +42,7 @@ export default async function SettingsPage({
         stravaStatus={{
           connected: params.strava_connected === "1",
           error: params.strava_error ?? null,
+          detail: params.detail ?? null,
         }}
       />
     </div>

@@ -21,6 +21,7 @@ interface Props {
   stravaStatus: {
     connected: boolean;
     error: string | null;
+    detail?: string | null;
   };
 }
 
@@ -271,6 +272,9 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, s
           {stravaStatus.error && (
             <div className="px-4 py-2.5 bg-red-900/30 border border-red-700/40 rounded-lg text-sm text-red-400">
               {getStravaStatusError(stravaStatus.error)}
+              {stravaStatus.detail && (
+                <span className="block text-xs opacity-70 mt-1">({stravaStatus.detail})</span>
+              )}
             </div>
           )}
           {saved && (

@@ -41,24 +41,28 @@ export async function GET(request: NextRequest) {
   const tokens = await tokenRes.json();
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.redirect(`${origin}/login`);
+    console.error("[callback] No authenticated user", authError?.message);
+    return NextResponse.redirect(`${origin}/settings?strava_error=not_authenticated`);
   }
 
-  const { error: updateError } = await supabase
-    .from("profiles")
-    .update({
-      strava_athlete_id: tokens.athlete?.id ?? null,
-      strava_access_token: tokens.access_token,
-      strava_refresh_token: tokens.refresh_token,
-      token_expires_at: new Date(tokens.expires_at * 1000).toISOString(),
-    })
-    .eq("id", user.id);
+  const profileData = {
+    id: user.id,
+    strava_athlete_id: tokens.athlete?.id ?? null,
+    strava_access_token: tokens.access_token,
+    strava_refresh_token: tokens.refresh_token,
+    token_expires_at: new Date(tokens.expires_at * 1000).toISOString(),
+  };
 
-  if (updateError) {
-    console.error("[callback] Failed to save Strava tokens", updateError.message);
-    return NextResponse.redirect(`${origin}/settings?strava_error=save_failed`);
+  const { error: upsertError } = await supabase
+    .from("profiles")
+    .upsert(profileData, { onConflict: "id" });
+
+  if (upsertError) {
+    console.error("[callback] Failed to save Strava tokens", upsertError.code, upsertError.message);
+    const detail = encodeURIComponent(upsertError.code ?? upsertError.message);
+    return NextResponse.redirect(`${origin}/settings?strava_error=save_failed&detail=${detail}`);
   }
 
   return NextResponse.redirect(`${origin}/settings?strava_connected=1`);
