@@ -147,7 +147,7 @@ function LoggedExercisesList({ session, onSelect }: {
 }
 
 export function SessionFlow({ onClose, onComplete }: Props) {
-  const { session, isActive, hasDraft, autosaveFailed, draftSaveStatus, startSession, resumeDraft, discardDraft, addExercise, addSet, endSession, pauseSession, cancelSession } = useSession();
+  const { session, isActive, hasDraft, autosaveFailed, draftSaveStatus, startSession, resumeDraft, discardDraft, addExercise, addSet, updateSet, deleteSet, endSession, pauseSession, cancelSession } = useSession();
 
   const [loadedData, setLoadedData] = useState<LoadedData>({ exercises: [], allDayTypes: [] });
   const [uiState, setUiState] = useState<NavState & { showRecentStats: boolean }>({ step: "exercise_search", activeExerciseId: null, showRecentStats: false });
@@ -382,6 +382,8 @@ export function SessionFlow({ onClose, onComplete }: Props) {
               weightIncrement={2.5}
               units={units}
               onAddSet={(s) => handleAddSet(activeExercise.exerciseId, s)}
+              onUpdateSet={(setIndex, set) => updateSet(activeExercise.exerciseId, setIndex, set)}
+              onDeleteSet={(setIndex) => deleteSet(activeExercise.exerciseId, setIndex)}
             />
           </div>
         )}

@@ -89,6 +89,34 @@ body {
 }
 .pt-top { padding-top: var(--top-h); }
 
+/* Mobile PWA status-bar fade.
+   Scrolled content can pass underneath the translucent iOS clock/battery row;
+   this layer keeps that area readable without changing page scroll positions. */
+.mobile-top-fade {
+  display: none;
+  --mobile-top-fade-opacity: 0;
+}
+
+@media (max-width: 767px) {
+  .mobile-top-fade {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 45;
+    display: block;
+    height: max(3.25rem, calc(env(safe-area-inset-top, 0px) + 2.25rem));
+    opacity: var(--mobile-top-fade-opacity);
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      rgba(5, 5, 5, 0.92) 0%,
+      rgba(5, 5, 5, 0.7) 56%,
+      rgba(5, 5, 5, 0) 100%
+    );
+  }
+}
+
 /* Accent utility driven by CSS variable */
 .bg-accent { background-color: var(--accent); }
 .text-accent { color: var(--accent); }

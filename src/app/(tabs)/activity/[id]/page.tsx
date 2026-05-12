@@ -3,10 +3,9 @@ export const metadata = { title: "Activity — Axis", description: "Activity det
 
 import { getActivityWithSets } from "@/lib/queries/activity";
 import { getUserUnits } from "@/lib/queries/profile";
-import { computeE1RM } from "@/lib/e1rm";
 import { hasSplits } from "@/lib/splits";
 import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
-import { formatWeight, formatDistance, formatPace, weightUnit, distanceUnit } from "@/lib/units";
+import { formatDistance, formatPace, distanceUnit } from "@/lib/units";
 import { RunStreams } from "@/components/activity/RunStreams";
 import { SplitsTable } from "@/components/activity/SplitsTable";
 import type { MuscleGroup, MuscleHeatmapDetails, BestEffort, Units } from "@/types";
@@ -15,6 +14,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { DeleteActivityButton } from "@/components/activity/DeleteActivityButton";
 import { RouteMapExpandable } from "@/components/activity/RouteMapExpandable";
+import { WorkoutSetsEditor } from "@/components/activity/WorkoutSetsEditor";
 
 function formatDuration(secs: number | null): string {
   if (!secs) return "—";
@@ -147,8 +147,8 @@ export default async function ActivityDetailPage({
   const isWorkout = activity.type === "workout";
 
   // ── Workout: muscle coverage + exercise groups ──────────────────────────
-  type ExerciseJoin = { name: string; primary_muscles: MuscleGroup[] };
-  type SetRow = { exercise_id: string; set_number: number; reps: number; weight: number; rpe: number; exercise?: unknown };
+  type ExerciseJoin = { name: string; primary_muscles: MuscleGroup[]; secondary_muscles?: MuscleGroup[] };
+  type SetRow = { id: string; exercise_id: string; set_number: number; reps: number; weight: number; rpe: number; exercise?: unknown };
   function normalizeExercise(raw: unknown): ExerciseJoin | null {
     if (!raw) return null;
     return (Array.isArray(raw) ? raw[0] : raw) as ExerciseJoin ?? null;
@@ -194,6 +194,21 @@ export default async function ActivityDetailPage({
     if (!exerciseGroups.has(exId)) exerciseGroups.set(exId, { name: exName, sets: [] });
     exerciseGroups.get(exId)!.sets.push(s);
   }
+
+  const editableWorkoutSets = workoutSets.map((set, idx) => {
+    const exercise = normalizeExercise(set.exercise);
+    return {
+      row_id: set.id ?? `${set.exercise_id}-${set.set_number}-${idx}`,
+      exercise_id: set.exercise_id,
+      exercise_name: exercise?.name ?? "Unknown",
+      primary_muscles: exercise?.primary_muscles ?? [],
+      secondary_muscles: exercise?.secondary_muscles ?? [],
+      set_number: set.set_number,
+      reps: set.reps,
+      weight: set.weight,
+      rpe: set.rpe,
+    };
+  });
 
   // ── Run: derived stats ──────────────────────────────────────────────────
   const distanceKm = activity.distance ? activity.distance / 1000 : null;
@@ -338,39 +353,7 @@ export default async function ActivityDetailPage({
             </div>
           </div>
 
-          <div>
-            <h2 className="text-sm font-medium text-muted mb-3 uppercase tracking-wide">Exercises</h2>
-            <div className="flex flex-col gap-4">
-              {Array.from(exerciseGroups.entries()).map(([exId, { name, sets: exSets }]) => {
-                const bestE1RM = Math.max(...exSets.map((s: SetRow) => computeE1RM(s.weight, s.reps)));
-                return (
-                  <div key={exId} className="card p-4">
-                    <div className="flex flex-col gap-1 mb-3 sm:flex-row sm:items-center sm:justify-between">
-                      <span className="font-medium">{name}</span>
-                      {bestE1RM > 0 && (
-                        <span className="text-xs text-muted">
-                          Best e1RM: {formatWeight(bestE1RM, units)} {weightUnit(units)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      {exSets.map((s: SetRow, i: number) => (
-                        <div key={i} className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm sm:grid-cols-3">
-                          <span className="text-muted">Set {s.set_number}</span>
-                          <span className="text-right sm:text-left">
-                            {formatWeight(s.weight, units)} {weightUnit(units)} × {s.reps}
-                          </span>
-                          <span className="text-muted col-span-2 sm:col-span-1 sm:text-right">
-                            RPE {s.rpe} · {formatWeight(computeE1RM(s.weight, s.reps), units)} e1RM
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <WorkoutSetsEditor activityId={activity.id} initialSets={editableWorkoutSets} units={units} />
 
           {activity.strava_activity_id && (
             <div>

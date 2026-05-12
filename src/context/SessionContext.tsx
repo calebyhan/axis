@@ -26,6 +26,8 @@ interface SessionContextValue {
   discardDraft: () => void;
   addExercise: (exercise: Omit<SessionExercise, "sets">) => void;
   addSet: (exerciseId: string, set: SessionSet) => void;
+  updateSet: (exerciseId: string, setIndex: number, set: SessionSet) => void;
+  deleteSet: (exerciseId: string, setIndex: number) => void;
   endSession: () => SessionState;
   pauseSession: () => Promise<boolean>;
   cancelSession: () => void;
@@ -159,6 +161,31 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const updateSet = useCallback((exerciseId: string, setIndex: number, set: SessionSet) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const updatedExercises = prev.exercises.map((ex) => {
+        if (ex.exerciseId !== exerciseId) return ex;
+        if (setIndex < 0 || setIndex >= ex.sets.length) return ex;
+        const nextSets = ex.sets.map((existing, idx) => (idx === setIndex ? set : existing));
+        return { ...ex, sets: nextSets };
+      });
+      return { ...prev, exercises: updatedExercises };
+    });
+  }, []);
+
+  const deleteSet = useCallback((exerciseId: string, setIndex: number) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const updatedExercises = prev.exercises.map((ex) => {
+        if (ex.exerciseId !== exerciseId) return ex;
+        if (setIndex < 0 || setIndex >= ex.sets.length) return ex;
+        return { ...ex, sets: ex.sets.filter((_, idx) => idx !== setIndex) };
+      });
+      return { ...prev, exercises: updatedExercises };
+    });
+  }, []);
+
   // Returns the final session state; caller is responsible for clearDraft after DB write
   const endSession = useCallback((): SessionState => {
     if (!session) throw new Error("No active session");
@@ -205,6 +232,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         discardDraft,
         addExercise,
         addSet,
+        updateSet,
+        deleteSet,
         endSession,
         pauseSession,
         cancelSession,
