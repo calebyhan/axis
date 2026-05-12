@@ -623,7 +623,7 @@ export default function LogPage() {
 
       {/* Modals */}
       {panel === "session" && (
-        <SessionFlow onClose={() => setPanel(null)} onComplete={() => onSaved("Session saved!")} />
+        <SessionFlow onClose={() => setPanel(null)} onComplete={() => onSaved("Session saved!")} initialUnits={overview.units} />
       )}
 
       {panel === "run" && (
@@ -666,7 +666,7 @@ export default function LogPage() {
               <h2 id="log-weight-title" className="flex-1 font-semibold">Body Weight</h2>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav md:pb-6">
-              <LogWeightForm onSave={() => onSaved("Weight logged!")} />
+              <LogWeightForm onSave={() => onSaved("Weight logged!")} units={overview.units} />
             </div>
           </div>
         </div>

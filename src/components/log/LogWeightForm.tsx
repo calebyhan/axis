@@ -12,8 +12,8 @@ interface FormData {
   loaded: boolean;
 }
 
-export function LogWeightForm({ onSave }: { onSave: () => void }) {
-  const [formData, setFormData] = useState<FormData>({ value: "70.0", units: "metric", loaded: false });
+export function LogWeightForm({ onSave, units: propUnits }: { onSave: () => void; units?: Units }) {
+  const [formData, setFormData] = useState<FormData>({ value: "70.0", units: propUnits ?? "imperial", loaded: false });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
@@ -23,19 +23,19 @@ export function LogWeightForm({ onSave }: { onSave: () => void }) {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
-      const [{ data: profile }, { data: lastCheckin }] = await Promise.all([
-        supabase.from("profiles").select("units").eq("id", user.id).single(),
+      const [profileRes, checkinRes] = await Promise.all([
+        propUnits ? null : supabase.from("profiles").select("units").eq("id", user.id).single(),
         supabase.from("daily_checkins").select("body_weight").eq("user_id", user.id).not("body_weight", "is", null).order("date", { ascending: false }).limit(1).single(),
       ]);
-      const resolvedUnits = (profile?.units ?? "metric") as Units;
-      const kg = lastCheckin?.body_weight;
+      const resolvedUnits = propUnits ?? ((profileRes?.data?.units ?? "imperial") as Units);
+      const kg = checkinRes.data?.body_weight;
       setFormData({
         units: resolvedUnits,
         value: kg ? (resolvedUnits === "imperial" ? (kg * 2.20462).toFixed(1) : kg.toFixed(1)) : "70.0",
         loaded: true,
       });
     });
-  }, []);
+  }, [propUnits]);
 
   const step = formData.units === "imperial" ? 0.5 : 0.1;
 

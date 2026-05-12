@@ -19,6 +19,7 @@ type Step = "exercise_search" | "logging";
 interface Props {
   onClose: () => void;
   onComplete: () => void;
+  initialUnits?: Units;
 }
 
 interface LoadedData { exercises: Exercise[]; allDayTypes: DayType[] }
@@ -147,13 +148,13 @@ function LoggedExercisesList({ session, onSelect }: {
   );
 }
 
-export function SessionFlow({ onClose, onComplete }: Props) {
+export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
   const { session, isActive, hasDraft, autosaveFailed, draftSaveStatus, startSession, resumeDraft, discardDraft, addExercise, addSet, updateSet, deleteSet, endSession, pauseSession, cancelSession } = useSession();
 
   const [loadedData, setLoadedData] = useState<LoadedData>({ exercises: [], allDayTypes: [] });
   const [uiState, setUiState] = useState<NavState & { showRecentStats: boolean }>({ step: "exercise_search", activeExerciseId: null, showRecentStats: false });
   const [saveState, setSaveState] = useState<SaveState>({ saving: false, error: null, finalSession: null });
-  const [userSetup, setUserSetup] = useState<UserSetup>({ units: "metric", todayMuscles: undefined, todayDayType: undefined });
+  const [userSetup, setUserSetup] = useState<UserSetup>({ units: initialUnits ?? "imperial", todayMuscles: undefined, todayDayType: undefined });
   const [suggestedSets, setSuggestedSets] = useState<Record<string, SessionSet | undefined>>({});
   const [closePrompt, setClosePrompt] = useState<{ open: boolean; saving: boolean; error: string | null }>({ open: false, saving: false, error: null });
 
@@ -223,7 +224,7 @@ export function SessionFlow({ onClose, onComplete }: Props) {
         allDayTypes: dayTypes,
       });
       setUserSetup({
-        units: ((profileRes?.data?.units ?? "metric") as Units),
+        units: initialUnits ?? ((profileRes?.data?.units ?? "imperial") as Units),
         todayMuscles: dt?.muscle_focus && dt.muscle_focus.length > 0 ? dt.muscle_focus : undefined,
         todayDayType: dt ?? null,
       });
