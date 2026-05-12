@@ -15,9 +15,12 @@ export function MobileTopFade() {
 
     function update() {
       raf = 0;
+      const currentNode = ref.current;
+      if (!currentNode) return;
+
       const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
       const opacity = Math.min(Math.max((scrollY - 2) / 24, 0), 1);
-      node.style.setProperty("--mobile-top-fade-opacity", opacity.toFixed(3));
+      currentNode.style.setProperty("--mobile-top-fade-opacity", opacity.toFixed(3));
     }
 
     function queueUpdate() {
