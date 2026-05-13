@@ -9,10 +9,10 @@ import { createClient } from "@/lib/supabase/client";
 function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { get: getParam } = useSearchParams();
+  const searchParams = useSearchParams();
   const supabase = createClient();
-  const next = sanitizeNextPath(getParam("next"));
-  const callbackError = getParam("error");
+  const next = sanitizeNextPath(searchParams.get("next"));
+  const callbackError = searchParams.get("error");
   const visibleError = error || getCallbackErrorMessage(callbackError);
 
   async function handleGoogleLogin() {

@@ -1,12 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { saveNotificationPreferences, saveProfile, saveWeeklyScheduleDay } from "@/app/(tabs)/settings/actions";
 import { Select } from "@/components/ui/Select";
 import { MiniHeatmap } from "@/components/heatmap/MiniHeatmap";
 import { ACCENT_COLORS } from "@/lib/accent-colors";
+import {
+  coercePortableData,
+  countPortableRows,
+  createPortableData,
+  parsePortableJson,
+  portableDataFromCsv,
+  portableDataToCsv,
+  preparePortableImport,
+  type PortableFormat,
+  type PortableRow,
+  type PreparedPortableImport,
+} from "@/lib/data-portability";
 import { MUSCLE_GROUPS, type AccentColor, type DayType, type MuscleGroup, type NotificationPreferences, type Profile, type Units, type WeeklyScheduleRow } from "@/types";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -165,6 +177,30 @@ async function deleteAxisCaches() {
   return axisKeys.length;
 }
 
+function rowsFromResult(data: unknown): PortableRow[] {
+  return Array.isArray(data) ? data.filter((row): row is PortableRow => typeof row === "object" && row !== null && !Array.isArray(row)) : [];
+}
+
+function rowFromResult(data: unknown): PortableRow | null {
+  return typeof data === "object" && data !== null && !Array.isArray(data) ? data as PortableRow : null;
+}
+
+function chunkRows<T>(rows: T[], size = 250): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) chunks.push(rows.slice(i, i + size));
+  return chunks;
+}
+
+function downloadFile(filename: string, contents: string, type: string) {
+  const blob = new Blob([contents], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function SettingsClient({
   profile,
   schedule,
@@ -176,6 +212,8 @@ export function SettingsClient({
 }: Props) {
   const supabase = createClient();
   const router = useRouter();
+  const jsonImportInputRef = useRef<HTMLInputElement>(null);
+  const csvImportInputRef = useRef<HTMLInputElement>(null);
   const workoutRestTypeId = findRestTypeId(dayTypes, "strength");
   const cardioRestTypeId = findRestTypeId(dayTypes, "run");
   const [saveStatus, setSaveStatus] = useState<{ saving: boolean; saved: boolean; error: string | null }>({ saving: false, saved: false, error: null });
@@ -185,6 +223,12 @@ export function SettingsClient({
     message: string | null;
     error: string | null;
   }>({ clearing: false, message: null, error: null });
+  const [portableStatus, setPortableStatus] = useState<{
+    exporting: PortableFormat | null;
+    importing: PortableFormat | null;
+    message: string | null;
+    error: string | null;
+  }>({ exporting: null, importing: null, message: null, error: null });
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefsState>(() => normalizeNotificationPrefs(notificationPreferences));
   const [notificationStatus, setNotificationStatus] = useState<{
     supported: boolean;
@@ -338,22 +382,217 @@ export function SettingsClient({
     if (!ok) setPlanMaps((prev) => ({ ...prev, cardio: { ...prev.cardio, [dayIndex]: previousCardio } }));
   }
 
-  async function exportData() {
-    const [activities, sets, checkins] = await Promise.all([
-      supabase.from("activities").select("*"),
-      supabase.from("session_sets").select("*"),
-      supabase.from("daily_checkins").select("*"),
+  async function buildPortableExport() {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData.user?.id;
+    if (!userId) throw new Error("Not authenticated.");
+
+    const [
+      profileRes,
+      notificationPreferencesRes,
+      dayTypesRes,
+      scheduleRes,
+      overridesRes,
+      plannedSlotsRes,
+      activitiesRes,
+      setsRes,
+      checkinsRes,
+    ] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, units, accent_color, display_name, onboarding_completed_at, created_at")
+        .eq("id", userId)
+        .maybeSingle(),
+      supabase
+        .from("notification_preferences")
+        .select("user_id, enabled, today_plan_enabled, today_plan_time, pending_strava_enabled, plan_nudge_enabled, plan_nudge_time, weekly_review_enabled, weekly_review_day, weekly_review_time, timezone, created_at, updated_at")
+        .eq("user_id", userId)
+        .maybeSingle(),
+      supabase
+        .from("day_types")
+        .select("id, name, category, muscle_focus")
+        .order("name"),
+      supabase
+        .from("weekly_schedule")
+        .select("id, user_id, day_of_week, day_type_id, cardio_day_type_id, active")
+        .eq("user_id", userId)
+        .order("day_of_week"),
+      supabase
+        .from("schedule_overrides")
+        .select("id, user_id, date, slot, day_type_id, created_at")
+        .eq("user_id", userId)
+        .order("date"),
+      supabase
+        .from("planned_slots")
+        .select("id, user_id, week_start, date, day_of_week, slot, planned_day_type_id, effective_day_type_id, is_overridden, is_skipped, created_at, updated_at")
+        .eq("user_id", userId)
+        .order("date"),
+      supabase
+        .from("activities")
+        .select("id, user_id, strava_activity_id, type, day_type_id, start_time, duration, source, distance, avg_heartrate, max_heartrate, suffer_score, calories, elevation_gain, avg_pace, tags, notes, created_at, name, summary_polyline, splits, best_efforts, avg_cadence, avg_watts, elapsed_time, max_speed, average_temp")
+        .eq("user_id", userId)
+        .order("start_time", { ascending: false }),
+      supabase
+        .from("session_sets")
+        .select("id, activity_id, exercise_id, set_number, reps, weight, rpe, created_at")
+        .order("created_at"),
+      supabase
+        .from("daily_checkins")
+        .select("id, user_id, date, body_weight, notes, created_at")
+        .eq("user_id", userId)
+        .order("date", { ascending: false }),
     ]);
-    const blob = new Blob(
-      [JSON.stringify({ activities: activities.data, sets: sets.data, checkins: checkins.data }, null, 2)],
-      { type: "application/json" }
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `axis-export-${new Date().toISOString().split("T")[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+
+    const failed = [
+      ["profile", profileRes.error],
+      ["notification preferences", notificationPreferencesRes.error],
+      ["day types", dayTypesRes.error],
+      ["weekly schedule", scheduleRes.error],
+      ["schedule overrides", overridesRes.error],
+      ["planned slots", plannedSlotsRes.error],
+      ["activities", activitiesRes.error],
+      ["sets", setsRes.error],
+      ["check-ins", checkinsRes.error],
+    ].find(([, error]) => error);
+
+    if (failed) throw new Error(`Could not export ${failed[0]}.`);
+
+    return createPortableData({
+      profile: rowFromResult(profileRes.data),
+      notification_preferences: rowFromResult(notificationPreferencesRes.data),
+      day_types: rowsFromResult(dayTypesRes.data),
+      weekly_schedule: rowsFromResult(scheduleRes.data),
+      schedule_overrides: rowsFromResult(overridesRes.data),
+      planned_slots: rowsFromResult(plannedSlotsRes.data),
+      activities: rowsFromResult(activitiesRes.data),
+      session_sets: rowsFromResult(setsRes.data),
+      daily_checkins: rowsFromResult(checkinsRes.data),
+    });
+  }
+
+  async function exportData(format: PortableFormat) {
+    if (portableStatus.exporting) return;
+    setPortableStatus({ exporting: format, importing: null, message: null, error: null });
+
+    try {
+      const data = await buildPortableExport();
+      const date = new Date().toISOString().split("T")[0];
+      if (format === "json") {
+        downloadFile(`axis-export-${date}.json`, JSON.stringify(data, null, 2), "application/json");
+      } else {
+        downloadFile(`axis-export-${date}.csv`, portableDataToCsv(data), "text/csv");
+      }
+      setPortableStatus({
+        exporting: null,
+        importing: null,
+        message: `Exported ${countPortableRows(data)} records.`,
+        error: null,
+      });
+    } catch (err) {
+      console.error("[settings] export failed", err);
+      setPortableStatus({
+        exporting: null,
+        importing: null,
+        message: null,
+        error: err instanceof Error ? err.message : "Failed to export data.",
+      });
+    }
+  }
+
+  async function upsertPortableRows(table: string, rows: PortableRow[], onConflict: string) {
+    for (const chunk of chunkRows(rows)) {
+      const { error } = await supabase.from(table).upsert(chunk, { onConflict });
+      if (error) throw new Error(`${table}: ${error.message}`);
+    }
+  }
+
+  async function insertPortableRows(table: string, rows: PortableRow[]) {
+    for (const chunk of chunkRows(rows)) {
+      const { error } = await supabase.from(table).insert(chunk);
+      if (error) throw new Error(`${table}: ${error.message}`);
+    }
+  }
+
+  async function insertMissingDayTypes(rows: PortableRow[]) {
+    if (rows.length === 0) return;
+    const ids = rows.map((row) => row.id).filter((id): id is string => typeof id === "string" && id.length > 0);
+    if (ids.length === 0) {
+      await insertPortableRows("day_types", rows);
+      return;
+    }
+
+    const { data, error } = await supabase.from("day_types").select("id").in("id", ids);
+    if (error) throw new Error(`day_types: ${error.message}`);
+
+    const existing = new Set(rowsFromResult(data).map((row) => row.id).filter((id): id is string => typeof id === "string"));
+    const missing = rows.filter((row) => typeof row.id !== "string" || !existing.has(row.id));
+    if (missing.length > 0) await insertPortableRows("day_types", missing);
+  }
+
+  async function applyPortableImport(data: PreparedPortableImport) {
+    if (data.profile) await upsertPortableRows("profiles", [data.profile], "id");
+    if (data.notification_preferences) {
+      await upsertPortableRows("notification_preferences", [data.notification_preferences], "user_id");
+    }
+    await insertMissingDayTypes(data.day_types);
+    await upsertPortableRows("weekly_schedule", data.weekly_schedule, "user_id,day_of_week");
+    await upsertPortableRows("schedule_overrides", data.schedule_overrides, "user_id,date,slot");
+    await upsertPortableRows("planned_slots", data.planned_slots, "user_id,date,slot");
+    await upsertPortableRows("activities", data.activities, "id");
+    await upsertPortableRows("daily_checkins", data.daily_checkins, "user_id,date");
+
+    if (data.session_sets.length > 0) {
+      const activityIds = Array.from(
+        new Set(data.session_sets.map((row) => row.activity_id).filter((id): id is string => typeof id === "string"))
+      );
+      for (const chunk of chunkRows(activityIds)) {
+        const { error } = await supabase.from("session_sets").delete().in("activity_id", chunk);
+        if (error) throw new Error(`session_sets: ${error.message}`);
+      }
+      await insertPortableRows("session_sets", data.session_sets);
+    }
+  }
+
+  async function importData(format: PortableFormat, file: File | null) {
+    if (!file || portableStatus.importing) return;
+    setPortableStatus({ exporting: null, importing: format, message: null, error: null });
+
+    try {
+      const text = await file.text();
+      const parsed = format === "csv" ? portableDataFromCsv(text) : parsePortableJson(text);
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData.user?.id;
+      if (!userId) throw new Error("Not authenticated.");
+
+      const prepared = preparePortableImport(coercePortableData(parsed), userId);
+      const recordCount = countPortableRows(prepared);
+      if (recordCount === 0) throw new Error("No portable Axis records found.");
+      if (!window.confirm(`Import ${recordCount} records into this account? Existing matching rows may be updated.`)) {
+        setPortableStatus({ exporting: null, importing: null, message: null, error: null });
+        return;
+      }
+
+      await applyPortableImport(prepared);
+      setPortableStatus({
+        exporting: null,
+        importing: null,
+        message: `Imported ${recordCount} records.`,
+        error: null,
+      });
+      router.refresh();
+    } catch (err) {
+      console.error("[settings] import failed", err);
+      setPortableStatus({
+        exporting: null,
+        importing: null,
+        message: null,
+        error: err instanceof Error ? err.message : "Failed to import data.",
+      });
+    }
+  }
+
+  function handleImportFile(format: PortableFormat, file: File | null) {
+    void importData(format, file);
   }
 
   async function clearOfflineCache() {
@@ -896,13 +1135,82 @@ export function SettingsClient({
 
           <Section title="Data & Storage">
             <div className="card p-4 flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={exportData}
-                className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors"
-              >
-                Export all data as JSON
-              </button>
+              <div>
+                <div className="font-medium text-sm">Export</div>
+                <div className="text-xs text-muted mt-0.5">
+                  Includes profile preferences, schedule, overrides, planned slots, day types, activities, sets, and check-ins.
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => void exportData("json")}
+                  disabled={!!portableStatus.exporting || !!portableStatus.importing}
+                  className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
+                >
+                  {portableStatus.exporting === "json" ? "Exporting…" : "Export JSON"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void exportData("csv")}
+                  disabled={!!portableStatus.exporting || !!portableStatus.importing}
+                  className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
+                >
+                  {portableStatus.exporting === "csv" ? "Exporting…" : "Export CSV"}
+                </button>
+              </div>
+
+              <div className="h-px bg-border" />
+
+              <div>
+                <div className="font-medium text-sm">Import</div>
+                <div className="text-xs text-muted mt-0.5">
+                  Merges an Axis JSON or CSV export into this account.
+                </div>
+              </div>
+              {(portableStatus.message || portableStatus.error) && (
+                <div className={`text-xs ${portableStatus.error ? "text-red-400" : "text-green-400"}`}>
+                  {portableStatus.error ?? portableStatus.message}
+                </div>
+              )}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => jsonImportInputRef.current?.click()}
+                  disabled={!!portableStatus.exporting || !!portableStatus.importing}
+                  className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
+                >
+                  {portableStatus.importing === "json" ? "Importing…" : "Import JSON"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => csvImportInputRef.current?.click()}
+                  disabled={!!portableStatus.exporting || !!portableStatus.importing}
+                  className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
+                >
+                  {portableStatus.importing === "csv" ? "Importing…" : "Import CSV"}
+                </button>
+              </div>
+              <input
+                ref={jsonImportInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => {
+                  handleImportFile("json", e.currentTarget.files?.[0] ?? null);
+                  e.currentTarget.value = "";
+                }}
+              />
+              <input
+                ref={csvImportInputRef}
+                type="file"
+                accept="text/csv,.csv"
+                className="hidden"
+                onChange={(e) => {
+                  handleImportFile("csv", e.currentTarget.files?.[0] ?? null);
+                  e.currentTarget.value = "";
+                }}
+              />
 
               <div className="h-px bg-border" />
 
