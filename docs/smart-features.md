@@ -65,6 +65,15 @@ The Body stats tab classifies weight trend with linear regression over stored ki
 
 Unsupported Strava activity types can enrich a workout if they overlap by time. One clear candidate is auto-linked; multiple candidates create a pending link for user resolution.
 
+### Push Notifications
+
+Opt-in Web Push notifications cover:
+
+- Today's remaining planned workout/cardio slots.
+- Pending Strava workout-link resolution after webhook processing.
+- Same-day planned slots still pending at the user's configured nudge time.
+- Weekly review of the previous seven days.
+
 ---
 
 ## Planned / Not Yet Implemented

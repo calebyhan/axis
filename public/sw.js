@@ -68,6 +68,51 @@ self.addEventListener("message", (event) => {
   );
 });
 
+self.addEventListener("push", (event) => {
+  const payload = readPushPayload(event);
+  if (!payload) return;
+
+  const title = payload.title || "Axis";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: payload.body,
+      icon: payload.icon || "/icons/icon-192.svg",
+      badge: payload.badge || "/icons/icon-192.svg",
+      tag: payload.tag,
+      data: {
+        url: payload.url || "/dashboard",
+      },
+      timestamp: payload.timestamp || Date.now(),
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const targetUrl = new URL(event.notification.data?.url || "/dashboard", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((client) => client.url === targetUrl);
+      if (existing) return existing.focus();
+      return self.clients.openWindow(targetUrl);
+    })
+  );
+});
+
+function readPushPayload(event) {
+  if (!event.data) return null;
+  try {
+    return event.data.json();
+  } catch {
+    return {
+      title: "Axis",
+      body: event.data.text(),
+      url: "/dashboard",
+    };
+  }
+}
+
 function isStaticAsset(url) {
   return (
     url.pathname.startsWith("/_next/static/") ||

@@ -174,6 +174,30 @@ antagonist_pairs(pattern_a, pattern_b)
 
 `activity_details` and `weekly_summaries` exist for flexible detail/summary data, but the current UI primarily reads typed columns on `activities`.
 
+### Notifications
+
+```sql
+notification_preferences(
+  user_id,
+  enabled,
+  today_plan_enabled,
+  today_plan_time,
+  pending_strava_enabled,
+  plan_nudge_enabled,
+  plan_nudge_time,
+  weekly_review_enabled,
+  weekly_review_day,
+  weekly_review_time,
+  timezone
+)
+
+push_subscriptions(user_id, endpoint, p256dh, auth, user_agent, last_seen_at)
+
+notification_events(user_id, kind, dedupe_key, title, body, url, sent_at)
+```
+
+`notification_events` deduplicates once-per-day and once-per-week scheduled notifications, plus event-driven pending Strava link notifications.
+
 ---
 
 ## RPCs

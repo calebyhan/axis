@@ -48,13 +48,25 @@ The app avoids polling for normal sync. A manual sync endpoint exists as a fallb
 
 - `public/manifest.json` makes the app installable.
 - `public/sw.js` is registered only in production.
-- The service worker cache-firsts static assets, network-firsts pages, and caches read-only Strava stream/zone API responses.
+- The service worker cache-firsts static assets, network-firsts pages, caches read-only Strava stream/zone API responses, and handles push notification display/clicks.
 - Workout session drafts are stored in IndexedDB (`axis/session_drafts`) and can be cleared from Settings.
 - Mobile layouts reserve bottom-nav and safe-area space; desktop uses a left sidebar.
 
-### iOS PWA Limitations
+### Push Notifications
 
-Push notifications and background sync are not implemented. Alerts and weekly summaries are in-app experiences.
+Web Push is opt-in from Settings and stores subscriptions in `push_subscriptions`.
+Notification preferences live in `notification_preferences`.
+
+Implemented notification types:
+
+- Today's plan reminder.
+- Pending Strava workout-link resolution.
+- Same-day pending plan nudge.
+- Weekly review.
+
+Scheduled notifications are produced by `GET /api/notifications/cron`, which is intended to run through Vercel Cron using `CRON_SECRET`.
+On iOS/iPadOS, Web Push requires the PWA to be added to the Home Screen.
+Generate VAPID keys with `npx web-push generate-vapid-keys` and set `NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY` plus `WEB_PUSH_PRIVATE_KEY`.
 
 ---
 

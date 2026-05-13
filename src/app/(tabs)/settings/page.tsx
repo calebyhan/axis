@@ -15,7 +15,13 @@ export default async function SettingsPage({
 
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: schedule }, { data: dayTypes }] = await Promise.all([
+  const [
+    { data: profile },
+    { data: schedule },
+    { data: dayTypes },
+    { data: notificationPreferences },
+    { count: notificationSubscriptionCount },
+  ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase
       .from("weekly_schedule")
@@ -23,6 +29,11 @@ export default async function SettingsPage({
       .eq("user_id", user.id)
       .order("day_of_week"),
     supabase.from("day_types").select("*").order("name"),
+    supabase.from("notification_preferences").select("*").eq("user_id", user.id).maybeSingle(),
+    supabase
+      .from("push_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id),
   ]);
 
   const stravaConnected = !!profile?.strava_access_token;
@@ -38,6 +49,8 @@ export default async function SettingsPage({
         profile={profile}
         schedule={schedule ?? []}
         dayTypes={dayTypes ?? []}
+        notificationPreferences={notificationPreferences}
+        notificationSubscriptionCount={notificationSubscriptionCount ?? 0}
         stravaConnected={stravaConnected}
         stravaStatus={{
           connected: params.strava_connected === "1",

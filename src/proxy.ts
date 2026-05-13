@@ -41,6 +41,10 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse;
   }
 
+  if (pathname.startsWith("/api/notifications/cron")) {
+    return supabaseResponse;
+  }
+
   if (!user) {
     const url = request.nextUrl.clone();
     const next = `${request.nextUrl.pathname}${request.nextUrl.search}`;

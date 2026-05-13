@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { saveProfile, saveWeeklyScheduleDay } from "@/app/(tabs)/settings/actions";
+import { saveNotificationPreferences, saveProfile, saveWeeklyScheduleDay } from "@/app/(tabs)/settings/actions";
 import { Select } from "@/components/ui/Select";
 import { MiniHeatmap } from "@/components/heatmap/MiniHeatmap";
 import { ACCENT_COLORS } from "@/lib/accent-colors";
-import { MUSCLE_GROUPS, type AccentColor, type DayType, type MuscleGroup, type Profile, type Units, type WeeklyScheduleRow } from "@/types";
+import { MUSCLE_GROUPS, type AccentColor, type DayType, type MuscleGroup, type NotificationPreferences, type Profile, type Units, type WeeklyScheduleRow } from "@/types";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_DISPLAY_ORDER = [6, 0, 1, 2, 3, 4, 5];
@@ -16,11 +16,72 @@ interface Props {
   profile: Profile | null;
   schedule: WeeklyScheduleRow[];
   dayTypes: DayType[];
+  notificationPreferences: NotificationPreferences | null;
+  notificationSubscriptionCount: number;
   stravaConnected: boolean;
   stravaStatus: {
     connected: boolean;
     error: string | null;
     detail?: string | null;
+  };
+}
+
+type NotificationPrefsState = Omit<NotificationPreferences, "user_id">;
+
+const DEFAULT_NOTIFICATION_PREFS: NotificationPrefsState = {
+  enabled: false,
+  today_plan_enabled: true,
+  today_plan_time: "08:00",
+  pending_strava_enabled: true,
+  plan_nudge_enabled: true,
+  plan_nudge_time: "19:00",
+  weekly_review_enabled: true,
+  weekly_review_day: 0,
+  weekly_review_time: "18:00",
+  timezone: "UTC",
+};
+
+const NOTIFICATION_DAYS = [
+  { value: 0, label: "Sunday" },
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+  { value: 6, label: "Saturday" },
+];
+
+function toTimeInput(value: string): string {
+  return value.slice(0, 5);
+}
+
+function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = `${base64String}${padding}`.replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const buffer = new ArrayBuffer(rawData.length);
+  const outputArray = new Uint8Array(buffer);
+
+  for (let i = 0; i < rawData.length; i += 1) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+
+  return buffer;
+}
+
+function normalizeNotificationPrefs(preferences: NotificationPreferences | null): NotificationPrefsState {
+  if (!preferences) return DEFAULT_NOTIFICATION_PREFS;
+  return {
+    enabled: preferences.enabled,
+    today_plan_enabled: preferences.today_plan_enabled,
+    today_plan_time: toTimeInput(preferences.today_plan_time),
+    pending_strava_enabled: preferences.pending_strava_enabled,
+    plan_nudge_enabled: preferences.plan_nudge_enabled,
+    plan_nudge_time: toTimeInput(preferences.plan_nudge_time),
+    weekly_review_enabled: preferences.weekly_review_enabled,
+    weekly_review_day: preferences.weekly_review_day,
+    weekly_review_time: toTimeInput(preferences.weekly_review_time),
+    timezone: preferences.timezone,
   };
 }
 
@@ -36,6 +97,36 @@ function Section({
       <h2 className="text-xs font-medium text-muted uppercase tracking-wide">{title}</h2>
       {children}
     </section>
+  );
+}
+
+function NotificationToggle({
+  label,
+  checked,
+  disabled,
+  onChange,
+  children,
+}: {
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  onChange: (checked: boolean) => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white/[0.025] px-3 py-2.5">
+      <label className="flex min-w-0 items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.checked)}
+          className="size-4 accent-[var(--accent)] disabled:opacity-40"
+        />
+        <span className={disabled ? "text-white/45" : "text-white/80"}>{label}</span>
+      </label>
+      {children && <div className="shrink-0">{children}</div>}
+    </div>
   );
 }
 
@@ -74,7 +165,15 @@ async function deleteAxisCaches() {
   return axisKeys.length;
 }
 
-export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, stravaStatus }: Props) {
+export function SettingsClient({
+  profile,
+  schedule,
+  dayTypes,
+  notificationPreferences,
+  notificationSubscriptionCount,
+  stravaConnected,
+  stravaStatus,
+}: Props) {
   const supabase = createClient();
   const router = useRouter();
   const workoutRestTypeId = findRestTypeId(dayTypes, "strength");
@@ -86,6 +185,22 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, s
     message: string | null;
     error: string | null;
   }>({ clearing: false, message: null, error: null });
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefsState>(() => normalizeNotificationPrefs(notificationPreferences));
+  const [notificationStatus, setNotificationStatus] = useState<{
+    supported: boolean;
+    checked: boolean;
+    permission: NotificationPermission | "unsupported";
+    saving: boolean;
+    message: string | null;
+    error: string | null;
+  }>({
+    supported: false,
+    checked: false,
+    permission: "unsupported",
+    saving: false,
+    message: null,
+    error: null,
+  });
   const [planMaps, setPlanMaps] = useState<{ strength: Record<number, string>; cardio: Record<number, string> }>(() => {
     const strength: Record<number, string> = {};
     const cardio: Record<number, string> = {};
@@ -102,8 +217,29 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, s
   const [displayName, setDisplayName] = useState(profile?.display_name ?? "");
   const [displayNameDraft, setDisplayNameDraft] = useState(profile?.display_name ?? "");
   const { units, accent } = preferences;
+  const webPushPublicKey = process.env.NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY ?? "";
 
   const { saving, saved, error: saveError } = saveStatus;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const supported =
+        "serviceWorker" in navigator &&
+        "PushManager" in window &&
+        "Notification" in window &&
+        !!webPushPublicKey;
+
+      setNotificationStatus((prev) => ({
+        ...prev,
+        supported,
+        checked: true,
+        permission: supported ? Notification.permission : "unsupported",
+        error: supported ? null : webPushPublicKey ? null : "Web Push is not configured.",
+      }));
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [webPushPublicKey]);
 
   async function persistProfile(next: { units?: Units; accent?: AccentColor }) {
     setSaveStatus({ saving: true, saved: false, error: null });
@@ -240,6 +376,147 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, s
     } catch {
       setCacheStatus({ clearing: false, message: null, error: "Failed to clear offline cache. Please try again." });
     }
+  }
+
+  async function ensurePushRegistration(): Promise<ServiceWorkerRegistration> {
+    const existing = await navigator.serviceWorker.getRegistration("/");
+    if (existing) return existing;
+    return navigator.serviceWorker.register("/sw.js", {
+      scope: "/",
+      updateViaCache: "none",
+    });
+  }
+
+  async function enableNotifications() {
+    if (notificationStatus.saving) return;
+    if (!notificationStatus.supported || !webPushPublicKey) {
+      setNotificationStatus((prev) => ({ ...prev, error: "Notifications are not available here.", message: null }));
+      return;
+    }
+
+    setNotificationStatus((prev) => ({ ...prev, saving: true, error: null, message: null }));
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        setNotificationStatus((prev) => ({
+          ...prev,
+          saving: false,
+          permission,
+          error: "Notification permission was not granted.",
+        }));
+        return;
+      }
+
+      const registration = await ensurePushRegistration();
+      const existingSubscription = await registration.pushManager.getSubscription();
+      const subscription =
+        existingSubscription ??
+        await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(webPushPublicKey),
+        });
+
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      const response = await fetch("/api/notifications/subscriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscription: subscription.toJSON(),
+          timezone,
+          userAgent: navigator.userAgent,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Subscription save failed");
+
+      setNotificationPrefs((prev) => ({ ...prev, enabled: true, timezone }));
+      setNotificationStatus({
+        supported: true,
+        checked: true,
+        permission,
+        saving: false,
+        message: "Notifications enabled.",
+        error: null,
+      });
+      router.refresh();
+    } catch (err) {
+      setNotificationStatus((prev) => ({
+        ...prev,
+        saving: false,
+        error: "Failed to enable notifications. Please try again.",
+        message: null,
+      }));
+      console.error("[settings] enable notifications failed", String(err));
+    }
+  }
+
+  async function disableNotifications() {
+    if (notificationStatus.saving) return;
+    setNotificationStatus((prev) => ({ ...prev, saving: true, error: null, message: null }));
+
+    try {
+      const registration = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration("/") : null;
+      const subscription = registration ? await registration.pushManager.getSubscription() : null;
+      const endpoint = subscription?.endpoint;
+      if (subscription) await subscription.unsubscribe();
+
+      const response = await fetch("/api/notifications/subscriptions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint }),
+      });
+
+      if (!response.ok) throw new Error("Subscription delete failed");
+
+      setNotificationPrefs((prev) => ({ ...prev, enabled: false }));
+      setNotificationStatus((prev) => ({
+        ...prev,
+        saving: false,
+        message: "Notifications disabled.",
+        error: null,
+      }));
+      router.refresh();
+    } catch (err) {
+      setNotificationStatus((prev) => ({
+        ...prev,
+        saving: false,
+        error: "Failed to disable notifications. Please try again.",
+        message: null,
+      }));
+      console.error("[settings] disable notifications failed", String(err));
+    }
+  }
+
+  async function persistNotificationPatch(patch: Partial<NotificationPrefsState>) {
+    if (notificationStatus.saving) return;
+    const previous = notificationPrefs;
+    const next = { ...previous, ...patch };
+    setNotificationPrefs(next);
+    setNotificationStatus((prev) => ({ ...prev, saving: true, error: null, message: null }));
+
+    const { error } = await saveNotificationPreferences({
+      ...next,
+      timezone: next.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+    });
+
+    if (error) {
+      setNotificationPrefs(previous);
+      setNotificationStatus((prev) => ({
+        ...prev,
+        saving: false,
+        error: "Failed to save notification settings. Please try again.",
+      }));
+      return;
+    }
+
+    setNotificationStatus((prev) => ({
+      ...prev,
+      saving: false,
+      message: "Notification settings saved.",
+      error: null,
+    }));
+    setTimeout(() => setNotificationStatus((prev) => ({ ...prev, message: null })), 2000);
   }
 
   function getWorkoutSelection(dayIndex: number): string {
@@ -469,6 +746,118 @@ export function SettingsClient({ profile, schedule, dayTypes, stravaConnected, s
                     />
                   ))}
                 </div>
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Notifications">
+            <div className="card p-4 flex flex-col gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:flex-col lg:items-stretch xl:flex-row xl:items-center">
+                <div>
+                  <div className="font-medium text-sm">
+                    {notificationPrefs.enabled ? "Enabled" : "Disabled"}
+                  </div>
+                  <div className="text-xs text-muted mt-0.5">
+                    {notificationSubscriptionCount > 0
+                      ? `${notificationSubscriptionCount} device${notificationSubscriptionCount === 1 ? "" : "s"} subscribed`
+                      : notificationStatus.checked && !notificationStatus.supported
+                      ? "Unavailable in this browser"
+                      : "No subscribed devices"}
+                  </div>
+                </div>
+                {notificationPrefs.enabled ? (
+                  <button
+                    type="button"
+                    onClick={() => void disableNotifications()}
+                    disabled={notificationStatus.saving}
+                    className="text-xs text-red-400 border border-red-400/30 rounded-lg px-3 py-2 disabled:opacity-50"
+                  >
+                    {notificationStatus.saving ? "Saving…" : "Disable"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void enableNotifications()}
+                    disabled={notificationStatus.saving || !notificationStatus.supported}
+                    className="text-xs bg-accent text-white rounded-lg px-3 py-2 font-medium disabled:opacity-50"
+                  >
+                    {notificationStatus.saving ? "Enabling…" : "Enable"}
+                  </button>
+                )}
+              </div>
+
+              {(notificationStatus.message || notificationStatus.error) && (
+                <div className={`text-xs ${notificationStatus.error ? "text-red-400" : "text-green-400"}`}>
+                  {notificationStatus.error ?? notificationStatus.message}
+                </div>
+              )}
+
+              <div className="h-px bg-border" />
+
+              <div className="flex flex-col gap-3">
+                <NotificationToggle
+                  label="Today’s plan"
+                  checked={notificationPrefs.today_plan_enabled}
+                  disabled={!notificationPrefs.enabled || notificationStatus.saving}
+                  onChange={(checked) => void persistNotificationPatch({ today_plan_enabled: checked })}
+                >
+                  <input
+                    type="time"
+                    value={notificationPrefs.today_plan_time}
+                    disabled={!notificationPrefs.enabled || !notificationPrefs.today_plan_enabled || notificationStatus.saving}
+                    onChange={(e) => void persistNotificationPatch({ today_plan_time: e.target.value })}
+                    className="rounded-lg border border-border bg-white/[0.03] px-2 py-1.5 text-xs text-white disabled:opacity-40"
+                  />
+                </NotificationToggle>
+
+                <NotificationToggle
+                  label="Pending Strava links"
+                  checked={notificationPrefs.pending_strava_enabled}
+                  disabled={!notificationPrefs.enabled || notificationStatus.saving}
+                  onChange={(checked) => void persistNotificationPatch({ pending_strava_enabled: checked })}
+                />
+
+                <NotificationToggle
+                  label="Plan nudge"
+                  checked={notificationPrefs.plan_nudge_enabled}
+                  disabled={!notificationPrefs.enabled || notificationStatus.saving}
+                  onChange={(checked) => void persistNotificationPatch({ plan_nudge_enabled: checked })}
+                >
+                  <input
+                    type="time"
+                    value={notificationPrefs.plan_nudge_time}
+                    disabled={!notificationPrefs.enabled || !notificationPrefs.plan_nudge_enabled || notificationStatus.saving}
+                    onChange={(e) => void persistNotificationPatch({ plan_nudge_time: e.target.value })}
+                    className="rounded-lg border border-border bg-white/[0.03] px-2 py-1.5 text-xs text-white disabled:opacity-40"
+                  />
+                </NotificationToggle>
+
+                <NotificationToggle
+                  label="Weekly review"
+                  checked={notificationPrefs.weekly_review_enabled}
+                  disabled={!notificationPrefs.enabled || notificationStatus.saving}
+                  onChange={(checked) => void persistNotificationPatch({ weekly_review_enabled: checked })}
+                >
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={notificationPrefs.weekly_review_day}
+                      disabled={!notificationPrefs.enabled || !notificationPrefs.weekly_review_enabled || notificationStatus.saving}
+                      onChange={(e) => void persistNotificationPatch({ weekly_review_day: Number(e.target.value) })}
+                      className="rounded-lg border border-border bg-[#0A0A0A] px-2 py-1.5 text-xs text-white disabled:opacity-40"
+                    >
+                      {NOTIFICATION_DAYS.map((day) => (
+                        <option key={day.value} value={day.value}>{day.label}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="time"
+                      value={notificationPrefs.weekly_review_time}
+                      disabled={!notificationPrefs.enabled || !notificationPrefs.weekly_review_enabled || notificationStatus.saving}
+                      onChange={(e) => void persistNotificationPatch({ weekly_review_time: e.target.value })}
+                      className="rounded-lg border border-border bg-white/[0.03] px-2 py-1.5 text-xs text-white disabled:opacity-40"
+                    />
+                  </div>
+                </NotificationToggle>
               </div>
             </div>
           </Section>

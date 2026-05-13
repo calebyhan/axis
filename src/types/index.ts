@@ -202,3 +202,17 @@ export interface PlannedSlotSnapshot {
   is_overridden: boolean;
   is_skipped: boolean;
 }
+
+export interface NotificationPreferences {
+  user_id: string;
+  enabled: boolean;
+  today_plan_enabled: boolean;
+  today_plan_time: string;
+  pending_strava_enabled: boolean;
+  plan_nudge_enabled: boolean;
+  plan_nudge_time: string;
+  weekly_review_enabled: boolean;
+  weekly_review_day: number;
+  weekly_review_time: string;
+  timezone: string;
+}

@@ -169,6 +169,6 @@ When a Strava activity is not a supported cardio feed type, the webhook attempts
 1. Find workout candidates within 90 minutes of the Strava start time.
 2. Prefer candidates with at least 10 minutes of overlap or 40% overlap of the shorter activity.
 3. If exactly one candidate exists, copy `avg_heartrate`, `max_heartrate`, `calories`, `suffer_score`, and `strava_activity_id` onto the workout.
-4. If multiple candidates exist, insert `pending_strava_links` for user resolution in Activity.
+4. If multiple candidates exist, insert `pending_strava_links` for user resolution in Activity and send an opt-in pending-link notification.
 
 Pending links can be resolved through `POST /api/strava/link-workout` or dismissed through `POST /api/strava/link-workout/dismiss`.

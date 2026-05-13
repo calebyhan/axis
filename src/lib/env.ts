@@ -61,3 +61,19 @@ export function getStravaWebhookSigningSecret() {
   }
   return value;
 }
+
+export function getWebPushPublicKey() {
+  return process.env.NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY ?? "";
+}
+
+export function getWebPushPrivateKey() {
+  return process.env.WEB_PUSH_PRIVATE_KEY ?? "";
+}
+
+export function getWebPushSubject() {
+  return process.env.WEB_PUSH_SUBJECT ?? `mailto:notifications@${new URL(getAppUrl()).hostname}`;
+}
+
+export function getCronSecret() {
+  return process.env.CRON_SECRET ?? "";
+}

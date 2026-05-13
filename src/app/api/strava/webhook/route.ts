@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { refreshStravaToken } from "@/lib/strava/token";
 import { buildActivityRow, mapStravaSportType } from "@/lib/strava/activity-row";
+import { sendNotificationToUser } from "@/lib/notifications/send";
 import {
   getStravaWebhookSigningSecret,
   getStravaWebhookVerifyToken,
@@ -140,7 +141,16 @@ async function mergeWorkoutBiometrics(userId: string, stravaId: number, a: Recor
       stravaId,
       error: error.message,
     });
+    return;
   }
+
+  await sendNotificationToUser(userId, {
+    kind: "pending_strava_link",
+    dedupeKey: String(stravaId),
+    title: "Watch workout needs linking",
+    body: `${a.name ?? "Workout"} matched multiple Axis sessions.`,
+    url: "/activity",
+  });
 }
 
 function verifyStravaSignature(body: string, header: string, secret: string): boolean {

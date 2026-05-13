@@ -101,6 +101,7 @@ Time filter: Week / Month / Year / All.
 - **Schedule summary:** strength days, cardio days, active days, full rest days, and weekly muscle-focus heatmap.
 - **Profile:** display name override.
 - **Preferences:** units and accent color.
+- **Notifications:** opt-in push subscription, today plan reminder, pending Strava links, plan nudge, and weekly review timing.
 - **Strava:** connect/disconnect state.
 - **Data & Storage:** JSON export and offline-cache clearing.
 - **Account:** sign out.

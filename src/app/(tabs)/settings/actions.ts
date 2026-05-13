@@ -10,6 +10,19 @@ interface ProfilePayload {
   display_name?: string | null;
 }
 
+interface NotificationPreferencesPayload {
+  enabled?: boolean;
+  today_plan_enabled?: boolean;
+  today_plan_time?: string;
+  pending_strava_enabled?: boolean;
+  plan_nudge_enabled?: boolean;
+  plan_nudge_time?: string;
+  weekly_review_enabled?: boolean;
+  weekly_review_day?: number;
+  weekly_review_time?: string;
+  timezone?: string;
+}
+
 function localDateStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -86,5 +99,48 @@ export async function saveWeeklyScheduleDay(payload: {
   await invalidateCurrentAndFuturePlannedSlots(supabase, user.id);
   revalidatePath("/dashboard");
   revalidatePath("/stats");
+  return { error: null };
+}
+
+function validTime(value: string | undefined): boolean {
+  return value === undefined || /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(value);
+}
+
+export async function saveNotificationPreferences(
+  payload: NotificationPreferencesPayload
+): Promise<{ error: string | null }> {
+  const { supabase, user } = await getSession();
+  if (!user) return { error: "Not authenticated" };
+
+  if (
+    !validTime(payload.today_plan_time) ||
+    !validTime(payload.plan_nudge_time) ||
+    !validTime(payload.weekly_review_time)
+  ) {
+    return { error: "Invalid notification time." };
+  }
+
+  if (
+    payload.weekly_review_day !== undefined &&
+    (!Number.isInteger(payload.weekly_review_day) || payload.weekly_review_day < 0 || payload.weekly_review_day > 6)
+  ) {
+    return { error: "Invalid weekly review day." };
+  }
+
+  const update: NotificationPreferencesPayload & { user_id: string; updated_at: string } = {
+    user_id: user.id,
+    ...payload,
+    updated_at: new Date().toISOString(),
+  };
+  if (payload.timezone !== undefined) {
+    update.timezone = payload.timezone.slice(0, 100);
+  }
+
+  const { error } = await supabase
+    .from("notification_preferences")
+    .upsert(update, { onConflict: "user_id" });
+
+  if (error) return { error: error.message };
+  revalidatePath("/settings");
   return { error: null };
 }
