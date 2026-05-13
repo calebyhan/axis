@@ -5,10 +5,12 @@ import { getActivityWithSets } from "@/lib/queries/activity";
 import { getUserUnits } from "@/lib/queries/profile";
 import { hasSplits } from "@/lib/splits";
 import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
+import { BalanceScoreCard } from "@/components/strength/BalanceScoreCard";
+import { computeStrengthBalance, strengthInputsFromExerciseSets, type StrengthSetDescriptor } from "@/lib/strength-balance";
 import { formatDistance, formatPace, distanceUnit } from "@/lib/units";
 import { RunStreams } from "@/components/activity/RunStreams";
 import { SplitsTable } from "@/components/activity/SplitsTable";
-import type { MuscleGroup, MuscleHeatmapDetails, BestEffort, Units } from "@/types";
+import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails, BestEffort, Units } from "@/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -147,7 +149,7 @@ export default async function ActivityDetailPage({
   const isWorkout = activity.type === "workout";
 
   // ── Workout: muscle coverage + exercise groups ──────────────────────────
-  type ExerciseJoin = { name: string; primary_muscles: MuscleGroup[]; secondary_muscles?: MuscleGroup[] };
+  type ExerciseJoin = { name: string; movement_pattern: MovementPattern; primary_muscles: MuscleGroup[]; secondary_muscles?: MuscleGroup[] };
   type SetRow = { id: string; exercise_id: string; set_number: number; reps: number; weight: number; rpe: number; exercise?: unknown };
   function normalizeExercise(raw: unknown): ExerciseJoin | null {
     if (!raw) return null;
@@ -160,10 +162,18 @@ export default async function ActivityDetailPage({
   const coverage: Partial<Record<MuscleGroup, number>> = {};
   const detailBuckets: Partial<Record<MuscleGroup, Map<string, { label: string; count: number }>>> = {};
   const workoutSets = sets as SetRow[];
+  const balanceRows: StrengthSetDescriptor[] = [];
 
   for (const s of workoutSets) {
     const ex = normalizeExercise(s.exercise);
     if (!ex) continue;
+    balanceRows.push({
+      exerciseId: s.exercise_id,
+      name: ex.name,
+      movementPattern: ex.movement_pattern,
+      primaryMuscles: ex.primary_muscles,
+      secondaryMuscles: ex.secondary_muscles ?? [],
+    });
 
     for (const m of ex.primary_muscles) {
       coverage[m] = (coverage[m] ?? 0) + 1;
@@ -186,6 +196,7 @@ export default async function ActivityDetailPage({
       },
     ])
   ) as MuscleHeatmapDetails;
+  const workoutBalance = computeStrengthBalance(strengthInputsFromExerciseSets(balanceRows), { scopeLabel: "in this workout", nudgeLimit: 1 });
 
   const exerciseGroups = new Map<string, { name: string; sets: SetRow[] }>();
   for (const s of workoutSets) {
@@ -352,6 +363,8 @@ export default async function ActivityDetailPage({
               <MuscleHeatmap coverage={coverage} details={muscleDetails} tooltipContext="in this workout" size="full" showBack />
             </div>
           </div>
+
+          <BalanceScoreCard balance={workoutBalance} contextLabel="in this workout" compact />
 
           <WorkoutSetsEditor activityId={activity.id} initialSets={editableWorkoutSets} units={units} />
 

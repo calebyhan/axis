@@ -86,6 +86,7 @@ export interface SessionExercise {
   exerciseId: string;
   name: string;
   sets: SessionSet[];
+  movementPattern: MovementPattern;
   primaryMuscles: MuscleGroup[];
   secondaryMuscles: MuscleGroup[];
 }

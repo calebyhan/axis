@@ -6,6 +6,7 @@ import { classifyTrend } from "@/lib/body-weight-trend";
 import { formatDistance } from "@/lib/units";
 import { useState } from "react";
 import type { HistoricalPlanCalendarData, TimeRange } from "@/lib/queries/stats";
+import type { StrengthBalanceSummary } from "@/lib/strength-balance";
 import type { TrainingLoadPoint } from "@/lib/training-load";
 import type { AdherenceWeek } from "@/lib/adherence";
 import type { BestEffort, MuscleGroup, MuscleHeatmapDetails, Units } from "@/types";
@@ -46,6 +47,7 @@ interface WorkoutSummary {
   topExercises: { name: string; volume: number; sets: number }[];
   muscleCoverage: Partial<Record<MuscleGroup, number>>;
   muscleDetails: MuscleHeatmapDetails;
+  strengthBalance: StrengthBalanceSummary;
 }
 
 interface Props {

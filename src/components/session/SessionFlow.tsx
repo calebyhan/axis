@@ -5,7 +5,15 @@ import { createClient } from "@/lib/supabase/client";
 import { saveWorkoutSession } from "@/app/(tabs)/log/actions";
 import { clearDraft, saveDraft } from "@/lib/idb/session-draft";
 import { getTodayPlannedSlots, localDateStr, toISODayOfWeek } from "@/lib/planner";
-import type { DayType, Exercise, MuscleGroup, ScheduleOverride, SessionExercise, SessionSet, SessionState, Units, WeeklyScheduleRow } from "@/types";
+import {
+  computeStrengthBalance,
+  mergeStrengthInputs,
+  rankExercisesForBalance,
+  sessionToStrengthInputs,
+  type StrengthBalanceInput,
+  type StrengthBalanceSummary,
+} from "@/lib/strength-balance";
+import type { DayType, Exercise, MovementPattern, MuscleGroup, ScheduleOverride, SessionExercise, SessionSet, SessionState, Units, WeeklyScheduleRow } from "@/types";
 import { useSession } from "@/context/SessionContext";
 import type { DraftSaveStatus } from "@/context/SessionContext";
 import { ExerciseSearch } from "./ExerciseSearch";
@@ -26,6 +34,16 @@ interface LoadedData { exercises: Exercise[]; allDayTypes: DayType[] }
 interface NavState { step: Step; activeExerciseId: string | null }
 interface SaveState { saving: boolean; error: string | null; finalSession: SessionState | null }
 interface UserSetup { units: Units; todayMuscles: MuscleGroup[] | undefined; todayDayType: DayType | null | undefined }
+interface ExerciseRelation {
+  name: string | null;
+  movement_pattern: MovementPattern;
+  primary_muscles: MuscleGroup[];
+  secondary_muscles: MuscleGroup[];
+}
+interface WeeklySetRow {
+  exercise_id: string;
+  exercise?: unknown;
+}
 
 function firstRelation<T>(value: T | T[] | null | undefined): T | undefined {
   if (Array.isArray(value)) return value[0];
@@ -45,6 +63,45 @@ function normalizeScheduleRows(rows: unknown): WeeklyScheduleRow[] {
       cardio_day_type: firstRelation(raw.cardio_day_type),
     };
   });
+}
+
+function normalizeExerciseRelation(raw: unknown): ExerciseRelation | null {
+  if (!raw) return null;
+  return (Array.isArray(raw) ? raw[0] : raw) as ExerciseRelation;
+}
+
+function startOfCurrentWeek(today = new Date()): Date {
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() - today.getDay());
+  sunday.setHours(0, 0, 0, 0);
+  return sunday;
+}
+
+function weeklyRowsToStrengthInputs(rows: WeeklySetRow[]): StrengthBalanceInput[] {
+  const groups = new Map<string, StrengthBalanceInput>();
+
+  for (const row of rows) {
+    const exercise = normalizeExerciseRelation(row.exercise);
+    if (!exercise) continue;
+
+    const key = row.exercise_id;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.sets += 1;
+      continue;
+    }
+
+    groups.set(key, {
+      exerciseId: row.exercise_id,
+      name: exercise.name ?? "Unknown exercise",
+      movementPattern: exercise.movement_pattern,
+      primaryMuscles: exercise.primary_muscles ?? [],
+      secondaryMuscles: exercise.secondary_muscles ?? [],
+      sets: 1,
+    });
+  }
+
+  return Array.from(groups.values());
 }
 
 function SessionHeader({ session, saving, draftSaveStatus, hasLoggedSets, onCancel, onEnd }: {
@@ -148,6 +205,30 @@ function LoggedExercisesList({ session, onSelect }: {
   );
 }
 
+function StrengthGuidance({ balance }: { balance: StrengthBalanceSummary }) {
+  if (balance.nudges.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-yellow-300/20 bg-yellow-300/[0.06] px-3 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-yellow-100/65">Balance</p>
+        {balance.score !== null && (
+          <span className="rounded-full border border-yellow-300/20 px-2 py-0.5 text-[11px] font-medium text-yellow-100">
+            {balance.score}
+          </span>
+        )}
+      </div>
+      <div className="mt-2 flex flex-col gap-1.5">
+        {balance.nudges.slice(0, 2).map((nudge) => (
+          <p key={nudge.id} className="text-xs leading-5 text-yellow-50/90">
+            {nudge.message}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
   const { session, isActive, hasDraft, autosaveFailed, draftSaveStatus, startSession, resumeDraft, discardDraft, addExercise, addSet, updateSet, deleteSet, endSession, pauseSession, cancelSession } = useSession();
 
@@ -156,6 +237,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
   const [saveState, setSaveState] = useState<SaveState>({ saving: false, error: null, finalSession: null });
   const [userSetup, setUserSetup] = useState<UserSetup>({ units: initialUnits ?? "imperial", todayMuscles: undefined, todayDayType: undefined });
   const [suggestedSets, setSuggestedSets] = useState<Record<string, SessionSet | undefined>>({});
+  const [weeklyStrengthInputs, setWeeklyStrengthInputs] = useState<StrengthBalanceInput[]>([]);
   const [closePrompt, setClosePrompt] = useState<{ open: boolean; saving: boolean; error: string | null }>({ open: false, saving: false, error: null });
 
   const { exercises, allDayTypes } = loadedData;
@@ -169,6 +251,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
     ? {
         exerciseId: activeExerciseRecord.id,
         name: activeExerciseRecord.name,
+        movementPattern: activeExerciseRecord.movement_pattern,
         primaryMuscles: activeExerciseRecord.primary_muscles,
         secondaryMuscles: activeExerciseRecord.secondary_muscles,
         sets: [],
@@ -176,6 +259,26 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
     : null);
   const activeSuggestedSet = activeExerciseId ? suggestedSets[activeExerciseId] ?? null : null;
   const hasLoggedSets = (session?.exercises.some((ex) => ex.sets.length > 0) ?? false);
+  const sessionStrengthInputs = useMemo(() => session ? sessionToStrengthInputs(session) : [], [session]);
+  const weeklyBalance = useMemo(
+    () => computeStrengthBalance(
+      mergeStrengthInputs([...weeklyStrengthInputs, ...sessionStrengthInputs]),
+      { scopeLabel: "this week", nudgeLimit: 3 }
+    ),
+    [sessionStrengthInputs, weeklyStrengthInputs]
+  );
+  const exerciseGuidanceOrder = useMemo(
+    () => rankExercisesForBalance(exercises, weeklyBalance.nudges),
+    [exercises, weeklyBalance.nudges]
+  );
+  const guidanceMuscles = useMemo(() => {
+    const seen = new Set<MuscleGroup>();
+    for (const nudge of weeklyBalance.nudges) {
+      for (const muscle of nudge.suggestedMuscles) seen.add(muscle);
+    }
+    return Array.from(seen);
+  }, [weeklyBalance.nudges]);
+  const searchDefaultMuscles = hasLoggedSets && guidanceMuscles.length > 0 ? guidanceMuscles : todayMuscles;
 
   const coverage = useMemo((): Partial<Record<MuscleGroup, number>> => {
     if (!session) return {};
@@ -191,6 +294,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
     const today = new Date();
     const isoDay = toISODayOfWeek(today);
     const todayStr = localDateStr(today);
+    const weekStart = startOfCurrentWeek(today);
 
     Promise.all([
       supabase.from("exercises").select("*"),
@@ -208,7 +312,12 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
         .from("schedule_overrides")
         .select("*")
         .eq("date", todayStr),
-    ]).then(([exercisesRes, dayTypesRes, profileRes, scheduleRes, overridesRes]) => {
+      supabase
+        .from("session_sets")
+        .select("exercise_id, exercise:exercises!inner(name, primary_muscles, secondary_muscles, movement_pattern), activities!inner(start_time, type)")
+        .eq("activities.type", "workout")
+        .gte("activities.start_time", weekStart.toISOString()),
+    ]).then(([exercisesRes, dayTypesRes, profileRes, scheduleRes, overridesRes, weeklySetsRes]) => {
       const dayTypes = (dayTypesRes.data ?? []) as DayType[];
       const dayTypeMap = new Map(dayTypes.map((dayType) => [dayType.id, dayType]));
       const todaySlots = getTodayPlannedSlots(
@@ -228,8 +337,9 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
         todayMuscles: dt?.muscle_focus && dt.muscle_focus.length > 0 ? dt.muscle_focus : undefined,
         todayDayType: dt ?? null,
       });
+      setWeeklyStrengthInputs(weeklyRowsToStrengthInputs((weeklySetsRes.data ?? []) as WeeklySetRow[]));
     });
-  }, []);
+  }, [initialUnits]);
 
   useEffect(() => {
     if (todayDayType === undefined) return;
@@ -255,6 +365,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
       addExercise({
         exerciseId: exercise.id,
         name: exercise.name,
+        movementPattern: exercise.movement_pattern,
         primaryMuscles: exercise.primary_muscles,
         secondaryMuscles: exercise.secondary_muscles,
       });
@@ -351,7 +462,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
           </div>
           <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav md:pb-6">
             {saveError && <p className="text-yellow-400 text-xs mb-4 px-3 py-2 bg-yellow-400/10 rounded-lg border border-yellow-400/20">{saveError}</p>}
-            <SessionSummary session={finalSession} onClose={onComplete} units={units} />
+            <SessionSummary session={finalSession} onClose={onComplete} units={units} weeklyStrengthInputs={weeklyStrengthInputs} />
           </div>
         </div>
       </div>
@@ -397,17 +508,19 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
           </div>
         )}
 
+        {hasLoggedSets && <StrengthGuidance balance={weeklyBalance} />}
+
         {step === "exercise_search" && (
           <div>
             <p className="text-xs text-muted mb-2 uppercase tracking-wide">Choose exercise</p>
-            <ExerciseSearch exercises={exercises} onSelect={handleExerciseSelect} defaultMuscles={todayMuscles} />
+            <ExerciseSearch exercises={exercises} onSelect={handleExerciseSelect} defaultMuscles={searchDefaultMuscles} scoredOrder={exerciseGuidanceOrder} />
           </div>
         )}
 
         {step === "logging" && (
           <div>
             <p className="text-xs text-muted mb-2 uppercase tracking-wide">Add another exercise</p>
-            <ExerciseSearch exercises={exercises} onSelect={handleExerciseSelect} defaultMuscles={todayMuscles} collapseUntilTyped />
+            <ExerciseSearch exercises={exercises} onSelect={handleExerciseSelect} defaultMuscles={searchDefaultMuscles} scoredOrder={exerciseGuidanceOrder} collapseUntilTyped />
           </div>
         )}
 

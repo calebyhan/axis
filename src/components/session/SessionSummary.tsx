@@ -1,6 +1,8 @@
 "use client";
 
 import { computeE1RM } from "@/lib/e1rm";
+import { BalanceScoreCard } from "@/components/strength/BalanceScoreCard";
+import { computeStrengthBalance, mergeStrengthInputs, sessionToStrengthInputs, type StrengthBalanceInput } from "@/lib/strength-balance";
 import { formatWeight, weightUnit } from "@/lib/units";
 import type { SessionState, Units } from "@/types";
 
@@ -8,20 +10,7 @@ interface Props {
   session: SessionState;
   onClose: () => void;
   units: Units;
-}
-
-const PUSH_MUSCLES = new Set(["chest", "front_delt", "triceps"]);
-const PULL_MUSCLES = new Set(["upper_back", "lats", "biceps", "rear_delt"]);
-
-function getPushPullSplit(session: SessionState): { push: number; pull: number } {
-  let push = 0;
-  let pull = 0;
-  for (const ex of session.exercises) {
-    const sets = ex.sets.length;
-    if (ex.primaryMuscles.some((m) => PUSH_MUSCLES.has(m))) push += sets;
-    if (ex.primaryMuscles.some((m) => PULL_MUSCLES.has(m))) pull += sets;
-  }
-  return { push, pull };
+  weeklyStrengthInputs?: StrengthBalanceInput[];
 }
 
 function getDuration(session: SessionState): string {
@@ -32,17 +21,18 @@ function getDuration(session: SessionState): string {
   return hrs > 0 ? `${hrs}h ${rem}m` : `${mins}m`;
 }
 
-export function SessionSummary({ session, onClose, units }: Props) {
+export function SessionSummary({ session, onClose, units, weeklyStrengthInputs = [] }: Props) {
   const loggedExercises = session.exercises.filter((ex) => ex.sets.length > 0);
   const totalSets = loggedExercises.reduce((sum, ex) => sum + ex.sets.length, 0);
   const totalVolume = loggedExercises.reduce(
     (sum, ex) => sum + ex.sets.reduce((s, set) => s + set.weight * set.reps, 0),
     0
   );
-  const { push, pull } = getPushPullSplit(session);
-  const total = push + pull || 1;
-  const pushPct = Math.round((push / total) * 100);
-  const pullPct = Math.round((pull / total) * 100);
+  const sessionStrengthInputs = sessionToStrengthInputs(session);
+  const weeklyBalance = computeStrengthBalance(
+    mergeStrengthInputs([...weeklyStrengthInputs, ...sessionStrengthInputs]),
+    { scopeLabel: "this week", nudgeLimit: 1 }
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -61,26 +51,7 @@ export function SessionSummary({ session, onClose, units }: Props) {
         </div>
       </div>
 
-      {/* Push/pull balance */}
-      {push + pull > 0 && (
-        <div>
-          <p className="text-xs text-muted mb-2">Session balance</p>
-          <div className="flex gap-2 h-2 rounded-full overflow-hidden">
-            <div
-              className="bg-accent h-full rounded-l-full transition-all"
-              style={{ width: `${pushPct}%` }}
-            />
-            <div
-              className="flex-1 h-full rounded-r-full"
-              style={{ background: "#333" }}
-            />
-          </div>
-          <div className="flex justify-between text-xs text-muted mt-1">
-            <span>{pushPct}% push</span>
-            <span>{pullPct}% pull</span>
-          </div>
-        </div>
-      )}
+      <BalanceScoreCard balance={weeklyBalance} contextLabel="this week after this session" compact />
 
       {/* Exercise list */}
       <div>

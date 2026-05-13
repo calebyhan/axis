@@ -71,6 +71,7 @@ export default async function DashboardPage() {
             coverage={weeklyMuscleCoverageSummary.coverage}
             details={weeklyMuscleCoverageSummary.details}
             totalSets={weeklyMuscleCoverageSummary.totalSets}
+            strengthBalance={weeklyMuscleCoverageSummary.strengthBalance}
           />
         </div>
       </div>
@@ -94,6 +95,7 @@ export default async function DashboardPage() {
           coverage={weeklyMuscleCoverageSummary.coverage}
           details={weeklyMuscleCoverageSummary.details}
           totalSets={weeklyMuscleCoverageSummary.totalSets}
+          strengthBalance={weeklyMuscleCoverageSummary.strengthBalance}
         />
       </div>
 

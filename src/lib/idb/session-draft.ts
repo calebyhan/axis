@@ -1,8 +1,27 @@
 import { openDB } from "idb";
-import type { SessionState } from "@/types";
+import type { MovementPattern, SessionState } from "@/types";
 
 const DB_NAME = "axis";
 const STORE = "session_drafts";
+const MOVEMENT_PATTERNS = new Set<MovementPattern>([
+  "horizontal_push",
+  "horizontal_pull",
+  "vertical_push",
+  "vertical_pull",
+  "quad_dominant",
+  "hip_hinge",
+  "elbow_flexion",
+  "elbow_extension",
+  "carry",
+  "core",
+  "other",
+]);
+
+function normalizeMovementPattern(value: unknown): MovementPattern {
+  return typeof value === "string" && MOVEMENT_PATTERNS.has(value as MovementPattern)
+    ? value as MovementPattern
+    : "other";
+}
 
 async function getDB() {
   return openDB(DB_NAME, 1, {
@@ -41,7 +60,13 @@ export async function getDraft(): Promise<{ state: SessionState; key: string } |
       await db.delete(STORE, record.key).catch(() => {});
       return null;
     }
-    return { state: { ...raw, startTime }, key: record.key };
+    const exercises = Array.isArray(raw.exercises)
+      ? raw.exercises.map((exercise) => ({
+          ...exercise,
+          movementPattern: normalizeMovementPattern((exercise as { movementPattern?: unknown }).movementPattern),
+        }))
+      : [];
+    return { state: { ...raw, startTime, exercises }, key: record.key };
   } catch (err) {
     console.error("[session-draft] Corrupt draft detected, clearing", {
       key: record.key,

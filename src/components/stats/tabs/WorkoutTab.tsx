@@ -11,6 +11,8 @@ import {
 } from "recharts";
 import { CHART_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
 import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
+import { BalanceScoreCard } from "@/components/strength/BalanceScoreCard";
+import type { StrengthBalanceSummary } from "@/lib/strength-balance";
 import { weightUnit, formatWeight } from "@/lib/units";
 import type { TimeRange } from "@/lib/queries/stats";
 import type { MuscleGroup, MuscleHeatmapDetails, Units } from "@/types";
@@ -31,6 +33,7 @@ interface WorkoutSummary {
   topExercises: { name: string; volume: number; sets: number }[];
   muscleCoverage: Partial<Record<MuscleGroup, number>>;
   muscleDetails: MuscleHeatmapDetails;
+  strengthBalance: StrengthBalanceSummary;
 }
 
 interface Props {
@@ -120,6 +123,13 @@ export default function WorkoutTab({ workoutSummary, volumeChartData, timeRange,
             </div>
           )}
         </div>
+
+        <BalanceScoreCard
+          balance={workoutSummary.strengthBalance}
+          contextLabel={RANGE_CONTEXT[timeRange]}
+          compact
+          showInactiveAxes={workoutSummary.totalSets > 0}
+        />
 
         {workoutSummary.topExercises.length > 0 && (
           <div className="card p-4 md:col-span-2">

@@ -25,6 +25,22 @@ When an exercise has prior logged sets, the session flow shows:
 
 The live session mini heatmap counts primary-muscle sets in the current in-memory session.
 
+### Smart Strength Guidance
+
+Axis computes balance from set counts, exercise `movement_pattern`, primary muscles, and secondary muscles.
+
+Live session guidance combines saved current-week work with the active unsaved session and shows compact nudges when an antagonist pair or muscle emphasis falls behind:
+
+- Push/pull.
+- Horizontal push/pull.
+- Quad/hinge.
+- Vertical push/pull.
+- Elbow flexion/extension.
+- Upper/lower.
+- Front/rear delt emphasis.
+
+The same scoring engine powers post-session summaries, workout detail pages, weekly dashboard context, and workout stats. Exercise search can prioritize movements or muscles that match the current low side.
+
 ### Weekly Muscle Coverage
 
 Dashboard and Stats summarize primary-muscle coverage from saved `session_sets`.
@@ -80,11 +96,7 @@ Opt-in Web Push notifications cover:
 
 These ideas are referenced by product direction but are not current behavior:
 
-- Push/pull imbalance warnings.
-- Antagonist pairing nudges during a session.
 - User-configurable volume ceilings.
-- Next-exercise ranked suggestions beyond the current exercise search filtering.
-- Post-session balance score.
 - Progressive overload warnings outside the recent-stats panel.
 - Template-based set completion rate.
 - Automated weekly summary generation through `weekly_summaries`.

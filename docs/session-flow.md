@@ -19,6 +19,7 @@ Log sets
   -> reps + weight + RPE
   -> set edits/deletes update in-memory state
   -> mini heatmap updates from primary muscles
+  -> balance nudges compare live sets with current-week movement and muscle coverage
         ↓
 Add more exercises or return to existing logged exercises
         ↓
@@ -45,13 +46,14 @@ type SessionState = {
     exerciseId: string
     name: string
     sets: Array<{ reps: number; weight: number; rpe: number }>
+    movementPattern: MovementPattern
     primaryMuscles: MuscleGroup[]
     secondaryMuscles: MuscleGroup[]
   }>
 }
 ```
 
-`e1rm` and `muscleGroupCoverage` are derived at render/query time, not stored in session state.
+`e1rm`, `muscleGroupCoverage`, and balance scores are derived at render/query time, not stored in session state.
 
 ---
 

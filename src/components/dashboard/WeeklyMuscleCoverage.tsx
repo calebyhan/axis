@@ -1,10 +1,12 @@
 import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
+import type { StrengthBalanceSummary } from "@/lib/strength-balance";
 import type { MuscleGroup, MuscleHeatmapDetails } from "@/types";
 
 interface Props {
   coverage: Partial<Record<MuscleGroup, number>>;
   details?: MuscleHeatmapDetails;
   totalSets?: number;
+  strengthBalance?: StrengthBalanceSummary;
 }
 
 const MUSCLE_LABELS: Record<MuscleGroup, string> = {
@@ -28,7 +30,7 @@ const MUSCLE_LABELS: Record<MuscleGroup, string> = {
   obliques: "Obliques",
 };
 
-export function WeeklyMuscleCoverage({ coverage, details, totalSets }: Props) {
+export function WeeklyMuscleCoverage({ coverage, details, totalSets, strengthBalance }: Props) {
   const activeMuscles = Object.entries(coverage)
     .filter((entry): entry is [MuscleGroup, number] => entry[1] > 0)
     .sort((a, b) => b[1] - a[1]);
@@ -66,6 +68,21 @@ export function WeeklyMuscleCoverage({ coverage, details, totalSets }: Props) {
               {MUSCLE_LABELS[muscle]} {count}
             </span>
           ))}
+        </div>
+      )}
+
+      {strengthBalance && strengthBalance.score !== null && (
+        <div className="mt-5 border-t border-border pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.2em] text-white/45">Balance Score</div>
+              <div className="mt-1 text-xs text-muted">{strengthBalance.label}</div>
+            </div>
+            <div className="text-xl font-semibold text-accent">{strengthBalance.score}</div>
+          </div>
+          {strengthBalance.nudges[0] && (
+            <p className="mt-3 text-xs leading-5 text-white/65">{strengthBalance.nudges[0].message}</p>
+          )}
         </div>
       )}
     </div>

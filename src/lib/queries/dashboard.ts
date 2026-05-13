@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import type { MuscleGroup, MuscleHeatmapDetails } from "@/types";
+import { computeStrengthBalance, strengthInputsFromExerciseSets, type StrengthBalanceSummary, type StrengthSetDescriptor } from "@/lib/strength-balance";
+import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails } from "@/types";
 
 // Returns "YYYY-MM-DD" in local time — avoids UTC drift for date-only columns
 function localDateStr(date: Date): string {
@@ -203,13 +204,14 @@ export async function getWeeklyMuscleCoverageSummary(): Promise<{
   coverage: Partial<Record<MuscleGroup, number>>;
   details: MuscleHeatmapDetails;
   totalSets: number;
+  strengthBalance: StrengthBalanceSummary;
 }> {
   const supabase = await createClient();
   const weekStart = startOfCurrentWeek().toISOString();
 
   const { data: sets, error } = await supabase
     .from("session_sets")
-    .select("exercise:exercises(name, primary_muscles), activities!inner(start_time, name)")
+    .select("exercise_id, exercise:exercises(name, primary_muscles, secondary_muscles, movement_pattern), activities!inner(start_time, name)")
     .gte("activities.start_time", weekStart);
 
   if (error) console.error("[query] getWeeklyMuscleCoverage failed", error.message);
@@ -217,11 +219,19 @@ export async function getWeeklyMuscleCoverageSummary(): Promise<{
   const coverage: Partial<Record<MuscleGroup, number>> = {};
   const detailBuckets: Partial<Record<MuscleGroup, Map<string, { label: string; count: number; sortTime: number }>>> = {};
   const totalSets = sets?.length ?? 0;
+  const balanceRows: StrengthSetDescriptor[] = [];
 
   for (const set of sets ?? []) {
-    const exercise = normalizeRelation<{ name: string | null; primary_muscles: MuscleGroup[] }>(set.exercise);
+    const exercise = normalizeRelation<{ name: string | null; primary_muscles: MuscleGroup[]; secondary_muscles: MuscleGroup[]; movement_pattern: MovementPattern }>(set.exercise);
     const activity = normalizeRelation<{ start_time: string; name: string | null }>((set as { activities?: unknown }).activities);
     if (!exercise) continue;
+    balanceRows.push({
+      exerciseId: set.exercise_id,
+      name: exercise.name,
+      movementPattern: exercise.movement_pattern,
+      primaryMuscles: exercise.primary_muscles,
+      secondaryMuscles: exercise.secondary_muscles,
+    });
 
     const exerciseName = exercise.name ?? "Unknown exercise";
     const dateLabel = activity?.start_time ? weeklyDateLabel(activity.start_time) : "Workout";
@@ -251,7 +261,12 @@ export async function getWeeklyMuscleCoverageSummary(): Promise<{
     ])
   ) as MuscleHeatmapDetails;
 
-  return { coverage, details, totalSets };
+  return {
+    coverage,
+    details,
+    totalSets,
+    strengthBalance: computeStrengthBalance(strengthInputsFromExerciseSets(balanceRows), { scopeLabel: "this week", nudgeLimit: 1 }),
+  };
 }
 
 export async function getWeeklyMuscleCoverage(): Promise<Partial<Record<MuscleGroup, number>>> {

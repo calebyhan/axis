@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { computeE1RM } from "@/lib/e1rm";
 import { localDateKey, type CalendarActivity, type CalendarDayPlan, type CalendarSkipOverride } from "@/lib/calendar";
+import { computeStrengthBalance, strengthInputsFromExerciseSets, type StrengthSetDescriptor } from "@/lib/strength-balance";
 import { computeATLCTLTSB, normalizeStrengthTL, type DailyLoad } from "@/lib/training-load";
-import type { MuscleGroup, MuscleHeatmapDetails } from "@/types";
+import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails } from "@/types";
 
 export type TimeRange = "week" | "month" | "year" | "all";
 
@@ -157,7 +158,7 @@ export async function getWorkoutSummary(range: TimeRange) {
     (() => {
       let q = supabase
         .from("session_sets")
-        .select("reps, weight, exercise_id, exercises!inner(name, primary_muscles), activities!inner(start_time, type)")
+        .select("reps, weight, exercise_id, exercises!inner(name, primary_muscles, secondary_muscles, movement_pattern), activities!inner(start_time, type)")
         .eq("activities.type", "workout");
       if (since) q = q.gte("activities.start_time", since);
       return q;
@@ -170,11 +171,12 @@ export async function getWorkoutSummary(range: TimeRange) {
   const exerciseVolume = new Map<string, { name: string; volume: number; sets: number }>();
   const coverage: Partial<Record<MuscleGroup, number>> = {};
   const detailBuckets: Partial<Record<MuscleGroup, Map<string, { label: string; count: number; sortTime: number }>>> = {};
+  const balanceRows: StrengthSetDescriptor[] = [];
   let totalSets = 0;
   let totalVolume = 0;
 
   for (const s of sets) {
-    const ex = normalizeRelation<{ name: string; primary_muscles: MuscleGroup[] }>(s.exercises);
+    const ex = normalizeRelation<{ name: string; primary_muscles: MuscleGroup[]; secondary_muscles: MuscleGroup[]; movement_pattern: MovementPattern }>(s.exercises);
     const activity = normalizeRelation<{ start_time: string }>(s.activities);
     if (!ex) continue;
 
@@ -183,6 +185,13 @@ export async function getWorkoutSummary(range: TimeRange) {
     exerciseVolume.set(s.exercise_id, { name: ex.name, volume: existing.volume + vol, sets: existing.sets + 1 });
     totalSets++;
     totalVolume += vol;
+    balanceRows.push({
+      exerciseId: s.exercise_id,
+      name: ex.name,
+      movementPattern: ex.movement_pattern,
+      primaryMuscles: ex.primary_muscles,
+      secondaryMuscles: ex.secondary_muscles,
+    });
 
     const dateLabel = activity?.start_time ? workoutDateLabel(activity.start_time) : "Workout";
     const label = `${dateLabel} - ${ex.name}`;
@@ -223,6 +232,7 @@ export async function getWorkoutSummary(range: TimeRange) {
     topExercises,
     muscleCoverage: coverage,
     muscleDetails,
+    strengthBalance: computeStrengthBalance(strengthInputsFromExerciseSets(balanceRows), { scopeLabel: "this period", nudgeLimit: 1 }),
   };
 }
 
