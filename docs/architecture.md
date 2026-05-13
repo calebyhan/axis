@@ -64,9 +64,16 @@ Implemented notification types:
 - Same-day pending plan nudge.
 - Weekly review.
 
-Scheduled notifications are produced by `GET /api/notifications/cron`, which is intended to run through Vercel Cron using `CRON_SECRET`.
+Scheduled notifications are produced by `GET /api/notifications/cron`, which is intended to be called by an external free scheduler such as cron-job.org using `Authorization: Bearer <CRON_SECRET>`.
 On iOS/iPadOS, Web Push requires the PWA to be added to the Home Screen.
 Generate VAPID keys with `npx web-push generate-vapid-keys` and set `NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY` plus `WEB_PUSH_PRIVATE_KEY`.
+
+Recommended cron-job.org setup:
+
+- URL: `https://<your-domain>/api/notifications/cron`
+- Method: `GET`
+- Schedule: every 15 minutes
+- Header: `Authorization: Bearer <CRON_SECRET>`
 
 ---
 
