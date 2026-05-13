@@ -154,6 +154,32 @@ export async function saveBodyWeight(payload: SaveBodyWeightPayload): Promise<{ 
   }
 
   revalidatePath("/dashboard");
+  revalidatePath("/log");
+  revalidatePath("/stats");
+  return { error: null };
+}
+
+export async function deleteBodyWeight(date: string): Promise<{ error: string | null }> {
+  const { supabase, user } = await getSession();
+  if (!user) return { error: "Not authenticated" };
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return { error: "Invalid date." };
+  }
+
+  const { error } = await supabase
+    .from("daily_checkins")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("date", date);
+
+  if (error) {
+    console.error("[action] deleteBodyWeight failed", error.message);
+    return { error: "Failed to delete weight. Please try again." };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/log");
   revalidatePath("/stats");
   return { error: null };
 }

@@ -314,18 +314,39 @@ function RecentItem({
   label,
   title,
   meta,
+  onClick,
 }: {
   label: string;
   title: string;
   meta: string;
+  onClick?: () => void;
 }) {
-  return (
-    <div className="flex items-start justify-between gap-3 border-t border-border pt-3 first:border-t-0 first:pt-0">
+  const className = "flex items-start justify-between gap-3 border-t border-border pt-3 first:border-t-0 first:pt-0";
+  const content = (
+    <>
       <div>
         <div className="text-[11px] uppercase tracking-[0.16em] text-muted">{label}</div>
         <div className="mt-1 text-sm font-medium">{title}</div>
       </div>
       <div className="shrink-0 pt-5 text-right text-xs text-muted">{meta}</div>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`${className} w-full text-left transition-colors hover:text-white`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={className}>
+      {content}
     </div>
   );
 }
@@ -337,6 +358,7 @@ function RecentActivityContext({
   workout,
   run,
   weight,
+  onEditWeight,
 }: {
   loading: boolean;
   units: Units;
@@ -344,6 +366,7 @@ function RecentActivityContext({
   workout: RecentActivity | null;
   run: RecentActivity | null;
   weight: RecentWeight | null;
+  onEditWeight: (date: string) => void;
 }) {
   return (
     <div className="card p-4 flex flex-col gap-3">
@@ -366,6 +389,7 @@ function RecentActivityContext({
             label="Weight"
             title={weight ? `${formatWeight(weight.body_weight, units)} ${weightUnit(units)}` : "No weigh-in yet"}
             meta={weight ? formatRelativeDate(weight.date) : "—"}
+            onClick={weight ? () => onEditWeight(weight.date) : undefined}
           />
         </div>
       )}
@@ -390,6 +414,7 @@ export default function LogPage() {
   const { refresh } = useRouter();
   const { session, isActive, hasDraft, draft, resumeDraft } = useSession();
   const [panel, setPanel] = useState<Panel>(null);
+  const [weightInitialDate, setWeightInitialDate] = useState(() => localDateStr(new Date()));
   const [saved, setSaved] = useState<string | null>(null);
   const [overview, setOverview] = useState<LogOverview>({
     loading: true,
@@ -521,6 +546,11 @@ export default function LogPage() {
     setTimeout(() => setSaved(null), 3000);
   }
 
+  function openWeightPanel(date = localDateStr(new Date())) {
+    setWeightInitialDate(date);
+    setPanel("weight");
+  }
+
   async function handleStravaImport(activityId: number) {
     if (stravaPreview.importing) return;
     setStravaPreview((prev) => ({ ...prev, importing: activityId, error: null }));
@@ -598,8 +628,8 @@ export default function LogPage() {
               />
               <LogAction
                 title="Log Body Weight"
-                description="Add a quick daily weigh-in."
-                onClick={() => setPanel("weight")}
+                description="Add, backdate, or update a weigh-in."
+                onClick={() => openWeightPanel()}
               />
             </div>
 
@@ -616,6 +646,7 @@ export default function LogPage() {
               workout={overview.recentWorkout}
               run={overview.recentRun}
               weight={overview.recentWeight}
+              onEditWeight={openWeightPanel}
             />
           </div>
         </div>
@@ -666,7 +697,11 @@ export default function LogPage() {
               <h2 id="log-weight-title" className="flex-1 font-semibold">Body Weight</h2>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav md:pb-6">
-              <LogWeightForm onSave={() => onSaved("Weight logged!")} units={overview.units} />
+              <LogWeightForm
+                onSave={(mutation) => onSaved(mutation === "deleted" ? "Weight deleted!" : "Weight saved!")}
+                units={overview.units}
+                initialDate={weightInitialDate}
+              />
             </div>
           </div>
         </div>
