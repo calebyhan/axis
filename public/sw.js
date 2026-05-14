@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const CACHE_VERSION = "axis-pwa-v1";
+const CACHE_VERSION = "axis-pwa-v2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PAGE_CACHE = `${CACHE_VERSION}-pages`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
