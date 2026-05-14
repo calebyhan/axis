@@ -65,6 +65,65 @@ body {
   overflow-x: hidden;
 }
 
+.portrait-app-shell {
+  min-height: 100vh;
+}
+
+@supports (height: 100svh) {
+  .portrait-app-shell {
+    min-height: 100svh;
+  }
+}
+
+html[data-axis-mobile-landscape] {
+  width: 100vw;
+  height: 100vh;
+  width: 100svw;
+  height: 100svh;
+  overflow: hidden;
+  background: var(--background);
+}
+
+html[data-axis-mobile-landscape] body {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  width: 100svw;
+  height: 100svh;
+  min-height: 100svh;
+  overflow: hidden;
+}
+
+html[data-axis-mobile-landscape] .portrait-app-shell {
+  position: fixed;
+  z-index: 0;
+  width: 100vh;
+  height: 100vw;
+  min-height: 100vw;
+  width: 100svh;
+  height: 100svw;
+  min-height: 100svw;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--background);
+  transform-origin: top left;
+  -webkit-overflow-scrolling: touch;
+}
+
+html[data-axis-mobile-landscape="clockwise"] .portrait-app-shell {
+  top: 100vh;
+  top: 100svh;
+  left: 0;
+  transform: rotate(-90deg);
+}
+
+html[data-axis-mobile-landscape="counterclockwise"] .portrait-app-shell {
+  top: 0;
+  left: 100vw;
+  left: 100svw;
+  transform: rotate(90deg);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }

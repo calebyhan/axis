@@ -42,7 +42,7 @@ export default async function RootLayout({
         <TimeZoneSync />
         <PortraitOrientationLock />
         <ServiceWorkerRegistration />
-        {children}
+        <div className="portrait-app-shell">{children}</div>
       </body>
     </html>
   );
