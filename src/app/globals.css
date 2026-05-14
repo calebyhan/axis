@@ -69,59 +69,64 @@ body {
   min-height: 100vh;
 }
 
+.portrait-orientation-guard {
+  display: none;
+}
+
 @supports (height: 100svh) {
   .portrait-app-shell {
     min-height: 100svh;
   }
 }
 
-html[data-axis-mobile-landscape] {
-  width: 100vw;
-  height: 100vh;
-  width: 100svw;
-  height: 100svh;
-  overflow: hidden;
-  background: var(--background);
-}
+@media (orientation: landscape) and (hover: none) and (pointer: coarse) and (max-height: 600px) {
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--background);
+  }
 
-html[data-axis-mobile-landscape] body {
-  width: 100vw;
-  height: 100vh;
-  min-height: 100vh;
-  width: 100svw;
-  height: 100svh;
-  min-height: 100svh;
-  overflow: hidden;
-}
+  .portrait-app-shell {
+    visibility: hidden;
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
+  }
 
-html[data-axis-mobile-landscape] .portrait-app-shell {
-  position: fixed;
-  z-index: 0;
-  width: 100vh;
-  height: 100vw;
-  min-height: 100vw;
-  width: 100svh;
-  height: 100svw;
-  min-height: 100svw;
-  overflow-x: hidden;
-  overflow-y: auto;
-  background: var(--background);
-  transform-origin: top left;
-  -webkit-overflow-scrolling: touch;
-}
+  .portrait-orientation-guard {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px)) max(1rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
+    background: var(--background);
+    text-align: center;
+  }
 
-html[data-axis-mobile-landscape="clockwise"] .portrait-app-shell {
-  top: 100vh;
-  top: 100svh;
-  left: 0;
-  transform: rotate(-90deg);
-}
+  .portrait-orientation-guard__panel {
+    width: min(100%, 22rem);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--surface-strong);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-md);
+  }
 
-html[data-axis-mobile-landscape="counterclockwise"] .portrait-app-shell {
-  top: 0;
-  left: 100vw;
-  left: 100svw;
-  transform: rotate(90deg);
+  .portrait-orientation-guard__title {
+    font-size: 1.15rem;
+    font-weight: 650;
+    line-height: 1.15;
+  }
+
+  .portrait-orientation-guard__copy {
+    margin-top: 0.45rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
 }
 
 /* Scrollbar */
