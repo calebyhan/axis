@@ -147,6 +147,12 @@ body {
   padding: var(--top-h) max(1rem, env(safe-area-inset-right, 0px)) var(--nav-h) max(1rem, env(safe-area-inset-left, 0px));
 }
 
+@media (min-width: 768px) {
+  .page-shell {
+    padding-left: 1rem;
+  }
+}
+
 .page-header {
   display: flex;
   align-items: flex-end;
