@@ -73,7 +73,7 @@ export function BottomTabBar() {
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
-      <div className="flex items-stretch p-1">
+      <div className="flex items-stretch p-1" style={{ paddingLeft: "max(0.25rem, env(safe-area-inset-left, 0px))", paddingRight: "max(0.25rem, env(safe-area-inset-right, 0px))" }}>
         {TABS.map((tab) => {
           const active = pathname.startsWith(tab.href);
           return (

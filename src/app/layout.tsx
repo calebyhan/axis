@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { getUserAccentColor } from "@/lib/queries/profile";
 import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
-import { PortraitOrientationLock } from "@/components/pwa/PortraitOrientationLock";
 import { TimeZoneSync } from "@/components/TimeZoneSync";
 
 export const metadata: Metadata = {
@@ -40,9 +39,8 @@ export default async function RootLayout({
       </head>
       <body className="bg-background text-white antialiased">
         <TimeZoneSync />
-        <PortraitOrientationLock />
         <ServiceWorkerRegistration />
-        <div className="portrait-app-shell">{children}</div>
+        {children}
       </body>
     </html>
   );

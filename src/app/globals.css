@@ -65,15 +65,6 @@ body {
   overflow-x: hidden;
 }
 
-.portrait-app-shell {
-  min-height: 100vh;
-}
-
-@supports (height: 100svh) {
-  .portrait-app-shell {
-    min-height: 100svh;
-  }
-}
 
 /* Scrollbar */
 ::-webkit-scrollbar { display: none; }
@@ -153,7 +144,7 @@ body {
 .page-shell {
   width: min(100%, 72rem);
   margin: 0 auto;
-  padding: var(--top-h) 1rem var(--nav-h);
+  padding: var(--top-h) max(1rem, env(safe-area-inset-right, 0px)) var(--nav-h) max(1rem, env(safe-area-inset-left, 0px));
 }
 
 .page-header {
