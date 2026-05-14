@@ -13,7 +13,7 @@ import { CalendarMonth } from "@/components/calendar/CalendarMonth";
 import { CHART_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
 import { buildCalendarActiveDays } from "@/lib/calendar";
 import type { AdherenceWeek } from "@/lib/adherence";
-import { localDateStr } from "@/lib/planner";
+import { dateKeyToLocalDate } from "@/lib/time-zone";
 import type { HistoricalPlanCalendarData, TimeRange } from "@/lib/queries/stats";
 
 interface Props {
@@ -24,7 +24,7 @@ interface Props {
 
 export default function PlanTab({ adherence, planCalendarData, timeRange }: Props) {
   const latest = adherence[adherence.length - 1] ?? null;
-  const todayStr = localDateStr(new Date());
+  const todayStr = planCalendarData.todayKey;
   const totals = adherence.reduce(
     (acc, week) => {
       acc.planned += week.summary.planned;
@@ -218,7 +218,8 @@ function buildPlanCalendarMonths(
   const activeDays = buildCalendarActiveDays(
     planCalendarData.activities,
     planCalendarData.dayPlans,
-    planCalendarData.skipOverrides
+    planCalendarData.skipOverrides,
+    dateKeyToLocalDate(planCalendarData.todayKey)
   );
   let firstDate: Date | null = null;
 

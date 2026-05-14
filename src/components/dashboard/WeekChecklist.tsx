@@ -12,6 +12,7 @@ const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 interface Props {
   items: ChecklistDay[];
   dayTypes: DayType[];
+  todayKey: string;
 }
 
 type SlotState = "done" | "pending" | "override-done" | "override-pending";
@@ -211,7 +212,7 @@ function OverrideModal({ slot, dayName, dayTypes, isPending, error, onClose, onS
   );
 }
 
-export function WeekChecklist({ items, dayTypes }: Props) {
+export function WeekChecklist({ items, dayTypes, todayKey }: Props) {
   const router = useRouter();
   const [modalSlot, setModalSlot] = useState<{ slot: ChecklistSlot; dayName: string } | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -231,8 +232,6 @@ export function WeekChecklist({ items, dayTypes }: Props) {
     );
   }
 
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   // Sun-first display: (dayOfWeek+1)%7 maps Sun(6)→0, Mon(0)→1, …, Sat(5)→6
   const ordered = [...items].sort((a, b) => (a.dayOfWeek + 1) % 7 - (b.dayOfWeek + 1) % 7);
 
@@ -299,8 +298,8 @@ export function WeekChecklist({ items, dayTypes }: Props) {
           <span className="text-[11px] uppercase tracking-[0.24em] text-white/45">Planned sessions</span>
         </div>
         {ordered.map((day) => {
-          const dayPassed = day.date <= todayStr;
-          const isToday = day.date === todayStr;
+          const dayPassed = day.date <= todayKey;
+          const isToday = day.date === todayKey;
           return (
             <div key={day.dayOfWeek} className="flex items-center gap-3 px-4 py-3">
               <span className={`text-xs w-8 shrink-0 ${isToday ? "text-[#F6D365] font-medium" : "text-white/38"}`}>

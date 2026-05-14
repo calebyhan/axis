@@ -1,4 +1,4 @@
-export type CalendarActivity = { start_time: string; type: string };
+export type CalendarActivity = { start_time: string; type: string; date?: string };
 
 export type CalendarDayPlan = {
   dayOfWeek: number;
@@ -30,10 +30,10 @@ export function buildCalendarActiveDays(
 ): Map<string, number> {
   const dayKinds = new Map<string, Set<ActivityKind>>();
 
-  for (const { start_time, type } of activities) {
+  for (const { start_time, type, date } of activities) {
     const kind = getActivityKind(type);
     if (!kind) continue;
-    const key = localDateKey(new Date(start_time));
+    const key = date ?? localDateKey(new Date(start_time));
     const kinds = dayKinds.get(key) ?? new Set<ActivityKind>();
     kinds.add(kind);
     dayKinds.set(key, kinds);

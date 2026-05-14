@@ -43,12 +43,6 @@ export default async function RootLayout({
         <PortraitOrientationLock />
         <ServiceWorkerRegistration />
         <div className="portrait-app-shell">{children}</div>
-        <div className="portrait-orientation-guard" role="status" aria-live="polite">
-          <div className="portrait-orientation-guard__panel">
-            <p className="portrait-orientation-guard__title">Rotate your phone</p>
-            <p className="portrait-orientation-guard__copy">Axis is portrait-only.</p>
-          </div>
-        </div>
       </body>
     </html>
   );

@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { computeE1RM } from "@/lib/e1rm";
-import { localDateKey, type CalendarActivity, type CalendarDayPlan, type CalendarSkipOverride } from "@/lib/calendar";
+import type { CalendarActivity, CalendarDayPlan, CalendarSkipOverride } from "@/lib/calendar";
+import { getUserTimeZone } from "@/lib/queries/profile";
+import { zonedDateKey } from "@/lib/time-zone";
 import { computeStrengthBalance, strengthInputsFromExerciseSets, type StrengthSetDescriptor } from "@/lib/strength-balance";
 import { computeATLCTLTSB, normalizeStrengthTL, type DailyLoad } from "@/lib/training-load";
 import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails } from "@/types";
@@ -306,13 +308,15 @@ export interface HistoricalPlanCalendarData {
   activities: CalendarActivity[];
   dayPlans: CalendarDayPlan[];
   skipOverrides: CalendarSkipOverride[];
+  todayKey: string;
 }
 
 export async function getHistoricalPlanCalendarData(range: TimeRange): Promise<HistoricalPlanCalendarData> {
   const supabase = await createClient();
+  const timeZone = await getUserTimeZone();
   const since = getStartDate(range);
   const today = new Date();
-  const todayStr = localDateKey(today);
+  const todayKey = zonedDateKey(today, timeZone);
 
   let activitiesQuery = supabase
     .from("activities")
@@ -323,7 +327,7 @@ export async function getHistoricalPlanCalendarData(range: TimeRange): Promise<H
   let overridesQuery = supabase
     .from("schedule_overrides")
     .select("date, slot")
-    .lte("date", todayStr)
+    .lte("date", todayKey)
     .is("day_type_id", null);
 
   if (since) {
@@ -361,9 +365,13 @@ export async function getHistoricalPlanCalendarData(range: TimeRange): Promise<H
   });
 
   return {
-    activities: (activitiesRes.data ?? []) as CalendarActivity[],
+    activities: ((activitiesRes.data ?? []) as { start_time: string; type: string }[]).map((activity) => ({
+      ...activity,
+      date: zonedDateKey(activity.start_time, timeZone),
+    })),
     dayPlans,
     skipOverrides: (overridesRes.data ?? []) as CalendarSkipOverride[],
+    todayKey,
   };
 }
 

@@ -88,9 +88,14 @@ export default async function DashboardPage() {
             activities={activeDays.activities}
             dayPlans={activeDays.dayPlans}
             skipOverrides={activeDays.skipOverrides}
+            todayKey={activeDays.todayKey}
           />
         </div>
-        <WeekChecklist items={checklistItems} dayTypes={checklistData.dayTypes as DayType[]} />
+        <WeekChecklist
+          items={checklistItems}
+          dayTypes={checklistData.dayTypes as DayType[]}
+          todayKey={checklistData.todayKey}
+        />
       </div>
 
       <div className="lg:hidden">

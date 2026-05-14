@@ -11,11 +11,11 @@ import {
   type TimeRange,
 } from "@/lib/queries/stats";
 import { getAdherenceHistory } from "@/lib/queries/adherence";
-import { getUserUnits } from "@/lib/queries/profile";
+import { getUserTimeZone, getUserUnits } from "@/lib/queries/profile";
+import { zonedDateKey } from "@/lib/time-zone";
 import { StatsClient } from "@/components/stats/StatsClient";
 
 const VALID_RANGES: TimeRange[] = ["week", "month", "year", "all"];
-const EMPTY_PLAN_CALENDAR_DATA = { activities: [], dayPlans: [], skipOverrides: [] };
 
 function parseRange(raw: string | undefined): TimeRange {
   return VALID_RANGES.includes(raw as TimeRange) ? (raw as TimeRange) : "month";
@@ -29,16 +29,23 @@ export default async function StatsPage({
   const { range } = await searchParams;
   const timeRange = parseRange(range);
 
-  const [volumeData, runningData, bodyData, workoutSummary, trainingLoad, adherence, planCalendarData, units] = await Promise.all([
+  const [volumeData, runningData, bodyData, workoutSummary, trainingLoad, adherence, planCalendarData, units, timeZone] = await Promise.all([
     getVolumeOverTime(timeRange),
     getRunningStats(timeRange),
     getBodyWeightStats(timeRange),
     getWorkoutSummary(timeRange),
     getTrainingLoadHistory(timeRange),
     getAdherenceHistory(timeRange),
-    timeRange === "all" ? getHistoricalPlanCalendarData(timeRange) : Promise.resolve(EMPTY_PLAN_CALENDAR_DATA),
+    timeRange === "all" ? getHistoricalPlanCalendarData(timeRange) : Promise.resolve(null),
     getUserUnits(),
+    getUserTimeZone(),
   ]);
+  const resolvedPlanCalendarData = planCalendarData ?? {
+    activities: [],
+    dayPlans: [],
+    skipOverrides: [],
+    todayKey: zonedDateKey(new Date(), timeZone),
+  };
 
   return (
     <div className="page-shell">
@@ -55,7 +62,7 @@ export default async function StatsPage({
         workoutSummary={workoutSummary}
         trainingLoad={trainingLoad}
         adherence={adherence}
-        planCalendarData={planCalendarData}
+        planCalendarData={resolvedPlanCalendarData}
         units={units}
       />
     </div>

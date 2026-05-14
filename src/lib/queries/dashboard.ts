@@ -12,6 +12,7 @@ import {
   zonedDateKey,
   zonedDateTimeToUtc,
 } from "@/lib/time-zone";
+import type { CalendarActivity } from "@/lib/calendar";
 import { computeStrengthBalance, strengthInputsFromExerciseSets, type StrengthBalanceSummary, type StrengthSetDescriptor } from "@/lib/strength-balance";
 import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails } from "@/types";
 
@@ -348,9 +349,10 @@ export type DayPlanEntry = {
 };
 
 export async function getMonthActiveDays(): Promise<{
-  activities: { start_time: string; type: string }[];
+  activities: CalendarActivity[];
   dayPlans: DayPlanEntry[];
   skipOverrides: SkipOverride[];
+  todayKey: string;
 }> {
   const supabase = await createClient();
   const timeZone = await getUserTimeZone();
@@ -380,13 +382,19 @@ export async function getMonthActiveDays(): Promise<{
     ...plan,
   }));
 
-  return { activities: data ?? [], dayPlans, skipOverrides: (overrides as SkipOverride[] | null) ?? [] };
+  const activities: CalendarActivity[] = (data ?? []).map((activity) => ({
+    ...activity,
+    date: zonedDateKey(activity.start_time, timeZone),
+  }));
+
+  return { activities, dayPlans, skipOverrides: (overrides as SkipOverride[] | null) ?? [], todayKey: todayStr };
 }
 
 export async function getWeekChecklistData() {
   const supabase = await createClient();
   const timeZone = await getUserTimeZone();
-  const weekStartStr = startOfWeekDateKey(zonedDateKey(new Date(), timeZone));
+  const todayKey = zonedDateKey(new Date(), timeZone);
+  const weekStartStr = startOfWeekDateKey(todayKey);
   const weekStart = dateKeyToLocalDate(weekStartStr);
   const weekEndStr = addDateKeyDays(weekStartStr, 6);
   const activityRange = dateKeyRangeUtc(weekStartStr, addDateKeyDays(weekStartStr, 7), timeZone);
@@ -423,5 +431,6 @@ export async function getWeekChecklistData() {
     overrides: overridesRes.data ?? [],
     dayTypes: dayTypesRes.data ?? [],
     weekStart,
+    todayKey,
   };
 }
