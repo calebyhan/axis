@@ -15,7 +15,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:block fixed top-4 left-4 bottom-4 w-60 z-50">
+    <aside className="app-sidebar fixed top-4 left-4 bottom-4 w-60 z-50">
       <div className="card h-full flex flex-col px-4 py-5">
         <div className="px-3 py-3">
           <div className="text-[11px] uppercase tracking-[0.28em] text-white/40 mb-2">Axis</div>

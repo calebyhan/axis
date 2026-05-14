@@ -11,7 +11,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
         <Sidebar />
         <MobileTopFade />
         {/* Desktop: offset for sidebar. Mobile: offset for bottom nav */}
-        <main className="relative min-h-screen overflow-x-hidden pb-6 md:ml-64 md:pb-0">
+        <main className="app-main relative min-h-screen overflow-x-hidden">
           <TabTransition>{children}</TabTransition>
         </main>
         <BottomTabBar />

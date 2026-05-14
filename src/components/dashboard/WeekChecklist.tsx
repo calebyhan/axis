@@ -127,10 +127,10 @@ function OverrideModal({ slot, dayName, dayTypes, isPending, error, onClose, onS
   const isSkipSelected = slot.isOverridden && slot.effective === null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} role="dialog" aria-modal="true" aria-labelledby="schedule-override-title">
+    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} role="dialog" aria-modal="true" aria-labelledby="schedule-override-title">
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-[#141414] border border-white/10 p-5 pb-8 sm:pb-5"
+        className="relative w-full lg:max-w-sm rounded-t-2xl lg:rounded-2xl bg-[#141414] border border-white/10 p-5 pb-8 lg:pb-5"
         role="document"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}

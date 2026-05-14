@@ -64,7 +64,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="mobile-landscape-stack grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="card p-5 sm:p-6">
           <div className="text-[11px] uppercase tracking-[0.24em] text-white/45 mb-3">This Week</div>
           <WeeklyStatsSummary {...weeklyStats} units={units} />
@@ -81,8 +81,8 @@ export default async function DashboardPage() {
 
       <WeeklyAdherence adherence={adherence} />
 
-      <div className="grid gap-5 md:grid-cols-3">
-        <div className="md:col-span-2">
+      <div className="mobile-landscape-stack grid gap-5 lg:grid-cols-3">
+        <div className="mobile-landscape-unspan lg:col-span-2">
           <CalendarStreak
             streak={streak}
             activities={activeDays.activities}

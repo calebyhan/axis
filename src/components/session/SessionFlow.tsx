@@ -151,8 +151,8 @@ function CloseSessionPrompt({ saving, error, onKeepDraft, onDiscard, onReturn }:
   onReturn: () => void;
 }) {
   return (
-    <div className="absolute inset-0 z-10 flex items-end bg-black/60 md:items-center md:justify-center">
-      <div className="w-full border-t border-border bg-[#0A0A0A] p-4 md:max-w-sm md:rounded-2xl md:border">
+    <div className="absolute inset-0 z-10 flex items-end bg-black/60 lg:items-center lg:justify-center">
+      <div className="w-full border-t border-border bg-[#0A0A0A] p-4 lg:max-w-sm lg:rounded-2xl lg:border">
         <h3 className="font-semibold">Close workout?</h3>
         <p className="mt-2 text-sm text-muted">You have logged sets in this session.</p>
         {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
@@ -454,14 +454,14 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
 
   if (finalSession) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-background md:bg-black/60 md:items-center md:justify-center md:p-6" role="dialog" aria-modal="true" aria-labelledby="session-complete-title">
-        <div className="flex flex-col w-full h-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-2xl md:rounded-3xl md:bg-[#0A0A0A] md:border md:border-[#1F1F1F] md:overflow-hidden">
+      <div className="fixed inset-0 z-50 flex flex-col bg-background lg:bg-black/60 lg:items-center lg:justify-center lg:p-6" role="dialog" aria-modal="true" aria-labelledby="session-complete-title">
+        <div className="flex flex-col w-full h-full lg:h-auto lg:max-h-[90vh] lg:w-full lg:max-w-2xl lg:rounded-3xl lg:bg-[#0A0A0A] lg:border lg:border-[#1F1F1F] lg:overflow-hidden">
           <div className="flex items-center gap-3 px-4 pb-4 border-b border-border" style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))" }}>
             <div className="size-9 shrink-0" />
             <h2 id="session-complete-title" className="flex-1 font-semibold text-center">Session Complete</h2>
             <div className="size-9 shrink-0" />
           </div>
-          <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav md:pb-6">
+          <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav lg:pb-6">
             {saveError && <p className="text-yellow-400 text-xs mb-4 px-3 py-2 bg-yellow-400/10 rounded-lg border border-yellow-400/20">{saveError}</p>}
             <SessionSummary session={finalSession} onClose={onComplete} units={units} weeklyStrengthInputs={weeklyStrengthInputs} />
           </div>
@@ -471,8 +471,8 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background md:bg-black/60 md:items-center md:justify-center md:p-6" role="dialog" aria-modal="true" aria-labelledby="workout-session-title">
-    <div className="flex flex-col w-full h-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-2xl md:rounded-3xl md:bg-[#0A0A0A] md:border md:border-[#1F1F1F] md:overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col bg-background lg:bg-black/60 lg:items-center lg:justify-center lg:p-6" role="dialog" aria-modal="true" aria-labelledby="workout-session-title">
+    <div className="flex flex-col w-full h-full lg:h-auto lg:max-h-[90vh] lg:w-full lg:max-w-2xl lg:rounded-3xl lg:bg-[#0A0A0A] lg:border lg:border-[#1F1F1F] lg:overflow-hidden">
       <SessionHeader session={session} saving={saving} draftSaveStatus={draftSaveStatus} hasLoggedSets={hasLoggedSets} onCancel={handleCancelRequest} onEnd={handleEndSession} />
 
       {autosaveFailed && <div className="px-4 py-2 bg-yellow-900/30 border-b border-yellow-700/40 text-xs text-yellow-400">Auto-save failed - tap End to save your workout manually.</div>}

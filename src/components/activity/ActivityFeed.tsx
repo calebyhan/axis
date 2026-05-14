@@ -244,7 +244,7 @@ export function ActivityFeed({ activities, workoutDataMap, dayTypeNames, units }
               )}
 
               {showWorkoutFilterGroup && (
-                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                <div className="mobile-landscape-stack grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[10px] text-white/35 uppercase tracking-[0.16em]">Muscle Group</span>
                     <div className="flex flex-wrap gap-1.5" role="group" aria-label="Muscle group filter">
@@ -292,7 +292,7 @@ export function ActivityFeed({ activities, workoutDataMap, dayTypeNames, units }
           <p className="text-muted text-sm">No activities match your filters.</p>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="mobile-landscape-stack grid gap-3 lg:grid-cols-2">
           {filtered.map((activity) => {
             if (activity.type === "workout") {
               const wd = workoutDataMap[activity.id] ?? { coverage: {}, exerciseCount: 0, totalVolume: 0 };

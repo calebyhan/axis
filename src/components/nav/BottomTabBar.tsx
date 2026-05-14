@@ -65,7 +65,7 @@ export function BottomTabBar() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t border-[#1F1F1F]"
+      className="app-bottom-tab-bar fixed bottom-0 left-0 right-0 z-40 border-t border-[#1F1F1F]"
       style={{
         background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)), #141414",
         backdropFilter: "blur(8px) saturate(150%)",

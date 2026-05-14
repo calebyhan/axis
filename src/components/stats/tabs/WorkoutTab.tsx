@@ -65,7 +65,7 @@ export default function WorkoutTab({ workoutSummary, volumeChartData, timeRange,
         <StatCard label="Total Sets" value={String(workoutSummary.totalSets)} />
       </div>
 
-      <div className="md:grid md:grid-cols-2 md:gap-5 flex flex-col gap-5">
+      <div className="mobile-landscape-stack lg:grid lg:grid-cols-2 lg:gap-5 flex flex-col gap-5">
         <div className="card p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -132,7 +132,7 @@ export default function WorkoutTab({ workoutSummary, volumeChartData, timeRange,
         />
 
         {workoutSummary.topExercises.length > 0 && (
-          <div className="card p-4 md:col-span-2">
+          <div className="mobile-landscape-unspan card p-4 lg:col-span-2">
             <h3 className="text-sm font-medium mb-3">Top Exercises by Volume</h3>
             <div className="flex flex-col gap-3">
               {(() => {

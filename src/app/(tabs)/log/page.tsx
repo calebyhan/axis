@@ -601,7 +601,7 @@ export default function LogPage() {
           />
         )}
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        <div className="mobile-landscape-stack grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
           <div className="flex flex-col gap-4">
             <TodayPlanCard
               loading={overview.loading}
@@ -658,8 +658,8 @@ export default function LogPage() {
       )}
 
       {panel === "run" && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background md:bg-black/60 md:items-center md:justify-center md:p-6" role="dialog" aria-modal="true" aria-labelledby="log-run-title">
-          <div className="flex flex-col w-full h-full md:h-auto md:max-h-[85vh] md:w-full md:max-w-lg md:rounded-3xl md:bg-[#0A0A0A] md:border md:border-[#1F1F1F] md:overflow-hidden">
+        <div className="fixed inset-0 z-50 flex flex-col bg-background lg:bg-black/60 lg:items-center lg:justify-center lg:p-6" role="dialog" aria-modal="true" aria-labelledby="log-run-title">
+          <div className="flex flex-col w-full h-full lg:h-auto lg:max-h-[85vh] lg:w-full lg:max-w-lg lg:rounded-3xl lg:bg-[#0A0A0A] lg:border lg:border-[#1F1F1F] lg:overflow-hidden">
             <div className="flex items-center gap-3 px-4 pb-4 border-b border-border" style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))" }}>
               <button
                 type="button"
@@ -673,7 +673,7 @@ export default function LogPage() {
               </button>
               <h2 id="log-run-title" className="flex-1 font-semibold">Log Run</h2>
             </div>
-            <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav md:pb-6">
+            <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav lg:pb-6">
               <LogRunPanel onSave={() => onSaved("Run saved!")} />
             </div>
           </div>
@@ -681,8 +681,8 @@ export default function LogPage() {
       )}
 
       {panel === "weight" && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background md:bg-black/60 md:items-center md:justify-center md:p-6" role="dialog" aria-modal="true" aria-labelledby="log-weight-title">
-          <div className="flex flex-col w-full h-full md:h-auto md:max-h-[85vh] md:w-full md:max-w-lg md:rounded-3xl md:bg-[#0A0A0A] md:border md:border-[#1F1F1F] md:overflow-hidden">
+        <div className="fixed inset-0 z-50 flex flex-col bg-background lg:bg-black/60 lg:items-center lg:justify-center lg:p-6" role="dialog" aria-modal="true" aria-labelledby="log-weight-title">
+          <div className="flex flex-col w-full h-full lg:h-auto lg:max-h-[85vh] lg:w-full lg:max-w-lg lg:rounded-3xl lg:bg-[#0A0A0A] lg:border lg:border-[#1F1F1F] lg:overflow-hidden">
             <div className="flex items-center gap-3 px-4 pb-4 border-b border-border" style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))" }}>
               <button
                 type="button"
@@ -696,7 +696,7 @@ export default function LogPage() {
               </button>
               <h2 id="log-weight-title" className="flex-1 font-semibold">Body Weight</h2>
             </div>
-            <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav md:pb-6">
+            <div className="flex-1 overflow-y-auto px-4 py-6 pb-nav lg:pb-6">
               <LogWeightForm
                 onSave={(mutation) => onSaved(mutation === "deleted" ? "Weight deleted!" : "Weight saved!")}
                 units={overview.units}

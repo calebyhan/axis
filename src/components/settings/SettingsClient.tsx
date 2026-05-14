@@ -832,10 +832,10 @@ export function SettingsClient({
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <div className="mobile-landscape-stack grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <Section title="Weekly Schedule">
           <div className="card overflow-hidden divide-y divide-border">
-            <div className="hidden md:grid grid-cols-[minmax(7rem,1fr)_minmax(9rem,10rem)_minmax(9rem,10rem)] items-center px-4 py-2 gap-4">
+            <div className="hidden xl:grid grid-cols-[minmax(7rem,1fr)_minmax(9rem,10rem)_minmax(9rem,10rem)] items-center px-4 py-2 gap-4">
               <span className="text-xs text-muted" />
               <span className="text-xs text-muted text-center">Workout</span>
               <span className="text-xs text-muted text-center">Cardio</span>
@@ -843,12 +843,12 @@ export function SettingsClient({
             {DAY_DISPLAY_ORDER.map((dayIdx) => (
               <div
                 key={`schedule-day-${dayIdx}`}
-                className="flex flex-col gap-3 px-4 py-3 md:grid md:grid-cols-[minmax(7rem,1fr)_minmax(9rem,10rem)_minmax(9rem,10rem)] md:items-center md:gap-4"
+                className="flex flex-col gap-3 px-4 py-3 xl:grid xl:grid-cols-[minmax(7rem,1fr)_minmax(9rem,10rem)_minmax(9rem,10rem)] xl:items-center xl:gap-4"
               >
                 <span className="text-sm font-medium">{DAY_NAMES[dayIdx]}</span>
-                <div className="grid grid-cols-2 gap-3 md:contents">
-                  <div className="flex min-w-0 flex-col gap-1.5 md:w-auto">
-                    <span className="text-[10px] uppercase tracking-[0.16em] text-muted md:hidden">Workout</span>
+                <div className="grid grid-cols-2 gap-3 xl:contents">
+                  <div className="flex min-w-0 flex-col gap-1.5 xl:w-auto">
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-muted xl:hidden">Workout</span>
                     <Select
                       value={getWorkoutSelection(dayIdx)}
                       options={strengthTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
@@ -859,8 +859,8 @@ export function SettingsClient({
                       }}
                     />
                   </div>
-                  <div className="flex min-w-0 flex-col gap-1.5 md:w-auto">
-                    <span className="text-[10px] uppercase tracking-[0.16em] text-muted md:hidden">Cardio</span>
+                  <div className="flex min-w-0 flex-col gap-1.5 xl:w-auto">
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-muted xl:hidden">Cardio</span>
                     <Select
                       value={getCardioSelection(dayIdx)}
                       options={runTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
@@ -889,7 +889,7 @@ export function SettingsClient({
                 </span>
               ))}
             </div>
-            <div className="card p-4 flex items-center gap-4 md:items-start">
+            <div className="card p-4 flex items-center gap-4 lg:items-start">
               <MiniHeatmap coverage={weeklyPlan.muscleCoverage} />
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium">Muscle focus</div>

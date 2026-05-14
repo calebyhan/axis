@@ -172,7 +172,7 @@ export default function RunningTab({
         )}
       </div>
 
-      <div className="md:grid md:grid-cols-2 md:gap-5 flex flex-col gap-5">
+      <div className="mobile-landscape-stack lg:grid lg:grid-cols-2 lg:gap-5 flex flex-col gap-5">
       <div className="card p-4">
         <h3 className="text-sm font-medium mb-4">Distance ({distanceUnit(units)})</h3>
         {runCount === 0 ? (
