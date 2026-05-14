@@ -26,6 +26,7 @@ type ActiveTooltip = {
 };
 
 type MuscleHandlers = {
+  onPointerDown: (event: PointerEvent<SVGGElement>) => void;
   onPointerEnter: (muscle: MuscleGroup, event: PointerEvent<SVGGElement>) => void;
   onPointerMove: (muscle: MuscleGroup, event: PointerEvent<SVGGElement>) => void;
   onPointerLeave: () => void;
@@ -310,10 +311,11 @@ function renderMuscles(
       aria-label={interactive ? MUSCLE_LABELS[layer.muscle] : undefined}
       onPointerEnter={interactive ? (event) => handlers.onPointerEnter(layer.muscle, event) : undefined}
       onPointerMove={interactive ? (event) => handlers.onPointerMove(layer.muscle, event) : undefined}
+      onPointerDown={interactive ? handlers.onPointerDown : undefined}
       onPointerLeave={interactive ? handlers.onPointerLeave : undefined}
       onFocus={interactive ? (event) => handlers.onFocus(layer.muscle, event) : undefined}
       onBlur={interactive ? handlers.onBlur : undefined}
-      style={interactive ? { cursor: "help" } : undefined}
+      style={interactive ? { cursor: "help", WebkitTapHighlightColor: "transparent", outline: "none" } : undefined}
     >
       {layer.paths.map((d, index) => (
         <path
@@ -436,6 +438,9 @@ export function MuscleHeatmap({
   }, [activeTooltip, activeCount, hiddenTooltipCount, tooltipContext, visibleTooltipText]);
 
   const handlers: MuscleHandlers = {
+    onPointerDown: (event) => {
+      event.preventDefault();
+    },
     onPointerEnter: (muscle, event) => {
       setActiveTooltip({ muscle, ...getPointerPosition(event) });
     },
