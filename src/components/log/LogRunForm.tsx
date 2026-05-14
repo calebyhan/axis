@@ -49,14 +49,17 @@ export function LogRunForm({ onSave, units = "metric" }: { onSave: () => void; u
     }
 
     setSaving(true);
+    const startedAt = new Date();
     const durationSecs = parsed.data.hours * 3600 + parsed.data.minutes * 60;
     const distanceM = units === "imperial" ? parsed.data.distance * 1609.344 : parsed.data.distance * 1000;
 
     const result = await saveManualRun({
+      start_time: startedAt.toISOString(),
       duration: durationSecs,
       distance: distanceM,
       suffer_score: (parsed.data.effort - 1) * 50,
       notes: parsed.data.notes ?? null,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
 
     setSaving(false);

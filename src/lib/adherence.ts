@@ -1,6 +1,6 @@
 import type { Activity, DayType } from "@/types";
 import type { PlannedSlot } from "@/lib/planner";
-import { localDateStr } from "@/lib/planner";
+import { DEFAULT_TIME_ZONE, zonedDateKey, zonedDateTimeToUtc } from "@/lib/time-zone";
 
 export type AdherenceStatus = "completed" | "swapped" | "missed" | "skipped" | "pending";
 
@@ -66,13 +66,18 @@ function summarize(slots: AdherenceSlot[]): AdherenceSummary {
   };
 }
 
-export function deriveAdherence(slots: PlannedSlot[], activities: Activity[], today = new Date()): AdherenceWeek {
+export function deriveAdherence(
+  slots: PlannedSlot[],
+  activities: Activity[],
+  today = new Date(),
+  timeZone = DEFAULT_TIME_ZONE
+): AdherenceWeek {
   const sortedActivities = [...activities].sort(
     (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
   );
   const actionableSlots = slots.filter((slot) => !isRestSlot(slot));
   const slotToActivity = new Map<string, Activity>();
-  const todayStr = localDateStr(today);
+  const todayStr = zonedDateKey(today, timeZone);
 
   for (const activity of sortedActivities) {
     const eligible = actionableSlots.filter(
@@ -85,8 +90,8 @@ export function deriveAdherence(slots: PlannedSlot[], activities: Activity[], to
 
     const activityTime = new Date(activity.start_time).getTime();
     eligible.sort((a, b) => {
-      const aTime = new Date(`${a.date}T12:00:00`).getTime();
-      const bTime = new Date(`${b.date}T12:00:00`).getTime();
+      const aTime = zonedDateTimeToUtc(a.date, timeZone, 12).getTime();
+      const bTime = zonedDateTimeToUtc(b.date, timeZone, 12).getTime();
       return Math.abs(aTime - activityTime) - Math.abs(bTime - activityTime);
     });
 
@@ -95,7 +100,7 @@ export function deriveAdherence(slots: PlannedSlot[], activities: Activity[], to
 
   const adherenceSlots = actionableSlots.map((slot) => {
     const matched = slotToActivity.get(slot.id) ?? null;
-    const matchedDate = matched ? matched.start_time.split("T")[0] : null;
+    const matchedDate = matched ? zonedDateKey(matched.start_time, timeZone) : null;
     let status: AdherenceStatus;
 
     if (slot.effective === null) status = "skipped";

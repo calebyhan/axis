@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatRelativeCalendarDate, localCalendarDayDiff } from "../dates";
+import { zonedDateKey } from "../time-zone";
 
 describe("relative calendar dates", () => {
   it("uses local calendar days instead of elapsed 24-hour windows", () => {
@@ -26,5 +27,11 @@ describe("relative calendar dates", () => {
         fallback: { weekday: "short", month: "short", day: "numeric" },
       })
     ).toBe("Fri, Jan 3");
+  });
+});
+
+describe("zoned date keys", () => {
+  it("keeps late evening Eastern activities on the local calendar day", () => {
+    expect(zonedDateKey("2026-05-14T01:00:00.000Z", "America/New_York")).toBe("2026-05-13");
   });
 });

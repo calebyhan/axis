@@ -9,8 +9,9 @@ import {
   getWeeklyMuscleCoverageSummary,
 } from "@/lib/queries/dashboard";
 import { getCurrentWeekAdherence } from "@/lib/queries/adherence";
-import { getUserDisplayName, getUserUnits } from "@/lib/queries/profile";
+import { getUserDisplayName, getUserTimeZone, getUserUnits } from "@/lib/queries/profile";
 import { matchChecklist } from "@/lib/checklist";
+import { formatZonedDate } from "@/lib/time-zone";
 import { WeeklyStatsSummary } from "@/components/dashboard/WeeklyStatsSummary";
 import { CalendarStreak } from "@/components/dashboard/CalendarStreak";
 import { WeekChecklist } from "@/components/dashboard/WeekChecklist";
@@ -20,7 +21,7 @@ import { WeeklyAdherence } from "@/components/dashboard/WeeklyAdherence";
 import type { Activity, DayType, ScheduleOverride, WeeklyScheduleRow } from "@/types";
 
 export default async function DashboardPage() {
-  const [weeklyStats, weeklyMuscleCoverageSummary, bodyWeightData, streak, checklistData, units, activeDays, displayName, adherence] = await Promise.all([
+  const [weeklyStats, weeklyMuscleCoverageSummary, bodyWeightData, streak, checklistData, units, activeDays, displayName, adherence, timeZone] = await Promise.all([
     getWeeklyStats(),
     getWeeklyMuscleCoverageSummary(),
     getBodyWeightHistory(30),
@@ -30,13 +31,14 @@ export default async function DashboardPage() {
     getMonthActiveDays(),
     getUserDisplayName(),
     getCurrentWeekAdherence(),
+    getUserTimeZone(),
   ]);
 
-  const todayLabel = new Intl.DateTimeFormat("en-US", {
+  const todayLabel = formatZonedDate(new Date(), timeZone, {
     weekday: "long",
     month: "long",
     day: "numeric",
-  }).format(new Date());
+  });
 
   const dayTypeMap = new Map(
     (checklistData.dayTypes as DayType[]).map((dt) => [dt.id, dt])
@@ -47,7 +49,8 @@ export default async function DashboardPage() {
     checklistData.activities as Activity[],
     checklistData.overrides as ScheduleOverride[],
     checklistData.weekStart,
-    dayTypeMap
+    dayTypeMap,
+    timeZone
   );
 
   return (

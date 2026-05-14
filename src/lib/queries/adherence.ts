@@ -2,25 +2,26 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { buildPlannedSlots, localDateStr, startOfWeek, WORKOUT_REST_DAY_TYPE, type PlannedSlot } from "@/lib/planner";
 import { deriveAdherence, type AdherenceWeek } from "@/lib/adherence";
+import { getUserTimeZone } from "@/lib/queries/profile";
+import { addDateKeyDays, dateKeyToLocalDate, startOfWeekDateKey, zonedDateKey, zonedDateTimeToUtc } from "@/lib/time-zone";
 import type { Activity, DayType, PlannedSlotSnapshot, ScheduleOverride, WeeklyScheduleRow } from "@/types";
 import type { TimeRange } from "@/lib/queries/stats";
 
-function getRangeStart(range: TimeRange): Date {
+function getRangeStart(range: TimeRange, timeZone: string): Date {
   const now = new Date();
-  if (range === "week") return startOfWeek(now);
+  const todayKey = zonedDateKey(now, timeZone);
+  if (range === "week") return dateKeyToLocalDate(startOfWeekDateKey(todayKey));
   if (range === "month") {
-    const d = new Date(now);
-    d.setDate(d.getDate() - 28);
-    return startOfWeek(d);
+    return dateKeyToLocalDate(startOfWeekDateKey(addDateKeyDays(todayKey, -28)));
   }
   if (range === "year") {
     const d = new Date(now);
     d.setFullYear(d.getFullYear() - 1);
-    return startOfWeek(d);
+    return dateKeyToLocalDate(startOfWeekDateKey(zonedDateKey(d, timeZone)));
   }
   const d = new Date(now);
   d.setFullYear(d.getFullYear() - 2);
-  return startOfWeek(d);
+  return dateKeyToLocalDate(startOfWeekDateKey(zonedDateKey(d, timeZone)));
 }
 
 function startOfDay(date: Date): Date {
@@ -29,16 +30,16 @@ function startOfDay(date: Date): Date {
   return d;
 }
 
-function accountCreatedStart(createdAt: string | undefined): Date | null {
+function accountCreatedStart(createdAt: string | undefined, timeZone: string): Date | null {
   if (!createdAt) return null;
   const created = new Date(createdAt);
   if (Number.isNaN(created.getTime())) return null;
-  return startOfDay(created);
+  return startOfDay(dateKeyToLocalDate(zonedDateKey(created, timeZone)));
 }
 
-function getVisibleStart(range: TimeRange, userCreatedAt: string | undefined): Date {
-  const rangeStart = getRangeStart(range);
-  const createdStart = accountCreatedStart(userCreatedAt);
+function getVisibleStart(range: TimeRange, userCreatedAt: string | undefined, timeZone: string): Date {
+  const rangeStart = getRangeStart(range, timeZone);
+  const createdStart = accountCreatedStart(userCreatedAt, timeZone);
   return createdStart && createdStart > rangeStart ? createdStart : rangeStart;
 }
 
@@ -137,7 +138,7 @@ function plannedSlotToSnapshotInsert(slot: PlannedSlot, userId: string, weekStar
   };
 }
 
-async function ensurePlannedSlotSnapshots(range: TimeRange): Promise<{
+async function ensurePlannedSlotSnapshots(range: TimeRange, timeZone: string): Promise<{
   snapshots: PlannedSlotSnapshot[];
   dayTypeMap: Map<string, DayType>;
   visibleStart: Date;
@@ -145,14 +146,15 @@ async function ensurePlannedSlotSnapshots(range: TimeRange): Promise<{
 }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { snapshots: [], dayTypeMap: new Map(), visibleStart: getRangeStart(range), weekStarts: [] };
+  if (!user) return { snapshots: [], dayTypeMap: new Map(), visibleStart: getRangeStart(range, timeZone), weekStarts: [] };
 
   const now = new Date();
-  const visibleStart = getVisibleStart(range, user.created_at);
-  const start = startOfWeek(visibleStart);
-  const end = new Date(startOfWeek(now));
+  const todayKey = zonedDateKey(now, timeZone);
+  const visibleStart = getVisibleStart(range, user.created_at, timeZone);
+  const start = dateKeyToLocalDate(startOfWeekDateKey(localDateStr(visibleStart)));
+  const end = dateKeyToLocalDate(startOfWeekDateKey(todayKey));
   end.setDate(end.getDate() + 6);
-  const weekStarts = weekStartsBetween(start, now);
+  const weekStarts = weekStartsBetween(start, end);
   const weekStartStrings = weekStarts.map(localDateStr);
   const visibleStartStr = localDateStr(visibleStart);
   const { schedule, dayTypeMap } = await getBasePlannerData();
@@ -166,7 +168,7 @@ async function ensurePlannedSlotSnapshots(range: TimeRange): Promise<{
   if (existingError) console.error("[query] planned slot snapshots failed", existingError.message);
 
   const existingSnapshots = (existing ?? []) as PlannedSlotSnapshot[];
-  const currentWeekStart = localDateStr(startOfWeek(now));
+  const currentWeekStart = startOfWeekDateKey(todayKey);
   const existingWeeks = new Set(existingSnapshots.map((row) => row.week_start));
   const weeksToBackfill = weekStarts.filter((weekStart) => {
     const weekStartStr = localDateStr(weekStart);
@@ -229,19 +231,22 @@ async function ensurePlannedSlotSnapshots(range: TimeRange): Promise<{
 
 export async function getAdherenceHistory(range: TimeRange): Promise<AdherenceWeek[]> {
   const supabase = await createClient();
+  const timeZone = await getUserTimeZone();
   const now = new Date();
-  const end = new Date(startOfWeek(now));
+  const todayKey = zonedDateKey(now, timeZone);
+  const end = dateKeyToLocalDate(startOfWeekDateKey(todayKey));
   end.setDate(end.getDate() + 6);
-  const { snapshots, dayTypeMap, visibleStart, weekStarts } = await ensurePlannedSlotSnapshots(range);
+  const { snapshots, dayTypeMap, visibleStart, weekStarts } = await ensurePlannedSlotSnapshots(range, timeZone);
   const visibleStartStr = localDateStr(visibleStart);
+  const endExclusiveKey = addDateKeyDays(localDateStr(end), 1);
 
   if (weekStarts.length === 0) return [];
 
   const activitiesRes = await supabase
     .from("activities")
     .select("id, user_id, strava_activity_id, type, day_type_id, start_time, duration, source, distance, avg_heartrate, max_heartrate, suffer_score, calories, elevation_gain, avg_pace, tags, notes, name, summary_polyline, splits, best_efforts, avg_cadence, avg_watts, elapsed_time, max_speed, average_temp")
-    .gte("start_time", visibleStart.toISOString())
-    .lt("start_time", new Date(end.getTime() + 24 * 60 * 60 * 1000).toISOString());
+    .gte("start_time", zonedDateTimeToUtc(visibleStartStr, timeZone).toISOString())
+    .lt("start_time", zonedDateTimeToUtc(endExclusiveKey, timeZone).toISOString());
 
   if (activitiesRes.error) console.error("[query] adherence activities failed", activitiesRes.error.message);
 
@@ -260,17 +265,18 @@ export async function getAdherenceHistory(range: TimeRange): Promise<AdherenceWe
         return slot ? [slot] : [];
       });
     const weekActivities = activities.filter((activity) => {
-      const date = activity.start_time.split("T")[0];
+      const date = zonedDateKey(activity.start_time, timeZone);
       return date >= visibleStartStr && date >= weekStartStr && date <= weekEndStr;
     });
-    return { ...deriveAdherence(slots, weekActivities, now), weekStart: weekStartStr };
+    return { ...deriveAdherence(slots, weekActivities, now, timeZone), weekStart: weekStartStr };
   });
 }
 
 export async function getCurrentWeekAdherence(): Promise<AdherenceWeek> {
   const history = await getAdherenceHistory("week");
+  const timeZone = await getUserTimeZone();
   return history[history.length - 1] ?? {
-    weekStart: localDateStr(startOfWeek()),
+    weekStart: startOfWeekDateKey(zonedDateKey(new Date(), timeZone)),
     slots: [],
     summary: { planned: 0, completed: 0, swapped: 0, missed: 0, skipped: 0, pending: 0, completionRate: null },
   };

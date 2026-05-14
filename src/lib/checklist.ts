@@ -1,6 +1,7 @@
 import type { Activity, DayType, ScheduleOverride, WeeklyScheduleRow } from "@/types";
 import { buildPlannedSlots } from "@/lib/planner";
 import { activityMatchesPlannedType } from "@/lib/adherence";
+import { DEFAULT_TIME_ZONE, isoDayFromDateKey, zonedDateKey } from "@/lib/time-zone";
 
 export interface ChecklistSlot {
   planned: DayType;
@@ -23,7 +24,8 @@ export function matchChecklist(
   activities: Activity[],
   overrides: ScheduleOverride[],
   weekStart: Date,
-  dayTypeMap: Map<string, DayType>
+  dayTypeMap: Map<string, DayType>,
+  timeZone = DEFAULT_TIME_ZONE
 ): ChecklistDay[] {
   const active = schedule.filter((s) => s.active);
   const sortedActivities = [...activities].sort(
@@ -40,7 +42,7 @@ export function matchChecklist(
     );
     if (eligible.length === 0) continue;
 
-    const activityIsoDay = (new Date(activity.start_time).getDay() + 6) % 7;
+    const activityIsoDay = isoDayFromDateKey(zonedDateKey(activity.start_time, timeZone));
     eligible.sort(
       (a, b) => Math.abs(a.dayOfWeek - activityIsoDay) - Math.abs(b.dayOfWeek - activityIsoDay)
     );

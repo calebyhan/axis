@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { getUserAccentColor } from "@/lib/queries/profile";
 import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
+import { TimeZoneSync } from "@/components/TimeZoneSync";
 
 export const metadata: Metadata = {
   title: "Axis",
@@ -37,6 +38,7 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="bg-background text-white antialiased selection:bg-white/20">
+        <TimeZoneSync />
         <ServiceWorkerRegistration />
         {children}
       </body>

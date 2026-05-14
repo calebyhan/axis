@@ -1,5 +1,7 @@
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_TIME_ZONE, TIME_ZONE_COOKIE, normalizeTimeZone } from "@/lib/time-zone";
 import type { AccentColor, Units } from "@/types";
 
 const getCachedAuthUser = cache(async () => {
@@ -20,6 +22,31 @@ const getCachedProfile = cache(async () => {
     .single();
   return data;
 });
+
+const getCachedNotificationPreferences = cache(async () => {
+  const user = await getCachedAuthUser();
+  if (!user) return null;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("notification_preferences")
+    .select("timezone")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  return data;
+});
+
+async function getCookieTimeZone(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(TIME_ZONE_COOKIE)?.value;
+  if (!raw) return null;
+
+  try {
+    return normalizeTimeZone(decodeURIComponent(raw));
+  } catch {
+    return normalizeTimeZone(raw);
+  }
+}
 
 export async function getUserUnits(): Promise<Units> {
   const profile = await getCachedProfile();
@@ -56,4 +83,12 @@ export async function getUserDisplayName(): Promise<string> {
   }
 
   return "there";
+}
+
+export async function getUserTimeZone(): Promise<string> {
+  const cookieTimeZone = await getCookieTimeZone();
+  if (cookieTimeZone) return cookieTimeZone;
+
+  const preferences = await getCachedNotificationPreferences();
+  return normalizeTimeZone(preferences?.timezone) ?? DEFAULT_TIME_ZONE;
 }

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/supabase/server";
+import { normalizeTimeZone } from "@/lib/time-zone";
 
 interface WorkoutSetPayload {
   exercise_id: string;
@@ -16,18 +17,43 @@ interface SaveWorkoutPayload {
   duration: number;
   day_type_id: string | null;
   sets: WorkoutSetPayload[];
+  timezone?: string;
 }
 
 interface SaveManualRunPayload {
+  start_time?: string;
   duration: number;
   distance: number;
   suffer_score: number;
   notes: string | null;
+  timezone?: string;
 }
 
 interface SaveBodyWeightPayload {
   date: string;
   body_weight: number;
+}
+
+async function rememberTimeZone(
+  supabase: Awaited<ReturnType<typeof getSession>>["supabase"],
+  userId: string,
+  timeZone: string | null | undefined
+) {
+  const normalized = normalizeTimeZone(timeZone);
+  if (!normalized) return;
+
+  const { error } = await supabase.from("notification_preferences").upsert(
+    {
+      user_id: userId,
+      timezone: normalized,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" }
+  );
+
+  if (error) {
+    console.warn("[action] timezone preference update failed", error.message);
+  }
 }
 
 export async function saveWorkoutSession(payload: SaveWorkoutPayload): Promise<{ activityId: string | null; error: string | null }> {
@@ -65,6 +91,8 @@ export async function saveWorkoutSession(payload: SaveWorkoutPayload): Promise<{
     }
   }
 
+  await rememberTimeZone(supabase, user.id, payload.timezone);
+
   const sets = payload.sets.map((set) => ({
     exercise_id: set.exercise_id,
     set_number: set.set_number,
@@ -96,6 +124,11 @@ export async function saveManualRun(payload: SaveManualRunPayload): Promise<{ er
   const { supabase, user } = await getSession();
   if (!user) return { error: "Not authenticated" };
 
+  const startTime = new Date(payload.start_time ?? Date.now());
+  if (Number.isNaN(startTime.getTime())) {
+    return { error: "Invalid run start time." };
+  }
+
   if (!Number.isFinite(payload.duration) || payload.duration <= 0) {
     return { error: "Enter a valid duration." };
   }
@@ -104,11 +137,13 @@ export async function saveManualRun(payload: SaveManualRunPayload): Promise<{ er
     return { error: "Enter a valid distance." };
   }
 
+  await rememberTimeZone(supabase, user.id, payload.timezone);
+
   const { error } = await supabase.from("activities").insert({
     user_id: user.id,
     type: "manual_run",
     source: "manual",
-    start_time: new Date().toISOString(),
+    start_time: startTime.toISOString(),
     duration: Math.floor(payload.duration),
     distance: payload.distance,
     suffer_score: payload.suffer_score,

@@ -2,8 +2,9 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Activity — Axis", description: "Activity detail" };
 
 import { getActivityWithSets } from "@/lib/queries/activity";
-import { getUserUnits } from "@/lib/queries/profile";
+import { getUserTimeZone, getUserUnits } from "@/lib/queries/profile";
 import { hasSplits } from "@/lib/splits";
+import { formatZonedDate } from "@/lib/time-zone";
 import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
 import { BalanceScoreCard } from "@/components/strength/BalanceScoreCard";
 import { computeStrengthBalance, strengthInputsFromExerciseSets, type StrengthSetDescriptor } from "@/lib/strength-balance";
@@ -138,9 +139,10 @@ export default async function ActivityDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [{ activity, sets }, units] = await Promise.all([
+  const [{ activity, sets }, units, timeZone] = await Promise.all([
     getActivityWithSets(id),
     getUserUnits(),
+    getUserTimeZone(),
   ]);
 
   if (!activity) notFound();
@@ -251,7 +253,7 @@ export default async function ActivityDetailPage({
       </div>
 
       <div className="text-sm text-muted" suppressHydrationWarning>
-        {new Date(activity.start_time).toLocaleDateString("en-US", {
+        {formatZonedDate(activity.start_time, timeZone, {
           weekday: "long",
           year: "numeric",
           month: "long",

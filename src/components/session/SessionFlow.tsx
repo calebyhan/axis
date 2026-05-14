@@ -419,6 +419,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
       duration: Math.floor((Date.now() - captured.startTime.getTime()) / 1000),
       day_type_id: inferredDayType?.id ?? null,
       sets,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
 
     if (result.error) {

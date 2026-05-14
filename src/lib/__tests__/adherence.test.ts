@@ -126,4 +126,32 @@ describe("deriveAdherence", () => {
       completionRate: 50,
     });
   });
+
+  it("uses the configured timezone when deciding if an activity completed a planned day", () => {
+    const slots: PlannedSlot[] = [
+      slot({
+        id: "cardio:wed",
+        scheduleId: "wed",
+        dayOfWeek: 2,
+        date: "2026-05-13",
+        kind: "cardio",
+        planned: easyRun,
+        effective: easyRun,
+      }),
+    ];
+    const activities: Activity[] = [
+      activity({
+        id: "evening-run",
+        type: "manual_run",
+        start_time: "2026-05-14T01:00:00.000Z",
+      }),
+    ];
+
+    const adherence = deriveAdherence(slots, activities, new Date("2026-05-14T12:00:00.000Z"), "America/New_York");
+
+    expect(adherence.slots[0]).toMatchObject({
+      matched: { id: "evening-run" },
+      status: "completed",
+    });
+  });
 });

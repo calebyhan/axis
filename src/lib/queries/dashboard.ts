@@ -1,19 +1,23 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { getUserTimeZone } from "@/lib/queries/profile";
+import {
+  addDateKeyDays,
+  dateKeyRangeUtc,
+  dateKeyToLocalDate,
+  formatZonedDate,
+  isoDayFromDateKey,
+  monthStartDateKey,
+  startOfWeekDateKey,
+  zonedDateKey,
+  zonedDateTimeToUtc,
+} from "@/lib/time-zone";
 import { computeStrengthBalance, strengthInputsFromExerciseSets, type StrengthBalanceSummary, type StrengthSetDescriptor } from "@/lib/strength-balance";
 import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails } from "@/types";
 
 // Returns "YYYY-MM-DD" in local time — avoids UTC drift for date-only columns
 function localDateStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-// Returns the Sunday that starts the current Sun–Sat week (local time)
-function startOfCurrentWeek(today = new Date()): Date {
-  const sunday = new Date(today);
-  sunday.setDate(today.getDate() - today.getDay()); // JS getDay(): 0=Sun, so this always lands on Sunday
-  sunday.setHours(0, 0, 0, 0);
-  return sunday;
 }
 
 type ActivityKind = "workout" | "cardio";
@@ -43,23 +47,24 @@ function setLabel(count: number): string {
   return `${count} set${count === 1 ? "" : "s"}`;
 }
 
-function weeklyDateLabel(startTime: string): string {
-  return new Intl.DateTimeFormat("en-US", {
+function weeklyDateLabel(startTime: string, timeZone: string): string {
+  return formatZonedDate(startTime, timeZone, {
     weekday: "short",
     month: "short",
     day: "numeric",
-  }).format(new Date(startTime));
+  });
 }
 
 function buildDailyKindMap(
-  activities: { start_time: string; type: string }[]
+  activities: { start_time: string; type: string }[],
+  timeZone: string
 ): Map<string, Set<ActivityKind>> {
   const days = new Map<string, Set<ActivityKind>>();
 
   for (const activity of activities) {
     const kind = getActivityKind(activity.type);
     if (!kind) continue;
-    const key = activity.start_time.split("T")[0];
+    const key = zonedDateKey(activity.start_time, timeZone);
     const kinds = days.get(key) ?? new Set<ActivityKind>();
     kinds.add(kind);
     days.set(key, kinds);
@@ -134,10 +139,11 @@ function getDayCompletionCount(
 
 export async function getWeeklyStats() {
   const supabase = await createClient();
-  const now = new Date();
-  const weekStartDateObj = startOfCurrentWeek(now);
-  const weekStart = weekStartDateObj.toISOString();
-  const weekStartDate = localDateStr(weekStartDateObj);
+  const timeZone = await getUserTimeZone();
+  const todayKey = zonedDateKey(new Date(), timeZone);
+  const weekStartDate = startOfWeekDateKey(todayKey);
+  const weekStart = zonedDateTimeToUtc(weekStartDate, timeZone).toISOString();
+  const weekStartDateObj = dateKeyToLocalDate(weekStartDate);
 
   const [
     { data: activities, error: activitiesError },
@@ -207,7 +213,9 @@ export async function getWeeklyMuscleCoverageSummary(): Promise<{
   strengthBalance: StrengthBalanceSummary;
 }> {
   const supabase = await createClient();
-  const weekStart = startOfCurrentWeek().toISOString();
+  const timeZone = await getUserTimeZone();
+  const weekStartKey = startOfWeekDateKey(zonedDateKey(new Date(), timeZone));
+  const weekStart = zonedDateTimeToUtc(weekStartKey, timeZone).toISOString();
 
   const { data: sets, error } = await supabase
     .from("session_sets")
@@ -234,7 +242,7 @@ export async function getWeeklyMuscleCoverageSummary(): Promise<{
     });
 
     const exerciseName = exercise.name ?? "Unknown exercise";
-    const dateLabel = activity?.start_time ? weeklyDateLabel(activity.start_time) : "Workout";
+    const dateLabel = activity?.start_time ? weeklyDateLabel(activity.start_time, timeZone) : "Workout";
     const label = `${dateLabel} - ${exerciseName}`;
     const key = `${activity?.start_time ?? "unknown"}:${exerciseName}`;
     const sortTime = activity?.start_time ? new Date(activity.start_time).getTime() : 0;
@@ -290,8 +298,9 @@ export async function getBodyWeightHistory(days = 30) {
 
 export async function getActivityStreak() {
   const supabase = await createClient();
-  const today = new Date();
-  const weekStart = localDateStr(startOfCurrentWeek(today));
+  const timeZone = await getUserTimeZone();
+  const todayKey = zonedDateKey(new Date(), timeZone);
+  const weekStart = startOfWeekDateKey(todayKey);
   const [{ data, error }, dayPlans, { data: overrides, error: overridesError }] = await Promise.all([
     supabase
       .from("activities")
@@ -303,22 +312,20 @@ export async function getActivityStreak() {
       .from("schedule_overrides")
       .select("date, slot")
       .gte("date", weekStart)
-      .lte("date", localDateStr(today))
+      .lte("date", todayKey)
       .is("day_type_id", null),
   ]);
 
   if (error) console.error("[query] getActivityStreak failed", error.message);
   if (overridesError) console.error("[query] getActivityStreak overrides failed", overridesError.message);
 
-  const activityDays = applySkipOverrides(buildDailyKindMap(data ?? []), (overrides as SkipOverride[] | null) ?? []);
+  const activityDays = applySkipOverrides(buildDailyKindMap(data ?? [], timeZone), (overrides as SkipOverride[] | null) ?? []);
   let streak = 0;
 
   for (let i = 0; i < 120; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const key = localDateStr(d);
+    const key = addDateKeyDays(todayKey, -i);
     const kinds = activityDays.get(key);
-    const plan = key >= weekStart ? dayPlans.get((d.getDay() + 6) % 7) : undefined;
+    const plan = key >= weekStart ? dayPlans.get(isoDayFromDateKey(key)) : undefined;
     const completionCount = getDayCompletionCount(kinds, plan);
     const requiredCount = plan?.hasWorkoutSlot && plan?.hasCardioSlot ? 2 : 1;
 
@@ -346,10 +353,10 @@ export async function getMonthActiveDays(): Promise<{
   skipOverrides: SkipOverride[];
 }> {
   const supabase = await createClient();
-  const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const monthStartStr = localDateStr(new Date(now.getFullYear(), now.getMonth(), 1));
-  const todayStr = localDateStr(now);
+  const timeZone = await getUserTimeZone();
+  const todayStr = zonedDateKey(new Date(), timeZone);
+  const monthStartStr = monthStartDateKey(todayStr);
+  const monthStart = zonedDateTimeToUtc(monthStartStr, timeZone);
 
   const [{ data, error }, plansMap, { data: overrides, error: overridesError }] = await Promise.all([
     supabase
@@ -378,11 +385,11 @@ export async function getMonthActiveDays(): Promise<{
 
 export async function getWeekChecklistData() {
   const supabase = await createClient();
-  const weekStart = startOfCurrentWeek();
-  const weekStartStr = localDateStr(weekStart);
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 6);
-  const weekEndStr = localDateStr(weekEnd);
+  const timeZone = await getUserTimeZone();
+  const weekStartStr = startOfWeekDateKey(zonedDateKey(new Date(), timeZone));
+  const weekStart = dateKeyToLocalDate(weekStartStr);
+  const weekEndStr = addDateKeyDays(weekStartStr, 6);
+  const activityRange = dateKeyRangeUtc(weekStartStr, addDateKeyDays(weekStartStr, 7), timeZone);
 
   const [scheduleRes, activitiesRes, overridesRes, dayTypesRes] = await Promise.all([
     supabase
@@ -392,8 +399,8 @@ export async function getWeekChecklistData() {
     supabase
       .from("activities")
       .select("id, type, start_time, day_type_id")
-      .gte("start_time", weekStart.toISOString())
-      .lt("start_time", new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()),
+      .gte("start_time", activityRange.start.toISOString())
+      .lt("start_time", activityRange.end.toISOString()),
     supabase
       .from("schedule_overrides")
       .select("*")

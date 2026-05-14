@@ -178,6 +178,42 @@ describe("matchChecklist", () => {
 
     expect(result).toEqual([]);
   });
+
+  it("matches late evening activities to the local planned day", () => {
+    const result = matchChecklist(
+      [
+        {
+          id: "wednesday",
+          day_of_week: 2,
+          day_type_id: pushDay.id,
+          cardio_day_type_id: easyRunDay.id,
+          active: true,
+          day_type: pushDay,
+          cardio_day_type: easyRunDay,
+        },
+      ],
+      [
+        activity({
+          id: "evening-run",
+          type: "manual_run",
+          start_time: "2026-05-14T01:00:00.000Z",
+        }),
+      ],
+      [],
+      new Date("2026-05-10T00:00:00"),
+      new Map([
+        [pushDay.id, pushDay],
+        [easyRunDay.id, easyRunDay],
+      ]),
+      "America/New_York"
+    );
+
+    expect(result[0]).toMatchObject({ dayOfWeek: 2, date: "2026-05-13" });
+    expect(result[0].cardio).toMatchObject({
+      matched: { id: "evening-run" },
+      kind: "cardio",
+    });
+  });
 });
 
 describe("polyline helpers", () => {
