@@ -7,6 +7,7 @@ import { saveNotificationPreferences, saveProfile, saveWeeklyScheduleDay } from 
 import { Select } from "@/components/ui/Select";
 import { MiniHeatmap } from "@/components/heatmap/MiniHeatmap";
 import { ACCENT_COLORS } from "@/lib/accent-colors";
+import { getOrCreatePushSubscription, pushSupported, savePushSubscription } from "@/lib/pwa/push-subscription";
 import {
   coercePortableData,
   countPortableRows,
@@ -65,20 +66,6 @@ const NOTIFICATION_DAYS = [
 
 function toTimeInput(value: string): string {
   return value.slice(0, 5);
-}
-
-function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = `${base64String}${padding}`.replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const buffer = new ArrayBuffer(rawData.length);
-  const outputArray = new Uint8Array(buffer);
-
-  for (let i = 0; i < rawData.length; i += 1) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-
-  return buffer;
 }
 
 function normalizeNotificationPrefs(preferences: NotificationPreferences | null): NotificationPrefsState {
@@ -267,11 +254,7 @@ export function SettingsClient({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const supported =
-        "serviceWorker" in navigator &&
-        "PushManager" in window &&
-        "Notification" in window &&
-        !!webPushPublicKey;
+      const supported = pushSupported(webPushPublicKey);
 
       setNotificationStatus((prev) => ({
         ...prev,
@@ -617,15 +600,6 @@ export function SettingsClient({
     }
   }
 
-  async function ensurePushRegistration(): Promise<ServiceWorkerRegistration> {
-    const existing = await navigator.serviceWorker.getRegistration("/");
-    if (existing) return existing;
-    return navigator.serviceWorker.register("/sw.js", {
-      scope: "/",
-      updateViaCache: "none",
-    });
-  }
-
   async function enableNotifications() {
     if (notificationStatus.saving) return;
     if (!notificationStatus.supported || !webPushPublicKey) {
@@ -647,25 +621,9 @@ export function SettingsClient({
         return;
       }
 
-      const registration = await ensurePushRegistration();
-      const existingSubscription = await registration.pushManager.getSubscription();
-      const subscription =
-        existingSubscription ??
-        await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(webPushPublicKey),
-        });
-
+      const subscription = await getOrCreatePushSubscription(webPushPublicKey);
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-      const response = await fetch("/api/notifications/subscriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subscription: subscription.toJSON(),
-          timezone,
-          userAgent: navigator.userAgent,
-        }),
-      });
+      const response = await savePushSubscription(subscription, { enable: true });
 
       if (!response.ok) throw new Error("Subscription save failed");
 

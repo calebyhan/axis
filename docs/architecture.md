@@ -75,6 +75,8 @@ Recommended cron-job.org setup:
 - Schedule: every 15 minutes
 - Header: `Authorization: Bearer <CRON_SECRET>`
 
+Scheduled notifications are deduped by type and date/week. Repeated manual cron calls on the same day can return `skipped: "duplicate"` after the first successful delivery.
+
 ---
 
 ## Navigation Structure

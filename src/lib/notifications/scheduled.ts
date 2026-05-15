@@ -381,6 +381,7 @@ export async function runScheduledNotifications(now = new Date()) {
 
   let sent = 0;
   let skipped = 0;
+  const results: Array<{ kind: AxisNotification["kind"]; sent: number; skipped: string | null }> = [];
 
   for (const preference of (preferences ?? []) as NotificationPreferences[]) {
     const timeZone = safeTimeZone(preference.timezone);
@@ -417,8 +418,13 @@ export async function runScheduledNotifications(now = new Date()) {
       const result = await sendNotificationToUser(preference.user_id, notification);
       sent += result.sent;
       if (result.sent === 0) skipped += 1;
+      results.push({
+        kind: notification.kind,
+        sent: result.sent,
+        skipped: result.skipped,
+      });
     }
   }
 
-  return { checked: preferences?.length ?? 0, sent, skipped };
+  return { checked: preferences?.length ?? 0, sent, skipped, results };
 }

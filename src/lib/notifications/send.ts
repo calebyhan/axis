@@ -24,6 +24,11 @@ type PushSubscriptionRow = {
   auth: string;
 };
 
+type NotificationEventRow = {
+  id: string;
+  sent_at: string | null;
+};
+
 const KIND_PREF_KEYS: Record<NotificationKind, keyof NotificationPreferences> = {
   today_plan: "today_plan_enabled",
   pending_strava_link: "pending_strava_enabled",
@@ -107,24 +112,21 @@ export async function sendNotificationToUser(
   const rows = (subscriptions ?? []) as PushSubscriptionRow[];
   if (rows.length === 0) return { sent: 0, skipped: "no_subscriptions" };
 
-  const { data: event, error: eventError } = await supabase
+  const { data: existingEvent, error: existingEventError } = await supabase
     .from("notification_events")
-    .insert({
-      user_id: userId,
-      kind: notification.kind,
-      dedupe_key: notification.dedupeKey,
-      title: notification.title,
-      body: notification.body,
-      url: notification.url,
-    })
-    .select("id")
-    .single();
+    .select("id, sent_at")
+    .eq("user_id", userId)
+    .eq("kind", notification.kind)
+    .eq("dedupe_key", notification.dedupeKey)
+    .maybeSingle();
 
-  if (eventError) {
-    if (eventError.code === "23505") return { sent: 0, skipped: "duplicate" };
-    console.error("[notifications] Event insert failed", eventError.message);
+  if (existingEventError) {
+    console.error("[notifications] Event lookup failed", existingEventError.message);
     return { sent: 0, skipped: "event_error" };
   }
+
+  const priorEvent = existingEvent as NotificationEventRow | null;
+  if (priorEvent?.sent_at) return { sent: 0, skipped: "duplicate" };
 
   const payload = notificationPayload(notification);
   let sent = 0;
@@ -149,11 +151,34 @@ export async function sendNotificationToUser(
     })
   );
 
-  if (sent > 0 && event?.id) {
-    await supabase
-      .from("notification_events")
-      .update({ sent_at: new Date().toISOString() })
-      .eq("id", event.id);
+  if (sent > 0) {
+    const sentAt = new Date().toISOString();
+    if (priorEvent?.id) {
+      await supabase
+        .from("notification_events")
+        .update({
+          title: notification.title,
+          body: notification.body,
+          url: notification.url,
+          sent_at: sentAt,
+        })
+        .eq("id", priorEvent.id);
+    } else {
+      const { error: eventError } = await supabase
+        .from("notification_events")
+        .insert({
+          user_id: userId,
+          kind: notification.kind,
+          dedupe_key: notification.dedupeKey,
+          title: notification.title,
+          body: notification.body,
+          url: notification.url,
+          sent_at: sentAt,
+        });
+      if (eventError && eventError.code !== "23505") {
+        console.error("[notifications] Event insert failed", eventError.message);
+      }
+    }
   }
 
   return { sent, skipped: sent > 0 ? null : "send_failed" };

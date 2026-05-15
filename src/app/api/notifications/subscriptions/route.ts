@@ -13,6 +13,7 @@ type SubscribeRequest = {
   subscription?: PushSubscriptionPayload;
   timezone?: string;
   userAgent?: string;
+  enable?: boolean;
 };
 
 function validSubscription(subscription: PushSubscriptionPayload | undefined): subscription is Required<PushSubscriptionPayload> & {
@@ -54,21 +55,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Subscription save failed" }, { status: 500 });
   }
 
-  const { error: prefError } = await supabase
-    .from("notification_preferences")
-    .upsert(
-      {
-        user_id: user.id,
-        enabled: true,
-        timezone,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" }
-    );
+  if (body?.enable !== false) {
+    const { error: prefError } = await supabase
+      .from("notification_preferences")
+      .upsert(
+        {
+          user_id: user.id,
+          enabled: true,
+          timezone,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      );
 
-  if (prefError) {
-    console.error("[notifications] preference enable failed", prefError.message);
-    return NextResponse.json({ error: "Preference save failed" }, { status: 500 });
+    if (prefError) {
+      console.error("[notifications] preference enable failed", prefError.message);
+      return NextResponse.json({ error: "Preference save failed" }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ ok: true });
