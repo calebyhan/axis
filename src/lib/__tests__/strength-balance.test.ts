@@ -14,6 +14,7 @@ function input(partial: Partial<StrengthBalanceInput> & Pick<StrengthBalanceInpu
   return {
     primaryMuscles: [],
     secondaryMuscles: [],
+    muscleTags: [],
     ...partial,
   };
 }
@@ -99,6 +100,41 @@ describe("computeStrengthBalance", () => {
       score: 50,
     });
   });
+
+  it("nudges toward the low biceps head bias", () => {
+    const summary = computeStrengthBalance([
+      input({
+        movementPattern: "elbow_flexion",
+        primaryMuscles: ["biceps"],
+        muscleTags: ["biceps_short_head"],
+        sets: 5,
+      }),
+    ], { scopeLabel: "this week", nudgeLimit: 10 });
+
+    const nudge = summary.nudges.find((candidate) => candidate.id === "biceps-head-bias:biceps_long_head");
+    expect(summary.nudges[0]?.id).toBe("biceps-head-bias:biceps_long_head");
+    expect(nudge).toMatchObject({
+      suggestedTags: ["biceps_long_head"],
+      score: 0,
+    });
+    expect(nudge?.message).toContain("short-head biased");
+  });
+
+  it("nudges toward hammer curls when supinated curl work is ahead", () => {
+    const summary = computeStrengthBalance([
+      input({
+        movementPattern: "elbow_flexion",
+        primaryMuscles: ["biceps"],
+        muscleTags: ["biceps_long_head", "biceps_short_head"],
+        sets: 5,
+      }),
+    ], { scopeLabel: "this week", nudgeLimit: 10 });
+
+    expect(summary.nudges.find((candidate) => candidate.id === "biceps-brachialis-low")).toMatchObject({
+      suggestedTags: ["brachialis", "brachioradialis"],
+      score: 0,
+    });
+  });
 });
 
 describe("rankExercisesForBalance", () => {
@@ -138,6 +174,55 @@ describe("rankExercisesForBalance", () => {
 
     expect(rankExercisesForBalance(exercises, summary.nudges)[0]).toBe("row");
   });
+
+  it("prioritizes tag-specific curl variations for biceps-bias nudges", () => {
+    const summary = computeStrengthBalance([
+      input({
+        movementPattern: "elbow_flexion",
+        primaryMuscles: ["biceps"],
+        muscleTags: ["biceps_long_head"],
+        sets: 5,
+      }),
+    ], { scopeLabel: "today", nudgeLimit: 10 });
+
+    const exercises: Exercise[] = [
+      {
+        id: "incline",
+        name: "Incline Dumbbell Curl",
+        category: "pull",
+        movement_pattern: "elbow_flexion",
+        primary_muscles: ["biceps"],
+        secondary_muscles: ["forearm"],
+        muscle_tags: ["biceps_long_head"],
+        equipment: "dumbbell",
+        is_custom: false,
+      },
+      {
+        id: "preacher",
+        name: "Preacher Curl",
+        category: "pull",
+        movement_pattern: "elbow_flexion",
+        primary_muscles: ["biceps"],
+        secondary_muscles: ["forearm"],
+        muscle_tags: ["biceps_short_head"],
+        equipment: "barbell",
+        is_custom: false,
+      },
+      {
+        id: "hammer",
+        name: "Hammer Curl",
+        category: "pull",
+        movement_pattern: "elbow_flexion",
+        primary_muscles: ["biceps"],
+        secondary_muscles: ["forearm"],
+        muscle_tags: ["brachialis", "brachioradialis"],
+        equipment: "dumbbell",
+        is_custom: false,
+      },
+    ];
+
+    expect(rankExercisesForBalance(exercises, summary.nudges)[0]).toBe("preacher");
+  });
 });
 
 describe("projectDayTypeToStrengthInputs", () => {
@@ -174,5 +259,26 @@ describe("projectDayTypeToStrengthInputs", () => {
 
     expect(horizontalPullNudge).toBeTruthy();
     expect(strengthInputsCoverNudge(pullProjection, horizontalPullNudge!)).toBe(true);
+  });
+
+  it("does not let generic pull projections cover tag-specific biceps nudges", () => {
+    const current = computeStrengthBalance([
+      input({
+        movementPattern: "elbow_flexion",
+        primaryMuscles: ["biceps"],
+        muscleTags: ["biceps_short_head"],
+        sets: 5,
+      }),
+    ], { scopeLabel: "this week", nudgeLimit: 10 });
+    const tagNudge = current.nudges.find((nudge) => nudge.id === "biceps-head-bias:biceps_long_head");
+    const pullProjection = projectDayTypeToStrengthInputs({
+      id: "pull",
+      name: "Pull",
+      category: "strength",
+      muscle_focus: ["upper_back", "lats", "biceps", "rear_delt"],
+    });
+
+    expect(tagNudge).toBeTruthy();
+    expect(strengthInputsCoverNudge(pullProjection, tagNudge!)).toBe(false);
   });
 });

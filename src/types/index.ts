@@ -103,6 +103,7 @@ export interface SessionExercise {
   movementPattern: MovementPattern;
   primaryMuscles: MuscleGroup[];
   secondaryMuscles: MuscleGroup[];
+  muscleTags: MuscleTag[];
 }
 
 // muscleGroupCoverage is intentionally omitted — derive from exercises at render time

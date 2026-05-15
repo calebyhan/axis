@@ -195,6 +195,7 @@ export async function getWorkoutSummary(range: TimeRange) {
       movementPattern: ex.movement_pattern,
       primaryMuscles: ex.primary_muscles,
       secondaryMuscles: ex.secondary_muscles,
+      muscleTags: ex.muscle_tags,
     });
     addMuscleTagSets(tagBuckets, ex.muscle_tags);
 

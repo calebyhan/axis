@@ -15,7 +15,7 @@ import {
   type StrengthBalanceInput,
   type StrengthBalanceSummary,
 } from "@/lib/strength-balance";
-import type { DayType, Exercise, MovementPattern, MuscleGroup, ScheduleOverride, SessionExercise, SessionSet, SessionState, Units, WeeklyScheduleRow } from "@/types";
+import type { DayType, Exercise, MovementPattern, MuscleGroup, MuscleTag, ScheduleOverride, SessionExercise, SessionSet, SessionState, Units, WeeklyScheduleRow } from "@/types";
 import { useSession } from "@/context/SessionContext";
 import type { DraftSaveStatus } from "@/context/SessionContext";
 import { ExerciseSearch } from "./ExerciseSearch";
@@ -42,6 +42,7 @@ interface ExerciseRelation {
   movement_pattern: MovementPattern;
   primary_muscles: MuscleGroup[];
   secondary_muscles: MuscleGroup[];
+  muscle_tags?: MuscleTag[];
 }
 interface WeeklySetRow {
   exercise_id: string;
@@ -100,6 +101,7 @@ function weeklyRowsToStrengthInputs(rows: WeeklySetRow[]): StrengthBalanceInput[
       movementPattern: exercise.movement_pattern,
       primaryMuscles: exercise.primary_muscles ?? [],
       secondaryMuscles: exercise.secondary_muscles ?? [],
+      muscleTags: exercise.muscle_tags ?? [],
       sets: 1,
     });
   }
@@ -267,6 +269,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
         movementPattern: activeExerciseRecord.movement_pattern,
         primaryMuscles: activeExerciseRecord.primary_muscles,
         secondaryMuscles: activeExerciseRecord.secondary_muscles,
+        muscleTags: activeExerciseRecord.muscle_tags ?? [],
         sets: [],
       }
     : null);
@@ -336,7 +339,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
         .lte("date", weekEndStr),
       supabase
         .from("session_sets")
-        .select("exercise_id, exercise:exercises!inner(name, primary_muscles, secondary_muscles, movement_pattern), activities!inner(start_time, type)")
+        .select("exercise_id, exercise:exercises!inner(name, primary_muscles, secondary_muscles, muscle_tags, movement_pattern), activities!inner(start_time, type)")
         .eq("activities.type", "workout")
         .gte("activities.start_time", weekStart.toISOString())
         .lt("activities.start_time", nextWeekStart.toISOString()),
@@ -405,6 +408,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
         movementPattern: exercise.movement_pattern,
         primaryMuscles: exercise.primary_muscles,
         secondaryMuscles: exercise.secondary_muscles,
+        muscleTags: exercise.muscle_tags ?? [],
       });
     }
     addSet(exerciseId, set);

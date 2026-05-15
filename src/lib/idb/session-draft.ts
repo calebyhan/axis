@@ -1,5 +1,6 @@
 import { openDB } from "idb";
-import type { MovementPattern, SessionState } from "@/types";
+import type { MovementPattern, MuscleTag, SessionState } from "@/types";
+import { isMuscleTag } from "@/lib/muscle-tags";
 
 const DB_NAME = "axis";
 const STORE = "session_drafts";
@@ -64,6 +65,11 @@ export async function getDraft(): Promise<{ state: SessionState; key: string } |
       ? raw.exercises.map((exercise) => ({
           ...exercise,
           movementPattern: normalizeMovementPattern((exercise as { movementPattern?: unknown }).movementPattern),
+          muscleTags: Array.isArray((exercise as { muscleTags?: unknown }).muscleTags)
+            ? (exercise as { muscleTags: unknown[] }).muscleTags.filter(
+                (tag): tag is MuscleTag => typeof tag === "string" && isMuscleTag(tag)
+              )
+            : [],
         }))
       : [];
     return { state: { ...raw, startTime, exercises }, key: record.key };

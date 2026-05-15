@@ -242,6 +242,7 @@ export async function getWeeklyMuscleCoverageSummary(): Promise<{
       movementPattern: exercise.movement_pattern,
       primaryMuscles: exercise.primary_muscles,
       secondaryMuscles: exercise.secondary_muscles,
+      muscleTags: exercise.muscle_tags,
     });
     addMuscleTagSets(tagBuckets, exercise.muscle_tags);
 

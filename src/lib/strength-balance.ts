@@ -1,4 +1,5 @@
-import type { DayType, Exercise, MuscleGroup, MovementPattern, SessionState } from "@/types";
+import type { DayType, Exercise, MuscleGroup, MuscleTag, MovementPattern, SessionState } from "@/types";
+import { isMuscleTag } from "@/lib/muscle-tags";
 
 export type BalanceAxisId =
   | "push_pull"
@@ -17,6 +18,7 @@ export interface StrengthBalanceInput {
   movementPattern: MovementPattern;
   primaryMuscles: MuscleGroup[];
   secondaryMuscles: MuscleGroup[];
+  muscleTags: MuscleTag[];
   sets: number;
 }
 
@@ -26,6 +28,7 @@ export interface StrengthSetDescriptor {
   movementPattern?: MovementPattern | null;
   primaryMuscles?: MuscleGroup[] | null;
   secondaryMuscles?: MuscleGroup[] | null;
+  muscleTags?: readonly string[] | null;
   sets?: number;
 }
 
@@ -56,6 +59,7 @@ export interface StrengthBalanceNudge {
   message: string;
   suggestedPatterns: MovementPattern[];
   suggestedMuscles: MuscleGroup[];
+  suggestedTags?: MuscleTag[];
   score: number | null;
 }
 
@@ -136,6 +140,65 @@ function countMuscleGroup(inputs: StrengthBalanceInput[], muscles: MuscleGroup[]
       return sum;
     }, 0)
   );
+}
+
+function normalizeMuscleTags(tags: readonly string[] | null | undefined): MuscleTag[] {
+  if (!tags) return [];
+  return tags.filter(isMuscleTag);
+}
+
+function countMuscleTags(inputs: StrengthBalanceInput[], tags: MuscleTag[]): number {
+  const tagSet = new Set(tags);
+  return roundCount(
+    inputs.reduce((sum, input) => (
+      input.muscleTags.some((tag) => tagSet.has(tag)) ? sum + input.sets : sum
+    ), 0)
+  );
+}
+
+function bicepsHeadBiasNudge(inputs: StrengthBalanceInput[], scopeLabel: string): StrengthBalanceNudge | null {
+  const longHead = countMuscleTags(inputs, ["biceps_long_head"]);
+  const shortHead = countMuscleTags(inputs, ["biceps_short_head"]);
+  const total = longHead + shortHead;
+  if (total < 4) return null;
+
+  const high = Math.max(longHead, shortHead);
+  const low = Math.min(longHead, shortHead);
+  if (high === 0 || low >= high * 0.5) return null;
+
+  const lowTag: MuscleTag = longHead < shortHead ? "biceps_long_head" : "biceps_short_head";
+  const dominantLabel = longHead > shortHead ? "long-head" : "short-head";
+  const suggestion = lowTag === "biceps_long_head"
+    ? "incline curls"
+    : "preacher or concentration curls";
+  const score = Math.round((low / high) * 100);
+
+  return {
+    id: `biceps-head-bias:${lowTag}`,
+    severity: score < 50 ? "warning" : "notice",
+    message: `Biceps work is ${dominantLabel} biased ${scopeLabel}. Add ${suggestion}?`,
+    suggestedPatterns: ["elbow_flexion"],
+    suggestedMuscles: ["biceps"],
+    suggestedTags: [lowTag],
+    score,
+  };
+}
+
+function brachialisBiasNudge(inputs: StrengthBalanceInput[], scopeLabel: string): StrengthBalanceNudge | null {
+  const bicepsHeads = countMuscleTags(inputs, ["biceps_long_head", "biceps_short_head"]);
+  const brachialis = countMuscleTags(inputs, ["brachialis"]);
+  if (bicepsHeads < 5 || brachialis >= 2 || brachialis >= bicepsHeads * 0.35) return null;
+
+  const score = bicepsHeads === 0 ? 0 : Math.round((brachialis / bicepsHeads) * 100);
+  return {
+    id: "biceps-brachialis-low",
+    severity: score < 35 ? "warning" : "notice",
+    message: `Curl work is mostly supinated ${scopeLabel}. Add hammer curls for brachialis balance?`,
+    suggestedPatterns: ["elbow_flexion"],
+    suggestedMuscles: ["biceps", "forearm"],
+    suggestedTags: ["brachialis", "brachioradialis"],
+    score,
+  };
 }
 
 const AXIS_DEFINITIONS: BalanceAxisDefinition[] = [
@@ -331,21 +394,26 @@ function makeAxisNudge(axis: BalanceAxisResult, scopeLabel: string): StrengthBal
 function makeSupplementalNudges(inputs: StrengthBalanceInput[], scopeLabel: string): StrengthBalanceNudge[] {
   const chestTriceps = countMuscleGroup(inputs, CHEST_TRICEPS_MUSCLES);
   const back = countMuscleGroup(inputs, BACK_MUSCLES);
+  const nudges: StrengthBalanceNudge[] = [];
 
   if (chestTriceps >= 5 && back <= 2 && back < chestTriceps * 0.5) {
-    return [
-      {
-        id: "back-low",
-        severity: "warning",
-        message: `Chest/triceps are covered. Back has only ${formatBalanceCount(back)} ${setWord(back)} ${scopeLabel}.`,
-        suggestedPatterns: ["horizontal_pull", "vertical_pull"],
-        suggestedMuscles: ["upper_back", "lats", "rear_delt"],
-        score: back === 0 ? 0 : Math.round((back / chestTriceps) * 100),
-      },
-    ];
+    nudges.push({
+      id: "back-low",
+      severity: "warning",
+      message: `Chest/triceps are covered. Back has only ${formatBalanceCount(back)} ${setWord(back)} ${scopeLabel}.`,
+      suggestedPatterns: ["horizontal_pull", "vertical_pull"],
+      suggestedMuscles: ["upper_back", "lats", "rear_delt"],
+      score: back === 0 ? 0 : Math.round((back / chestTriceps) * 100),
+    });
   }
 
-  return [];
+  const headNudge = bicepsHeadBiasNudge(inputs, scopeLabel);
+  if (headNudge) nudges.push(headNudge);
+
+  const brachialisNudge = brachialisBiasNudge(inputs, scopeLabel);
+  if (brachialisNudge) nudges.push(brachialisNudge);
+
+  return nudges;
 }
 
 export function computeStrengthBalance(
@@ -369,7 +437,9 @@ export function computeStrengthBalance(
     .toSorted((a, b) => {
       const severityDiff = Number(b.severity === "warning") - Number(a.severity === "warning");
       if (severityDiff !== 0) return severityDiff;
-      return (a.score ?? 100) - (b.score ?? 100);
+      const scoreDiff = (a.score ?? 100) - (b.score ?? 100);
+      if (scoreDiff !== 0) return scoreDiff;
+      return Number(Boolean(b.suggestedTags?.length)) - Number(Boolean(a.suggestedTags?.length));
     })
     .slice(0, nudgeLimit);
 
@@ -401,6 +471,7 @@ export function sessionToStrengthInputs(session: SessionState): StrengthBalanceI
       movementPattern: exercise.movementPattern ?? "other",
       primaryMuscles: exercise.primaryMuscles,
       secondaryMuscles: exercise.secondaryMuscles,
+      muscleTags: exercise.muscleTags ?? [],
       sets: exercise.sets.length,
     }));
 }
@@ -414,6 +485,7 @@ export function mergeStrengthInputs(inputs: StrengthBalanceInput[]): StrengthBal
       input.movementPattern,
       input.primaryMuscles.join(","),
       input.secondaryMuscles.join(","),
+      input.muscleTags.join(","),
     ].join("|");
     const existing = merged.get(key);
     if (existing) {
@@ -435,6 +507,7 @@ export function strengthInputsFromExerciseSets(rows: StrengthSetDescriptor[]): S
       row.movementPattern ?? "other",
       (row.primaryMuscles ?? []).join(","),
       (row.secondaryMuscles ?? []).join(","),
+      normalizeMuscleTags(row.muscleTags).join(","),
     ].join("|");
     const existing = groups.get(key);
     if (existing) {
@@ -448,6 +521,7 @@ export function strengthInputsFromExerciseSets(rows: StrengthSetDescriptor[]): S
       movementPattern: row.movementPattern ?? "other",
       primaryMuscles: row.primaryMuscles ?? [],
       secondaryMuscles: row.secondaryMuscles ?? [],
+      muscleTags: normalizeMuscleTags(row.muscleTags),
       sets: row.sets ?? 1,
     });
   }
@@ -485,6 +559,7 @@ export function projectDayTypeToStrengthInputs(
       movementPattern,
       primaryMuscles,
       secondaryMuscles,
+      muscleTags: [],
       sets,
     });
   }
@@ -564,6 +639,10 @@ export function strengthInputsCoverNudge(
   inputs: StrengthBalanceInput[],
   nudge: StrengthBalanceNudge
 ): boolean {
+  if (nudge.suggestedTags?.length) {
+    return countMuscleTags(inputs, nudge.suggestedTags) > 0;
+  }
+
   return (
     countPatterns(inputs, nudge.suggestedPatterns) > 0 ||
     countMuscleGroup(inputs, nudge.suggestedMuscles) > 0
@@ -580,12 +659,18 @@ export function rankExercisesForBalance(
     let score = 0;
     nudges.forEach((nudge, index) => {
       const priority = 100 - index * 20;
-      if (nudge.suggestedPatterns.includes(exercise.movement_pattern)) score += priority;
-      if (exercise.primary_muscles.some((muscle) => nudge.suggestedMuscles.includes(muscle))) {
-        score += priority * 0.8;
-      }
-      if (exercise.secondary_muscles.some((muscle) => nudge.suggestedMuscles.includes(muscle))) {
-        score += priority * 0.35;
+      if (nudge.suggestedTags?.length) {
+        if ((exercise.muscle_tags ?? []).some((tag) => nudge.suggestedTags?.includes(tag))) {
+          score += priority * 1.2;
+        }
+      } else {
+        if (nudge.suggestedPatterns.includes(exercise.movement_pattern)) score += priority;
+        if (exercise.primary_muscles.some((muscle) => nudge.suggestedMuscles.includes(muscle))) {
+          score += priority * 0.8;
+        }
+        if (exercise.secondary_muscles.some((muscle) => nudge.suggestedMuscles.includes(muscle))) {
+          score += priority * 0.35;
+        }
       }
     });
     return { id: exercise.id, name: exercise.name, score };
