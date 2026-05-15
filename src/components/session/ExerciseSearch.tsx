@@ -3,6 +3,7 @@
 import { useId, useMemo, useRef, useState } from "react";
 import Fuse from "fuse.js";
 import type { Exercise, MuscleGroup } from "@/types";
+import { summarizeMuscleTags } from "@/lib/muscle-tags";
 
 interface Props {
   exercises: Exercise[];
@@ -140,6 +141,7 @@ export function ExerciseSearch({
                 <div className="text-sm font-medium">{ex.name}</div>
                 <div className="text-xs text-muted mt-0.5 capitalize">
                   {ex.equipment} · {ex.movement_pattern.replace(/_/g, " ")}
+                  {(ex.muscle_tags ?? []).length > 0 ? ` · ${summarizeMuscleTags(ex.muscle_tags)}` : ""}
                 </div>
               </button>
             </li>

@@ -4,8 +4,9 @@ import type { CalendarActivity, CalendarDayPlan, CalendarSkipOverride } from "@/
 import { getUserTimeZone } from "@/lib/queries/profile";
 import { zonedDateKey } from "@/lib/time-zone";
 import { computeStrengthBalance, strengthInputsFromExerciseSets, type StrengthSetDescriptor } from "@/lib/strength-balance";
+import { addMuscleTagSets, muscleTagSummaries } from "@/lib/muscle-tags";
 import { computeATLCTLTSB, normalizeStrengthTL, type DailyLoad } from "@/lib/training-load";
-import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails } from "@/types";
+import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails, MuscleTag } from "@/types";
 
 export type TimeRange = "week" | "month" | "year" | "all";
 
@@ -160,7 +161,7 @@ export async function getWorkoutSummary(range: TimeRange) {
     (() => {
       let q = supabase
         .from("session_sets")
-        .select("reps, weight, exercise_id, exercises!inner(name, primary_muscles, secondary_muscles, movement_pattern), activities!inner(start_time, type)")
+        .select("reps, weight, exercise_id, exercises!inner(name, primary_muscles, secondary_muscles, muscle_tags, movement_pattern), activities!inner(start_time, type)")
         .eq("activities.type", "workout");
       if (since) q = q.gte("activities.start_time", since);
       return q;
@@ -173,12 +174,13 @@ export async function getWorkoutSummary(range: TimeRange) {
   const exerciseVolume = new Map<string, { name: string; volume: number; sets: number }>();
   const coverage: Partial<Record<MuscleGroup, number>> = {};
   const detailBuckets: Partial<Record<MuscleGroup, Map<string, { label: string; count: number; sortTime: number }>>> = {};
+  const tagBuckets: Partial<Record<MuscleGroup, Map<MuscleTag, number>>> = {};
   const balanceRows: StrengthSetDescriptor[] = [];
   let totalSets = 0;
   let totalVolume = 0;
 
   for (const s of sets) {
-    const ex = normalizeRelation<{ name: string; primary_muscles: MuscleGroup[]; secondary_muscles: MuscleGroup[]; movement_pattern: MovementPattern }>(s.exercises);
+    const ex = normalizeRelation<{ name: string; primary_muscles: MuscleGroup[]; secondary_muscles: MuscleGroup[]; muscle_tags?: string[]; movement_pattern: MovementPattern }>(s.exercises);
     const activity = normalizeRelation<{ start_time: string }>(s.activities);
     if (!ex) continue;
 
@@ -194,6 +196,7 @@ export async function getWorkoutSummary(range: TimeRange) {
       primaryMuscles: ex.primary_muscles,
       secondaryMuscles: ex.secondary_muscles,
     });
+    addMuscleTagSets(tagBuckets, ex.muscle_tags);
 
     const dateLabel = activity?.start_time ? workoutDateLabel(activity.start_time) : "Workout";
     const label = `${dateLabel} - ${ex.name}`;
@@ -216,13 +219,19 @@ export async function getWorkoutSummary(range: TimeRange) {
     .slice(0, 5)
     .map((e) => ({ name: e.name, volume: Math.round(e.volume), sets: e.sets }));
 
+  const detailMuscles = new Set<MuscleGroup>([
+    ...(Object.keys(detailBuckets) as MuscleGroup[]),
+    ...(Object.keys(tagBuckets) as MuscleGroup[]),
+  ]);
+
   const muscleDetails = Object.fromEntries(
-    Object.entries(detailBuckets).map(([muscle, bucket]) => [
+    Array.from(detailMuscles).map((muscle) => [
       muscle,
       {
-        items: Array.from(bucket.values())
+        items: Array.from((detailBuckets[muscle] ?? new Map()).values())
           .sort((a, b) => b.sortTime - a.sortTime || b.count - a.count || a.label.localeCompare(b.label))
           .map((item) => `${item.label} (${setLabel(item.count)})`),
+        tags: muscleTagSummaries(tagBuckets[muscle]),
       },
     ])
   ) as MuscleHeatmapDetails;

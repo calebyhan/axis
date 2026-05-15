@@ -14,6 +14,7 @@ export type ISODayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 export type MuscleGroup =
   | "chest"
   | "front_delt"
+  | "lateral_delt"
   | "rear_delt"
   | "triceps"
   | "biceps"
@@ -32,14 +33,26 @@ export type MuscleGroup =
   | "obliques";
 
 export const MUSCLE_GROUPS: MuscleGroup[] = [
-  "chest", "front_delt", "rear_delt", "triceps", "biceps", "forearm",
+  "chest", "front_delt", "lateral_delt", "rear_delt", "triceps", "biceps", "forearm",
   "upper_back", "lats", "traps", "lower_back",
   "glutes", "quads", "hamstrings", "calves", "hip_flexors", "adductors",
   "abs", "obliques",
 ];
 
+export type MuscleTag =
+  | "biceps_long_head"
+  | "biceps_short_head"
+  | "brachialis"
+  | "brachioradialis";
+
+export interface MuscleHeatmapDetailTag {
+  label: string;
+  sets: number;
+}
+
 export interface MuscleHeatmapDetail {
   items: string[];
+  tags?: MuscleHeatmapDetailTag[];
 }
 
 export type MuscleHeatmapDetails = Partial<Record<MuscleGroup, MuscleHeatmapDetail>>;
@@ -70,6 +83,7 @@ export interface Exercise {
   category: string;
   primary_muscles: MuscleGroup[];
   secondary_muscles: MuscleGroup[];
+  muscle_tags: MuscleTag[];
   movement_pattern: MovementPattern;
   equipment: string;
   is_custom: boolean;

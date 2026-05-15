@@ -83,13 +83,21 @@ Interactive heatmaps can show tooltip detail buckets built from recent workout d
 ### Muscle IDs
 
 ```text
-chest, front_delt, rear_delt, triceps, biceps, forearm,
+chest, front_delt, lateral_delt, rear_delt, triceps, biceps, forearm,
 upper_back, lats, traps, lower_back,
 glutes, quads, hamstrings, calves, hip_flexors, adductors,
 abs, obliques
 ```
 
 These IDs must match `exercises.primary_muscles` and `exercises.secondary_muscles`.
+
+### Muscle Tag IDs
+
+```text
+biceps_long_head, biceps_short_head, brachialis, brachioradialis
+```
+
+These optional tags live in `exercises.muscle_tags` and provide detail inside the coarse heatmap groups without changing primary muscle coverage.
 
 ---
 

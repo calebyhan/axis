@@ -25,7 +25,7 @@ interface Props {
 const MUSCLE_GROUPS: { label: string; muscles: MuscleGroup[] }[] = [
   { label: "Chest", muscles: ["chest"] },
   { label: "Back", muscles: ["upper_back", "lats", "traps", "lower_back"] },
-  { label: "Shoulders", muscles: ["front_delt", "rear_delt"] },
+  { label: "Shoulders", muscles: ["front_delt", "lateral_delt", "rear_delt"] },
   { label: "Arms", muscles: ["biceps", "triceps", "forearm"] },
   { label: "Legs", muscles: ["quads", "hamstrings", "glutes", "calves", "hip_flexors", "adductors"] },
   { label: "Core", muscles: ["abs", "obliques"] },

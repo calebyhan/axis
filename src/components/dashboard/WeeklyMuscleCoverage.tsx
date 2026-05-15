@@ -12,6 +12,7 @@ interface Props {
 const MUSCLE_LABELS: Record<MuscleGroup, string> = {
   chest: "Chest",
   front_delt: "Front delts",
+  lateral_delt: "Lateral delts",
   rear_delt: "Rear delts",
   triceps: "Triceps",
   biceps: "Biceps",

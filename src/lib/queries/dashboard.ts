@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { addMuscleTagSets, muscleTagSummaries } from "@/lib/muscle-tags";
 import { getUserTimeZone } from "@/lib/queries/profile";
 import {
   addDateKeyDays,
@@ -14,7 +15,7 @@ import {
 } from "@/lib/time-zone";
 import type { CalendarActivity } from "@/lib/calendar";
 import { computeStrengthBalance, strengthInputsFromExerciseSets, type StrengthBalanceSummary, type StrengthSetDescriptor } from "@/lib/strength-balance";
-import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails } from "@/types";
+import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails, MuscleTag } from "@/types";
 
 // Returns "YYYY-MM-DD" in local time — avoids UTC drift for date-only columns
 function localDateStr(date: Date): string {
@@ -220,18 +221,19 @@ export async function getWeeklyMuscleCoverageSummary(): Promise<{
 
   const { data: sets, error } = await supabase
     .from("session_sets")
-    .select("exercise_id, exercise:exercises(name, primary_muscles, secondary_muscles, movement_pattern), activities!inner(start_time, name)")
+    .select("exercise_id, exercise:exercises(name, primary_muscles, secondary_muscles, muscle_tags, movement_pattern), activities!inner(start_time, name)")
     .gte("activities.start_time", weekStart);
 
   if (error) console.error("[query] getWeeklyMuscleCoverage failed", error.message);
 
   const coverage: Partial<Record<MuscleGroup, number>> = {};
   const detailBuckets: Partial<Record<MuscleGroup, Map<string, { label: string; count: number; sortTime: number }>>> = {};
+  const tagBuckets: Partial<Record<MuscleGroup, Map<MuscleTag, number>>> = {};
   const totalSets = sets?.length ?? 0;
   const balanceRows: StrengthSetDescriptor[] = [];
 
   for (const set of sets ?? []) {
-    const exercise = normalizeRelation<{ name: string | null; primary_muscles: MuscleGroup[]; secondary_muscles: MuscleGroup[]; movement_pattern: MovementPattern }>(set.exercise);
+    const exercise = normalizeRelation<{ name: string | null; primary_muscles: MuscleGroup[]; secondary_muscles: MuscleGroup[]; muscle_tags?: string[]; movement_pattern: MovementPattern }>(set.exercise);
     const activity = normalizeRelation<{ start_time: string; name: string | null }>((set as { activities?: unknown }).activities);
     if (!exercise) continue;
     balanceRows.push({
@@ -241,6 +243,7 @@ export async function getWeeklyMuscleCoverageSummary(): Promise<{
       primaryMuscles: exercise.primary_muscles,
       secondaryMuscles: exercise.secondary_muscles,
     });
+    addMuscleTagSets(tagBuckets, exercise.muscle_tags);
 
     const exerciseName = exercise.name ?? "Unknown exercise";
     const dateLabel = activity?.start_time ? weeklyDateLabel(activity.start_time, timeZone) : "Workout";
@@ -259,13 +262,19 @@ export async function getWeeklyMuscleCoverageSummary(): Promise<{
     }
   }
 
+  const detailMuscles = new Set<MuscleGroup>([
+    ...(Object.keys(detailBuckets) as MuscleGroup[]),
+    ...(Object.keys(tagBuckets) as MuscleGroup[]),
+  ]);
+
   const details = Object.fromEntries(
-    Object.entries(detailBuckets).map(([muscle, bucket]) => [
+    Array.from(detailMuscles).map((muscle) => [
       muscle,
       {
-        items: Array.from(bucket.values())
+        items: Array.from((detailBuckets[muscle] ?? new Map()).values())
           .sort((a, b) => b.sortTime - a.sortTime || b.count - a.count || a.label.localeCompare(b.label))
           .map((item) => `${item.label} (${setLabel(item.count)})`),
+        tags: muscleTagSummaries(tagBuckets[muscle]),
       },
     ])
   ) as MuscleHeatmapDetails;

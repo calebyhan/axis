@@ -6,6 +6,7 @@ interface Exercise {
   movement_pattern: string;
   primary_muscles: string[];
   secondary_muscles: string[];
+  muscle_tags?: string[];
   equipment: string;
   is_custom: boolean;
 }
@@ -281,6 +282,7 @@ const EXERCISES: Exercise[] = [
   { name: "Dumbbell Side Bend", category: "core", movement_pattern: "core", primary_muscles: ["obliques"], secondary_muscles: ["lower_back"], equipment: "dumbbell", is_custom: false },
   { name: "Kettlebell Windmill", category: "core", movement_pattern: "core", primary_muscles: ["obliques"], secondary_muscles: ["lower_back", "glutes"], equipment: "kettlebell", is_custom: false },
   { name: "Ab Machine Crunch", category: "core", movement_pattern: "core", primary_muscles: ["abs"], secondary_muscles: ["obliques"], equipment: "machine", is_custom: false },
+  { name: "Ab Twist Machine", category: "core", movement_pattern: "core", primary_muscles: ["obliques"], secondary_muscles: ["abs"], equipment: "machine", is_custom: false },
   { name: "Plank Hip Dip", category: "core", movement_pattern: "core", primary_muscles: ["obliques"], secondary_muscles: ["abs", "lower_back"], equipment: "gym_mat", is_custom: false },
   { name: "Mountain Climber", category: "core", movement_pattern: "core", primary_muscles: ["abs"], secondary_muscles: ["obliques", "hip_flexors"], equipment: "gym_mat", is_custom: false },
   { name: "Scissor Kicks", category: "core", movement_pattern: "core", primary_muscles: ["abs"], secondary_muscles: ["hip_flexors", "adductors"], equipment: "gym_mat", is_custom: false },
@@ -292,38 +294,38 @@ const EXERCISES: Exercise[] = [
   { name: "Hanging Toes to Bar", category: "core", movement_pattern: "core", primary_muscles: ["abs"], secondary_muscles: ["hip_flexors", "lats"], equipment: "bodyweight", is_custom: false },
 
   // ── ISOLATION / OTHER ──────────────────────────────────────────────────────
-  { name: "Barbell Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], equipment: "barbell", is_custom: false },
-  { name: "Dumbbell Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], equipment: "dumbbell", is_custom: false },
-  { name: "Hammer Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], equipment: "dumbbell", is_custom: false },
-  { name: "Incline Dumbbell Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], equipment: "dumbbell", is_custom: false },
-  { name: "Preacher Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], equipment: "barbell", is_custom: false },
-  { name: "Dumbbell Preacher Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], equipment: "dumbbell", is_custom: false },
-  { name: "Concentration Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: [], equipment: "dumbbell", is_custom: false },
-  { name: "Cable Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], equipment: "cables", is_custom: false },
-  { name: "EZ Bar Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], equipment: "ez_bar", is_custom: false },
-  { name: "Reverse Curl", category: "pull", movement_pattern: "other", primary_muscles: ["forearm"], secondary_muscles: ["biceps"], equipment: "barbell", is_custom: false },
-  { name: "Reverse EZ Bar Curl", category: "pull", movement_pattern: "other", primary_muscles: ["forearm"], secondary_muscles: ["biceps"], equipment: "ez_bar", is_custom: false },
-  { name: "Cable Hammer Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], equipment: "cables", is_custom: false },
-  { name: "Resistance Band Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], equipment: "resistance_band", is_custom: false },
-  { name: "Spider Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: [], equipment: "barbell", is_custom: false },
-  { name: "Dumbbell Spider Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: [], equipment: "dumbbell", is_custom: false },
-  { name: "Zottman Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], equipment: "dumbbell", is_custom: false },
-  { name: "Machine Preacher Curl", category: "pull", movement_pattern: "other", primary_muscles: ["biceps"], secondary_muscles: [], equipment: "machine", is_custom: false },
-  { name: "Skull Crusher", category: "push", movement_pattern: "other", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "barbell", is_custom: false },
-  { name: "EZ Bar Skull Crusher", category: "push", movement_pattern: "other", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "ez_bar", is_custom: false },
-  { name: "Dumbbell Skull Crusher", category: "push", movement_pattern: "other", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "dumbbell", is_custom: false },
-  { name: "Tricep Overhead Extension", category: "push", movement_pattern: "other", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "dumbbell", is_custom: false },
-  { name: "Cable Overhead Tricep Extension", category: "push", movement_pattern: "other", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "cables", is_custom: false },
-  { name: "Cable Tricep Pushdown", category: "push", movement_pattern: "other", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "cables", is_custom: false },
-  { name: "Cable Rope Tricep Pushdown", category: "push", movement_pattern: "other", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "cables", is_custom: false },
-  { name: "Tricep Kickback", category: "push", movement_pattern: "other", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "dumbbell", is_custom: false },
-  { name: "Cable Tricep Kickback", category: "push", movement_pattern: "other", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "cables", is_custom: false },
-  { name: "Machine Tricep Extension", category: "push", movement_pattern: "other", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "machine", is_custom: false },
-  { name: "Resistance Band Tricep Pushdown", category: "push", movement_pattern: "other", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "resistance_band", is_custom: false },
-  { name: "Lateral Raise", category: "push", movement_pattern: "other", primary_muscles: ["front_delt"], secondary_muscles: ["traps"], equipment: "dumbbell", is_custom: false },
-  { name: "Cable Lateral Raise", category: "push", movement_pattern: "other", primary_muscles: ["front_delt"], secondary_muscles: ["traps"], equipment: "cables", is_custom: false },
-  { name: "Machine Lateral Raise", category: "push", movement_pattern: "other", primary_muscles: ["front_delt"], secondary_muscles: ["traps"], equipment: "machine", is_custom: false },
-  { name: "Resistance Band Lateral Raise", category: "push", movement_pattern: "other", primary_muscles: ["front_delt"], secondary_muscles: ["traps"], equipment: "resistance_band", is_custom: false },
+  { name: "Barbell Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], muscle_tags: ["biceps_long_head", "biceps_short_head"], equipment: "barbell", is_custom: false },
+  { name: "Dumbbell Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], muscle_tags: ["biceps_long_head", "biceps_short_head"], equipment: "dumbbell", is_custom: false },
+  { name: "Hammer Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], muscle_tags: ["brachialis", "brachioradialis"], equipment: "dumbbell", is_custom: false },
+  { name: "Incline Dumbbell Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], muscle_tags: ["biceps_long_head"], equipment: "dumbbell", is_custom: false },
+  { name: "Preacher Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], muscle_tags: ["biceps_short_head"], equipment: "barbell", is_custom: false },
+  { name: "Dumbbell Preacher Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], muscle_tags: ["biceps_short_head"], equipment: "dumbbell", is_custom: false },
+  { name: "Concentration Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: [], muscle_tags: ["biceps_short_head"], equipment: "dumbbell", is_custom: false },
+  { name: "Cable Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], muscle_tags: ["biceps_long_head", "biceps_short_head"], equipment: "cables", is_custom: false },
+  { name: "EZ Bar Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], muscle_tags: ["biceps_long_head", "biceps_short_head"], equipment: "ez_bar", is_custom: false },
+  { name: "Reverse Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["forearm"], secondary_muscles: ["biceps"], muscle_tags: ["brachioradialis", "brachialis"], equipment: "barbell", is_custom: false },
+  { name: "Reverse EZ Bar Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["forearm"], secondary_muscles: ["biceps"], muscle_tags: ["brachioradialis", "brachialis"], equipment: "ez_bar", is_custom: false },
+  { name: "Cable Hammer Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], muscle_tags: ["brachialis", "brachioradialis"], equipment: "cables", is_custom: false },
+  { name: "Resistance Band Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], muscle_tags: ["biceps_long_head", "biceps_short_head"], equipment: "resistance_band", is_custom: false },
+  { name: "Spider Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: [], muscle_tags: ["biceps_short_head"], equipment: "barbell", is_custom: false },
+  { name: "Dumbbell Spider Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: [], muscle_tags: ["biceps_short_head"], equipment: "dumbbell", is_custom: false },
+  { name: "Zottman Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: ["forearm"], muscle_tags: ["brachialis", "brachioradialis"], equipment: "dumbbell", is_custom: false },
+  { name: "Machine Preacher Curl", category: "pull", movement_pattern: "elbow_flexion", primary_muscles: ["biceps"], secondary_muscles: [], muscle_tags: ["biceps_short_head"], equipment: "machine", is_custom: false },
+  { name: "Skull Crusher", category: "push", movement_pattern: "elbow_extension", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "barbell", is_custom: false },
+  { name: "EZ Bar Skull Crusher", category: "push", movement_pattern: "elbow_extension", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "ez_bar", is_custom: false },
+  { name: "Dumbbell Skull Crusher", category: "push", movement_pattern: "elbow_extension", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "dumbbell", is_custom: false },
+  { name: "Tricep Overhead Extension", category: "push", movement_pattern: "elbow_extension", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "dumbbell", is_custom: false },
+  { name: "Cable Overhead Tricep Extension", category: "push", movement_pattern: "elbow_extension", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "cables", is_custom: false },
+  { name: "Cable Tricep Pushdown", category: "push", movement_pattern: "elbow_extension", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "cables", is_custom: false },
+  { name: "Cable Rope Tricep Pushdown", category: "push", movement_pattern: "elbow_extension", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "cables", is_custom: false },
+  { name: "Tricep Kickback", category: "push", movement_pattern: "elbow_extension", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "dumbbell", is_custom: false },
+  { name: "Cable Tricep Kickback", category: "push", movement_pattern: "elbow_extension", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "cables", is_custom: false },
+  { name: "Machine Tricep Extension", category: "push", movement_pattern: "elbow_extension", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "machine", is_custom: false },
+  { name: "Resistance Band Tricep Pushdown", category: "push", movement_pattern: "elbow_extension", primary_muscles: ["triceps"], secondary_muscles: [], equipment: "resistance_band", is_custom: false },
+  { name: "Lateral Raise", category: "push", movement_pattern: "other", primary_muscles: ["lateral_delt"], secondary_muscles: ["traps"], equipment: "dumbbell", is_custom: false },
+  { name: "Cable Lateral Raise", category: "push", movement_pattern: "other", primary_muscles: ["lateral_delt"], secondary_muscles: ["traps"], equipment: "cables", is_custom: false },
+  { name: "Machine Lateral Raise", category: "push", movement_pattern: "other", primary_muscles: ["lateral_delt"], secondary_muscles: ["traps"], equipment: "machine", is_custom: false },
+  { name: "Resistance Band Lateral Raise", category: "push", movement_pattern: "other", primary_muscles: ["lateral_delt"], secondary_muscles: ["traps"], equipment: "resistance_band", is_custom: false },
   { name: "Front Raise", category: "push", movement_pattern: "other", primary_muscles: ["front_delt"], secondary_muscles: ["chest"], equipment: "dumbbell", is_custom: false },
   { name: "Barbell Front Raise", category: "push", movement_pattern: "other", primary_muscles: ["front_delt"], secondary_muscles: ["chest"], equipment: "barbell", is_custom: false },
   { name: "Cable Front Raise", category: "push", movement_pattern: "other", primary_muscles: ["front_delt"], secondary_muscles: ["chest"], equipment: "cables", is_custom: false },
@@ -332,9 +334,9 @@ const EXERCISES: Exercise[] = [
   { name: "Dumbbell Shrug", category: "pull", movement_pattern: "other", primary_muscles: ["traps"], secondary_muscles: ["upper_back"], equipment: "dumbbell", is_custom: false },
   { name: "Cable Shrug", category: "pull", movement_pattern: "other", primary_muscles: ["traps"], secondary_muscles: ["upper_back"], equipment: "cables", is_custom: false },
   { name: "Machine Shrug", category: "pull", movement_pattern: "other", primary_muscles: ["traps"], secondary_muscles: ["upper_back"], equipment: "machine", is_custom: false },
-  { name: "Barbell Upright Row", category: "pull", movement_pattern: "other", primary_muscles: ["traps"], secondary_muscles: ["front_delt", "rear_delt"], equipment: "barbell", is_custom: false },
-  { name: "Dumbbell Upright Row", category: "pull", movement_pattern: "other", primary_muscles: ["traps"], secondary_muscles: ["front_delt", "rear_delt"], equipment: "dumbbell", is_custom: false },
-  { name: "Cable Upright Row", category: "pull", movement_pattern: "other", primary_muscles: ["traps"], secondary_muscles: ["front_delt", "rear_delt"], equipment: "cables", is_custom: false },
+  { name: "Barbell Upright Row", category: "pull", movement_pattern: "other", primary_muscles: ["traps"], secondary_muscles: ["lateral_delt", "front_delt", "rear_delt"], equipment: "barbell", is_custom: false },
+  { name: "Dumbbell Upright Row", category: "pull", movement_pattern: "other", primary_muscles: ["traps"], secondary_muscles: ["lateral_delt", "front_delt", "rear_delt"], equipment: "dumbbell", is_custom: false },
+  { name: "Cable Upright Row", category: "pull", movement_pattern: "other", primary_muscles: ["traps"], secondary_muscles: ["lateral_delt", "front_delt", "rear_delt"], equipment: "cables", is_custom: false },
   { name: "Lying Leg Curl", category: "legs", movement_pattern: "other", primary_muscles: ["hamstrings"], secondary_muscles: ["calves"], equipment: "machine", is_custom: false },
   { name: "Seated Leg Curl", category: "legs", movement_pattern: "other", primary_muscles: ["hamstrings"], secondary_muscles: ["calves"], equipment: "machine", is_custom: false },
   { name: "Standing Leg Curl", category: "legs", movement_pattern: "other", primary_muscles: ["hamstrings"], secondary_muscles: ["calves"], equipment: "machine", is_custom: false },
@@ -389,7 +391,8 @@ async function main() {
   }
   await Promise.all(
     batches.map(async (batch, idx) => {
-      const { error } = await supabase.from("exercises").insert(batch);
+      const rows = batch.map((exercise) => ({ muscle_tags: [], ...exercise }));
+      const { error } = await supabase.from("exercises").insert(rows);
       if (error) console.error(`Batch ${idx + 1} error:`, error.message);
       else console.log(`  Batch ${idx + 1}: ${batch.length} exercises`);
     })

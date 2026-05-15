@@ -47,6 +47,7 @@ const TOOLTIP_MARGIN = 8;
 const MUSCLE_LABELS: Record<MuscleGroup, string> = {
   chest: "Chest",
   front_delt: "Front delts",
+  lateral_delt: "Lateral delts",
   rear_delt: "Rear delts",
   triceps: "Triceps",
   biceps: "Biceps",
@@ -124,6 +125,13 @@ const frontMuscles: MuscleLayer[] = [
     ],
   },
   {
+    muscle: "lateral_delt",
+    paths: [
+      "M24.9 37.1 C19.4 40 16.4 46.1 17.4 51.7 C18 55.4 20.7 57.7 24.1 56.8 C23.4 50.3 24.9 42.8 28.3 37.3 C27.3 36.9 26 36.8 24.9 37.1 Z",
+      "M75.1 37.1 C80.6 40 83.6 46.1 82.6 51.7 C82 55.4 79.3 57.7 75.9 56.8 C76.6 50.3 75.1 42.8 71.7 37.3 C72.7 36.9 74 36.8 75.1 37.1 Z",
+    ],
+  },
+  {
     muscle: "biceps",
     paths: [
       "M17.8 56.5 C15.3 64.1 15.2 73.6 17.4 81.1 C20.2 84 24.6 81.9 25.9 76.9 C26.2 66.2 24.8 58.5 21.9 54.1 C20.2 54.5 18.9 55.3 17.8 56.5 Z",
@@ -198,6 +206,13 @@ const backMuscles: MuscleLayer[] = [
     paths: [
       "M27.2 36.4 C20.4 38.8 17.1 45.2 17.4 51.5 C17.7 56.8 21.5 59.4 26.2 57.5 C30.8 55.7 33 51.4 32 45.7 C31.3 41.3 29.9 38.3 27.2 36.4 Z",
       "M72.8 36.4 C79.6 38.8 82.9 45.2 82.6 51.5 C82.3 56.8 78.5 59.4 73.8 57.5 C69.2 55.7 67 51.4 68 45.7 C68.7 41.3 70.1 38.3 72.8 36.4 Z",
+    ],
+  },
+  {
+    muscle: "lateral_delt",
+    paths: [
+      "M24.7 37.2 C19.2 40.2 16.3 46.2 17.4 51.7 C18.1 55.4 20.9 57.5 24.3 56.5 C23.5 50 25 42.7 28.4 37.3 C27.2 36.9 25.8 36.9 24.7 37.2 Z",
+      "M75.3 37.2 C80.8 40.2 83.7 46.2 82.6 51.7 C81.9 55.4 79.1 57.5 75.7 56.5 C76.5 50 75 42.7 71.6 37.3 C72.8 36.9 74.2 36.9 75.3 37.2 Z",
     ],
   },
   {
@@ -420,8 +435,10 @@ export function MuscleHeatmap({
   const interactive = Boolean(tooltipDetails || tooltipContext);
   const activeMuscle = activeTooltip?.muscle ?? null;
   const tooltipItems = activeMuscle ? tooltipDetails?.[activeMuscle]?.items ?? [] : [];
+  const tooltipTags = activeMuscle ? tooltipDetails?.[activeMuscle]?.tags ?? [] : [];
   const visibleTooltipItems = tooltipItems.slice(0, TOOLTIP_LIMIT);
   const visibleTooltipText = visibleTooltipItems.join("\n");
+  const visibleTooltipTagText = tooltipTags.map((tag) => `${tag.label}:${tag.sets}`).join("\n");
   const hiddenTooltipCount = Math.max(0, tooltipItems.length - visibleTooltipItems.length);
   const activeCount = activeMuscle ? countFor(activeMuscle) : 0;
 
@@ -435,7 +452,7 @@ export function MuscleHeatmap({
     tooltip.style.left = `${nextPosition.left}px`;
     tooltip.style.top = `${nextPosition.top}px`;
     tooltip.style.visibility = "visible";
-  }, [activeTooltip, activeCount, hiddenTooltipCount, tooltipContext, visibleTooltipText]);
+  }, [activeTooltip, activeCount, hiddenTooltipCount, tooltipContext, visibleTooltipText, visibleTooltipTagText]);
 
   const handlers: MuscleHandlers = {
     onPointerDown: (event) => {
@@ -491,6 +508,16 @@ export function MuscleHeatmap({
           <div className="mt-0.5 text-[11px] text-white/55">
             {activeCount > 0 ? formatSetCount(activeCount, tooltipContext) : formatEmptyCount(tooltipContext)}
           </div>
+          {tooltipTags.length > 0 && (
+            <div className="mt-2 flex flex-col gap-1 border-t border-white/10 pt-2">
+              {tooltipTags.map((tag) => (
+                <div key={tag.label} className="flex items-center justify-between gap-3 text-[11px] leading-snug">
+                  <span className="text-white/78">{tag.label}</span>
+                  <span className="shrink-0 text-white/48">{formatSetCount(tag.sets)}</span>
+                </div>
+              ))}
+            </div>
+          )}
           {visibleTooltipItems.length > 0 && (
             <div className="mt-2 flex flex-col gap-1">
               {visibleTooltipItems.map((item) => (

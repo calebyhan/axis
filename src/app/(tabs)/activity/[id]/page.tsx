@@ -3,13 +3,14 @@ export const metadata = { title: "Activity — Axis", description: "Activity det
 
 import { getActivityWithSets } from "@/lib/queries/activity";
 import { getUserTimeZone, getUserUnits } from "@/lib/queries/profile";
+import { addMuscleTagSets, muscleTagSummaries } from "@/lib/muscle-tags";
 import { hasSplits } from "@/lib/splits";
 import { formatZonedDate } from "@/lib/time-zone";
 import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
 import { formatDistance, formatPace, distanceUnit } from "@/lib/units";
 import { RunStreams } from "@/components/activity/RunStreams";
 import { SplitsTable } from "@/components/activity/SplitsTable";
-import type { MuscleGroup, MuscleHeatmapDetails, BestEffort, Units } from "@/types";
+import type { MuscleGroup, MuscleHeatmapDetails, BestEffort, Units, MuscleTag } from "@/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -149,7 +150,7 @@ export default async function ActivityDetailPage({
   const isWorkout = activity.type === "workout";
 
   // ── Workout: muscle coverage + exercise groups ──────────────────────────
-  type ExerciseJoin = { name: string; primary_muscles: MuscleGroup[]; secondary_muscles?: MuscleGroup[] };
+  type ExerciseJoin = { name: string; primary_muscles: MuscleGroup[]; secondary_muscles?: MuscleGroup[]; muscle_tags?: string[] };
   type SetRow = { id: string; exercise_id: string; set_number: number; reps: number; weight: number; rpe: number; exercise?: unknown };
   function normalizeExercise(raw: unknown): ExerciseJoin | null {
     if (!raw) return null;
@@ -161,11 +162,13 @@ export default async function ActivityDetailPage({
 
   const coverage: Partial<Record<MuscleGroup, number>> = {};
   const detailBuckets: Partial<Record<MuscleGroup, Map<string, { label: string; count: number }>>> = {};
+  const tagBuckets: Partial<Record<MuscleGroup, Map<MuscleTag, number>>> = {};
   const workoutSets = sets as SetRow[];
 
   for (const s of workoutSets) {
     const ex = normalizeExercise(s.exercise);
     if (!ex) continue;
+    addMuscleTagSets(tagBuckets, ex.muscle_tags);
 
     for (const m of ex.primary_muscles) {
       coverage[m] = (coverage[m] ?? 0) + 1;
@@ -178,13 +181,19 @@ export default async function ActivityDetailPage({
     }
   }
 
+  const detailMuscles = new Set<MuscleGroup>([
+    ...(Object.keys(detailBuckets) as MuscleGroup[]),
+    ...(Object.keys(tagBuckets) as MuscleGroup[]),
+  ]);
+
   const muscleDetails = Object.fromEntries(
-    Object.entries(detailBuckets).map(([muscle, bucket]) => [
+    Array.from(detailMuscles).map((muscle) => [
       muscle,
       {
-        items: Array.from(bucket.values())
+        items: Array.from((detailBuckets[muscle] ?? new Map()).values())
           .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
           .map((item) => `${item.label} (${setLabel(item.count)})`),
+        tags: muscleTagSummaries(tagBuckets[muscle]),
       },
     ])
   ) as MuscleHeatmapDetails;

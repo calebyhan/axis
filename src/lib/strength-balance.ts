@@ -148,7 +148,7 @@ const AXIS_DEFINITIONS: BalanceAxisDefinition[] = [
     left: (inputs) => countPatterns(inputs, PUSH_PATTERNS),
     right: (inputs) => countPatterns(inputs, PULL_PATTERNS),
     suggestions: {
-      left: { patterns: PUSH_PATTERNS, muscles: ["chest", "front_delt", "triceps"] },
+      left: { patterns: PUSH_PATTERNS, muscles: ["chest", "front_delt", "lateral_delt", "triceps"] },
       right: { patterns: PULL_PATTERNS, muscles: ["upper_back", "lats", "rear_delt", "biceps"] },
     },
     message: (dominantSide, scopeLabel) =>
@@ -199,7 +199,7 @@ const AXIS_DEFINITIONS: BalanceAxisDefinition[] = [
     left: (inputs) => countPatterns(inputs, ["vertical_push"]),
     right: (inputs) => countPatterns(inputs, ["vertical_pull"]),
     suggestions: {
-      left: { patterns: ["vertical_push"], muscles: ["front_delt", "triceps"] },
+      left: { patterns: ["vertical_push"], muscles: ["front_delt", "lateral_delt", "triceps"] },
       right: { patterns: ["vertical_pull"], muscles: ["lats", "upper_back", "biceps"] },
     },
     message: (dominantSide, scopeLabel) =>
@@ -233,7 +233,7 @@ const AXIS_DEFINITIONS: BalanceAxisDefinition[] = [
     left: (inputs) => countPatterns(inputs, UPPER_PATTERNS),
     right: (inputs) => countPatterns(inputs, LOWER_PATTERNS),
     suggestions: {
-      left: { patterns: UPPER_PATTERNS, muscles: ["chest", "upper_back", "lats", "front_delt", "rear_delt"] },
+      left: { patterns: UPPER_PATTERNS, muscles: ["chest", "upper_back", "lats", "front_delt", "lateral_delt", "rear_delt"] },
       right: { patterns: LOWER_PATTERNS, muscles: ["quads", "hamstrings", "glutes"] },
     },
     message: (dominantSide, scopeLabel) =>
@@ -494,17 +494,17 @@ export function projectDayTypeToStrengthInputs(
       "horizontal_push",
       "horizontal_push",
       musclesFromFocus(focus, ["chest", "front_delt", "triceps"], ["chest"]),
-      ["front_delt", "triceps"],
+      ["front_delt", "lateral_delt", "triceps"],
       patternSets
     );
   }
 
-  if (focus.has("front_delt") && focus.has("triceps")) {
+  if ((focus.has("front_delt") || focus.has("lateral_delt")) && focus.has("triceps")) {
     add(
       "vertical_push",
       "vertical_push",
       musclesFromFocus(focus, ["front_delt", "triceps"], ["front_delt", "triceps"]),
-      ["traps"],
+      ["lateral_delt", "traps"],
       patternSets
     );
   }
