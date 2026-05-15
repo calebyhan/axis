@@ -1,4 +1,4 @@
-import type { Exercise, MuscleGroup, MovementPattern, SessionState } from "@/types";
+import type { DayType, Exercise, MuscleGroup, MovementPattern, SessionState } from "@/types";
 
 export type BalanceAxisId =
   | "push_pull"
@@ -27,6 +27,12 @@ export interface StrengthSetDescriptor {
   primaryMuscles?: MuscleGroup[] | null;
   secondaryMuscles?: MuscleGroup[] | null;
   sets?: number;
+}
+
+export interface StrengthPlanProjectionOptions {
+  sourceId?: string;
+  setsPerPattern?: number;
+  isolationSets?: number;
 }
 
 export interface BalanceAxisResult {
@@ -93,6 +99,8 @@ const LOWER_PATTERNS: MovementPattern[] = ["quad_dominant", "hip_hinge"];
 
 const BACK_MUSCLES: MuscleGroup[] = ["upper_back", "lats", "traps", "rear_delt"];
 const CHEST_TRICEPS_MUSCLES: MuscleGroup[] = ["chest", "triceps"];
+const DEFAULT_PROJECTED_PATTERN_SETS = 4;
+const DEFAULT_PROJECTED_ISOLATION_SETS = 2;
 
 function roundCount(value: number): number {
   return Math.round(value * 10) / 10;
@@ -445,6 +453,121 @@ export function strengthInputsFromExerciseSets(rows: StrengthSetDescriptor[]): S
   }
 
   return Array.from(groups.values());
+}
+
+function musclesFromFocus(focus: Set<MuscleGroup>, preferred: MuscleGroup[], fallback: MuscleGroup[]): MuscleGroup[] {
+  const focused = preferred.filter((muscle) => focus.has(muscle));
+  return focused.length > 0 ? focused : fallback;
+}
+
+export function projectDayTypeToStrengthInputs(
+  dayType: DayType,
+  options: StrengthPlanProjectionOptions = {}
+): StrengthBalanceInput[] {
+  if (dayType.category !== "strength" || dayType.name === "Rest" || !dayType.muscle_focus?.length) return [];
+
+  const focus = new Set(dayType.muscle_focus);
+  const patternSets = options.setsPerPattern ?? DEFAULT_PROJECTED_PATTERN_SETS;
+  const isolationSets = options.isolationSets ?? DEFAULT_PROJECTED_ISOLATION_SETS;
+  const sourceId = options.sourceId ?? dayType.id;
+  const projected: StrengthBalanceInput[] = [];
+
+  function add(
+    key: string,
+    movementPattern: MovementPattern,
+    primaryMuscles: MuscleGroup[],
+    secondaryMuscles: MuscleGroup[],
+    sets: number
+  ) {
+    projected.push({
+      exerciseId: `planned:${sourceId}:${key}`,
+      name: `${dayType.name} plan`,
+      movementPattern,
+      primaryMuscles,
+      secondaryMuscles,
+      sets,
+    });
+  }
+
+  if (focus.has("chest")) {
+    add(
+      "horizontal_push",
+      "horizontal_push",
+      musclesFromFocus(focus, ["chest", "front_delt", "triceps"], ["chest"]),
+      ["front_delt", "triceps"],
+      patternSets
+    );
+  }
+
+  if (focus.has("front_delt") && focus.has("triceps")) {
+    add(
+      "vertical_push",
+      "vertical_push",
+      musclesFromFocus(focus, ["front_delt", "triceps"], ["front_delt", "triceps"]),
+      ["traps"],
+      patternSets
+    );
+  }
+
+  if (focus.has("upper_back") || focus.has("rear_delt")) {
+    add(
+      "horizontal_pull",
+      "horizontal_pull",
+      musclesFromFocus(focus, ["upper_back", "rear_delt", "lats"], ["upper_back"]),
+      ["biceps", "traps"],
+      patternSets
+    );
+  }
+
+  if (focus.has("lats")) {
+    add(
+      "vertical_pull",
+      "vertical_pull",
+      musclesFromFocus(focus, ["lats", "upper_back", "biceps"], ["lats"]),
+      ["rear_delt", "forearm"],
+      patternSets
+    );
+  }
+
+  if (focus.has("quads")) {
+    add(
+      "quad_dominant",
+      "quad_dominant",
+      musclesFromFocus(focus, ["quads", "glutes"], ["quads"]),
+      ["calves", "adductors"],
+      patternSets
+    );
+  }
+
+  if (focus.has("hamstrings") || focus.has("glutes") || focus.has("lower_back")) {
+    add(
+      "hip_hinge",
+      "hip_hinge",
+      musclesFromFocus(focus, ["hamstrings", "glutes", "lower_back"], ["hamstrings", "glutes"]),
+      ["adductors"],
+      patternSets
+    );
+  }
+
+  if (focus.has("biceps")) {
+    add("elbow_flexion", "elbow_flexion", ["biceps"], ["forearm"], isolationSets);
+  }
+
+  if (focus.has("triceps")) {
+    add("elbow_extension", "elbow_extension", ["triceps"], [], isolationSets);
+  }
+
+  return projected;
+}
+
+export function strengthInputsCoverNudge(
+  inputs: StrengthBalanceInput[],
+  nudge: StrengthBalanceNudge
+): boolean {
+  return (
+    countPatterns(inputs, nudge.suggestedPatterns) > 0 ||
+    countMuscleGroup(inputs, nudge.suggestedMuscles) > 0
+  );
 }
 
 export function rankExercisesForBalance(

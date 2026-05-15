@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   computeStrengthBalance,
+  projectDayTypeToStrengthInputs,
   rankExercisesForBalance,
+  strengthInputsCoverNudge,
   strengthInputsFromExerciseSets,
   type StrengthBalanceInput,
 } from "../strength-balance";
-import type { Exercise } from "../../types";
+import type { DayType, Exercise } from "../../types";
 
 function input(partial: Partial<StrengthBalanceInput> & Pick<StrengthBalanceInput, "movementPattern" | "sets">): StrengthBalanceInput {
   return {
@@ -133,5 +135,42 @@ describe("rankExercisesForBalance", () => {
     ];
 
     expect(rankExercisesForBalance(exercises, summary.nudges)[0]).toBe("row");
+  });
+});
+
+describe("projectDayTypeToStrengthInputs", () => {
+  it("projects future pull days into pull movement and muscle coverage", () => {
+    const pullDay: DayType = {
+      id: "pull",
+      name: "Pull",
+      category: "strength",
+      muscle_focus: ["upper_back", "lats", "biceps", "rear_delt"],
+    };
+
+    expect(projectDayTypeToStrengthInputs(pullDay).map((input) => input.movementPattern)).toEqual([
+      "horizontal_pull",
+      "vertical_pull",
+      "elbow_flexion",
+    ]);
+  });
+
+  it("can tell when a future planned day covers a current nudge", () => {
+    const current = computeStrengthBalance([
+      input({
+        movementPattern: "horizontal_push",
+        primaryMuscles: ["chest", "front_delt", "triceps"],
+        sets: 6,
+      }),
+    ], { scopeLabel: "this week", nudgeLimit: 10 });
+    const horizontalPullNudge = current.nudges.find((nudge) => nudge.axisId === "horizontal_push_pull");
+    const pullProjection = projectDayTypeToStrengthInputs({
+      id: "pull",
+      name: "Pull",
+      category: "strength",
+      muscle_focus: ["upper_back", "lats", "biceps", "rear_delt"],
+    });
+
+    expect(horizontalPullNudge).toBeTruthy();
+    expect(strengthInputsCoverNudge(pullProjection, horizontalPullNudge!)).toBe(true);
   });
 });

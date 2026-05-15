@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { saveWorkoutSession } from "@/app/(tabs)/log/actions";
 import { clearDraft, saveDraft } from "@/lib/idb/session-draft";
-import { getTodayPlannedSlots, localDateStr, toISODayOfWeek } from "@/lib/planner";
+import { buildPlannedSlots, localDateStr, toISODayOfWeek } from "@/lib/planner";
 import {
   computeStrengthBalance,
   mergeStrengthInputs,
+  projectDayTypeToStrengthInputs,
   rankExercisesForBalance,
   sessionToStrengthInputs,
+  strengthInputsCoverNudge,
   type StrengthBalanceInput,
   type StrengthBalanceSummary,
 } from "@/lib/strength-balance";
@@ -34,6 +36,7 @@ interface LoadedData { exercises: Exercise[]; allDayTypes: DayType[] }
 interface NavState { step: Step; activeExerciseId: string | null }
 interface SaveState { saving: boolean; error: string | null; finalSession: SessionState | null }
 interface UserSetup { units: Units; todayMuscles: MuscleGroup[] | undefined; todayDayType: DayType | null | undefined }
+interface ProjectedPlanState { inputs: StrengthBalanceInput[]; sessionCount: number }
 interface ExerciseRelation {
   name: string | null;
   movement_pattern: MovementPattern;
@@ -205,13 +208,22 @@ function LoggedExercisesList({ session, onSelect }: {
   );
 }
 
-function StrengthGuidance({ balance }: { balance: StrengthBalanceSummary }) {
+function StrengthGuidance({ balance, projectedSessionCount }: { balance: StrengthBalanceSummary; projectedSessionCount: number }) {
   if (balance.nudges.length === 0) return null;
 
   return (
     <div className="rounded-xl border border-yellow-300/20 bg-yellow-300/[0.06] px-3 py-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-yellow-100/65">Balance</p>
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-yellow-100/65">
+            {projectedSessionCount > 0 ? "Plan-Checked Balance" : "Balance"}
+          </p>
+          {projectedSessionCount > 0 && (
+            <p className="mt-0.5 text-[11px] text-yellow-100/45">
+              {projectedSessionCount} planned session{projectedSessionCount === 1 ? "" : "s"} checked
+            </p>
+          )}
+        </div>
         {balance.score !== null && (
           <span className="rounded-full border border-yellow-300/20 px-2 py-0.5 text-[11px] font-medium text-yellow-100">
             {balance.score}
@@ -238,6 +250,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
   const [userSetup, setUserSetup] = useState<UserSetup>({ units: initialUnits ?? "imperial", todayMuscles: undefined, todayDayType: undefined });
   const [suggestedSets, setSuggestedSets] = useState<Record<string, SessionSet | undefined>>({});
   const [weeklyStrengthInputs, setWeeklyStrengthInputs] = useState<StrengthBalanceInput[]>([]);
+  const [projectedPlan, setProjectedPlan] = useState<ProjectedPlanState>({ inputs: [], sessionCount: 0 });
   const [closePrompt, setClosePrompt] = useState<{ open: boolean; saving: boolean; error: string | null }>({ open: false, saving: false, error: null });
 
   const { exercises, allDayTypes } = loadedData;
@@ -260,13 +273,19 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
   const activeSuggestedSet = activeExerciseId ? suggestedSets[activeExerciseId] ?? null : null;
   const hasLoggedSets = (session?.exercises.some((ex) => ex.sets.length > 0) ?? false);
   const sessionStrengthInputs = useMemo(() => session ? sessionToStrengthInputs(session) : [], [session]);
-  const weeklyBalance = useMemo(
+  const actualWeeklyBalance = useMemo(
     () => computeStrengthBalance(
       mergeStrengthInputs([...weeklyStrengthInputs, ...sessionStrengthInputs]),
-      { scopeLabel: "this week", nudgeLimit: 3 }
+      { scopeLabel: "this week", nudgeLimit: 6 }
     ),
     [sessionStrengthInputs, weeklyStrengthInputs]
   );
+  const weeklyBalance = useMemo((): StrengthBalanceSummary => {
+    const nudges = actualWeeklyBalance.nudges
+      .filter((nudge) => !strengthInputsCoverNudge(projectedPlan.inputs, nudge))
+      .slice(0, 3);
+    return { ...actualWeeklyBalance, nudges };
+  }, [actualWeeklyBalance, projectedPlan.inputs]);
   const exerciseGuidanceOrder = useMemo(
     () => rankExercisesForBalance(exercises, weeklyBalance.nudges),
     [exercises, weeklyBalance.nudges]
@@ -295,6 +314,9 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
     const isoDay = toISODayOfWeek(today);
     const todayStr = localDateStr(today);
     const weekStart = startOfCurrentWeek(today);
+    const weekEndStr = localDateStr(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6));
+    const nextWeekStart = new Date(weekStart);
+    nextWeekStart.setDate(nextWeekStart.getDate() + 7);
 
     Promise.all([
       supabase.from("exercises").select("*"),
@@ -306,28 +328,37 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
       supabase
         .from("weekly_schedule")
         .select("id, day_of_week, day_type_id, cardio_day_type_id, active, day_type:day_types!weekly_schedule_day_type_id_fkey(id, name, category, muscle_focus), cardio_day_type:day_types!weekly_schedule_cardio_day_type_id_fkey(id, name, category, muscle_focus)")
-        .eq("day_of_week", isoDay)
         .eq("active", true),
       supabase
         .from("schedule_overrides")
         .select("*")
-        .eq("date", todayStr),
+        .gte("date", localDateStr(weekStart))
+        .lte("date", weekEndStr),
       supabase
         .from("session_sets")
         .select("exercise_id, exercise:exercises!inner(name, primary_muscles, secondary_muscles, movement_pattern), activities!inner(start_time, type)")
         .eq("activities.type", "workout")
-        .gte("activities.start_time", weekStart.toISOString()),
+        .gte("activities.start_time", weekStart.toISOString())
+        .lt("activities.start_time", nextWeekStart.toISOString()),
     ]).then(([exercisesRes, dayTypesRes, profileRes, scheduleRes, overridesRes, weeklySetsRes]) => {
       const dayTypes = (dayTypesRes.data ?? []) as DayType[];
       const dayTypeMap = new Map(dayTypes.map((dayType) => [dayType.id, dayType]));
-      const todaySlots = getTodayPlannedSlots(
+      const plannedSlots = buildPlannedSlots(
         normalizeScheduleRows(scheduleRes.data),
         (overridesRes.data ?? []) as unknown as ScheduleOverride[],
-        dayTypeMap,
-        today
+        weekStart,
+        dayTypeMap
       );
+      const todaySlots = plannedSlots.filter((slot) => slot.dayOfWeek === isoDay);
       const workoutSlot = todaySlots.find((slot) => slot.kind === "workout");
       const dt = workoutSlot?.effective?.id === "__workout_rest__" ? null : workoutSlot?.effective;
+      const futureStrengthSlots = plannedSlots.filter((slot) =>
+        slot.kind === "workout" &&
+        slot.date > todayStr &&
+        slot.effective &&
+        slot.effective.id !== "__workout_rest__" &&
+        slot.effective.category === "strength"
+      );
       setLoadedData({
         exercises: (exercisesRes.data ?? []) as Exercise[],
         allDayTypes: dayTypes,
@@ -338,6 +369,12 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
         todayDayType: dt ?? null,
       });
       setWeeklyStrengthInputs(weeklyRowsToStrengthInputs((weeklySetsRes.data ?? []) as WeeklySetRow[]));
+      setProjectedPlan({
+        inputs: futureStrengthSlots.flatMap((slot) =>
+          slot.effective ? projectDayTypeToStrengthInputs(slot.effective, { sourceId: `${slot.date}:${slot.effective.id}` }) : []
+        ),
+        sessionCount: futureStrengthSlots.length,
+      });
     });
   }, [initialUnits]);
 
@@ -509,7 +546,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
           </div>
         )}
 
-        {hasLoggedSets && <StrengthGuidance balance={weeklyBalance} />}
+        {hasLoggedSets && <StrengthGuidance balance={weeklyBalance} projectedSessionCount={projectedPlan.sessionCount} />}
 
         {step === "exercise_search" && (
           <div>

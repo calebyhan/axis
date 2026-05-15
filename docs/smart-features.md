@@ -29,7 +29,7 @@ The live session mini heatmap counts primary-muscle sets in the current in-memor
 
 Axis computes balance from set counts, exercise `movement_pattern`, primary muscles, and secondary muscles.
 
-Live session guidance combines saved current-week work with the active unsaved session and shows compact nudges when an antagonist pair or muscle emphasis falls behind:
+Live session guidance combines saved current-week work with the active unsaved session, then checks remaining planned strength sessions before showing compact nudges. Future plans are projected from `day_types.muscle_focus`, so a planned Pull or Legs day can suppress a current gap warning even before those sets are logged.
 
 - Push/pull.
 - Horizontal push/pull.
@@ -39,7 +39,7 @@ Live session guidance combines saved current-week work with the active unsaved s
 - Upper/lower.
 - Front/rear delt emphasis.
 
-The same scoring engine powers post-session summaries, workout detail pages, weekly dashboard context, and workout stats. Exercise search can prioritize movements or muscles that match the current low side.
+The same scoring engine powers post-session summaries, weekly dashboard context, and workout stats. Exercise search can prioritize movements or muscles that match the current low side when the rest of the plan does not already cover it.
 
 ### Weekly Muscle Coverage
 

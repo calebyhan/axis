@@ -19,7 +19,7 @@ Log sets
   -> reps + weight + RPE
   -> set edits/deletes update in-memory state
   -> mini heatmap updates from primary muscles
-  -> balance nudges compare live sets with current-week movement and muscle coverage
+  -> balance nudges compare live sets with current-week movement, muscle coverage, and remaining planned strength sessions
         ↓
 Add more exercises or return to existing logged exercises
         ↓
