@@ -170,7 +170,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
 function groupBySessions(sets: SetRecord[]): SetRecord[][] {
   const groups = new Map<string, SetRecord[]>();
   for (const s of sets) {
-    const key = s.session_date.split("T")[0];
+    const key = localDateKey(s.session_date);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(s);
   }
@@ -178,6 +178,11 @@ function groupBySessions(sets: SetRecord[]): SetRecord[][] {
     (a, b) =>
       new Date(b[0].session_date).getTime() - new Date(a[0].session_date).getTime()
   );
+}
+
+function localDateKey(value: string): string {
+  const date = new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function computeSuggestion(

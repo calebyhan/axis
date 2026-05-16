@@ -69,6 +69,7 @@ export default function PlanTab({ adherence, planCalendarData, timeRange }: Prop
                 month={month.month}
                 activeDays={month.activeDays}
                 badge={month.badge}
+                today={dateKeyToLocalDate(todayStr)}
               />
             ))}
           </div>
@@ -246,7 +247,7 @@ function buildPlanCalendarMonths(
 
   if (!firstDate) return [];
 
-  const today = new Date();
+  const today = dateKeyToLocalDate(planCalendarData.todayKey);
   const cursor = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
   const final = new Date(today.getFullYear(), today.getMonth(), 1);
 

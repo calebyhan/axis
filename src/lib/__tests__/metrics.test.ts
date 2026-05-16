@@ -12,7 +12,7 @@ import {
   roundDisplayWeight,
   weightUnit,
 } from "../units";
-import { computeATLCTLTSB, normalizeStrengthTL } from "../training-load";
+import { buildDailyTrainingLoads, computeATLCTLTSB, normalizeStrengthTL } from "../training-load";
 
 describe("computeE1RM", () => {
   it("returns the actual weight for one-rep max attempts", () => {
@@ -121,6 +121,27 @@ describe("classifyTrend", () => {
 });
 
 describe("training load metrics", () => {
+  it("buckets run and strength load by the user's time zone day", () => {
+    expect(
+      buildDailyTrainingLoads(
+        [
+          { start_time: "2026-05-14T01:00:00.000Z", suffer_score: 42 },
+        ],
+        [
+          { start_time: "2026-05-16T01:30:00.000Z", reps: 5, weight: 100, rpe: 8 },
+        ],
+        "2026-05-13",
+        "2026-05-16",
+        "America/New_York"
+      )
+    ).toEqual([
+      { date: "2026-05-13", runTL: 42, strengthTL: 0 },
+      { date: "2026-05-14", runTL: 0, strengthTL: 0 },
+      { date: "2026-05-15", runTL: 0, strengthTL: 4 },
+      { date: "2026-05-16", runTL: 0, strengthTL: 0 },
+    ]);
+  });
+
   it("sorts load days, smooths ATL/CTL from starting values, and rounds displayed points", () => {
     expect(
       computeATLCTLTSB(

@@ -29,7 +29,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 interface Props {
   runChartData: { date: string; dist: number }[];
-  pacesWithData: { start_time: string; avg_pace: number | null }[];
+  pacesWithData: { date: string; avg_pace: number | null }[];
   sufferChartData: { date: string; suffer: number | null }[];
   hrChartData: { date: string; hr: number | null }[];
   totalDistanceKm: number;
@@ -44,6 +44,7 @@ interface RunningPersonalRecord {
   activityId: string;
   activityName: string | null;
   startTime: string;
+  date: string;
   effortName: string;
   elapsedTime: number;
   distance: number;
@@ -158,7 +159,7 @@ export default function RunningTab({
                       <span className="truncate text-sm font-semibold">{record.effortName}</span>
                     </div>
                     <div className="mt-1 truncate text-xs text-muted">
-                      {record.startTime.split("T")[0]}{record.activityName ? ` · ${record.activityName}` : ""}
+                      {record.date}{record.activityName ? ` · ${record.activityName}` : ""}
                     </div>
                   </div>
                   <div className="text-right">
@@ -202,7 +203,7 @@ export default function RunningTab({
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={pacesWithData.map((r) => ({
-                  date: r.start_time.split("T")[0],
+                  date: r.date,
                   pace: r.avg_pace,
                 }))}
               >

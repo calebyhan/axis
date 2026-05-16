@@ -195,11 +195,11 @@ function ResumeDraftCard({
 }) {
   const counts = sessionCounts(session);
   const elapsedSeconds = useSessionElapsedSeconds(session);
+  const loggedExercises = session.exercises.filter((exercise) => exercise.sets.length > 0);
+  const latestExercise = loggedExercises[loggedExercises.length - 1]?.name ?? "No sets logged yet";
   const detail = [
     session.dayType?.name ?? "Workout",
-    formatSessionTimer(elapsedSeconds),
     `${counts.exercises} exercise${counts.exercises === 1 ? "" : "s"}`,
-    `${counts.sets} set${counts.sets === 1 ? "" : "s"}`,
     formatRelativeDate(session.startTime),
   ].join(" · ");
 
@@ -207,7 +207,14 @@ function ResumeDraftCard({
     <div className="card p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <div className="text-sm font-medium">{active ? "Workout in progress" : "Resume workout draft"}</div>
-        <div className="mt-1 truncate text-sm text-muted">{detail}</div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          <time dateTime={`PT${elapsedSeconds}S`} className="font-mono tabular-nums text-white" aria-label={`Elapsed ${formatSessionTimer(elapsedSeconds)}`}>
+            {formatSessionTimer(elapsedSeconds)}
+          </time>
+          <span className="text-muted">{latestExercise}</span>
+          <span className="text-muted">{counts.sets} set{counts.sets === 1 ? "" : "s"}</span>
+        </div>
+        <div className="mt-1 truncate text-xs text-muted">{detail}</div>
       </div>
       <button
         type="button"

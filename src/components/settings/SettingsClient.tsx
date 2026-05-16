@@ -68,6 +68,10 @@ function toTimeInput(value: string): string {
   return value.slice(0, 5);
 }
 
+function localDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function normalizeNotificationPrefs(preferences: NotificationPreferences | null): NotificationPrefsState {
   if (!preferences) return DEFAULT_NOTIFICATION_PREFS;
   return {
@@ -459,7 +463,7 @@ export function SettingsClient({
 
     try {
       const data = await buildPortableExport();
-      const date = new Date().toISOString().split("T")[0];
+      const date = localDateKey(new Date());
       if (format === "json") {
         downloadFile(`axis-export-${date}.json`, JSON.stringify(data, null, 2), "application/json");
       } else {

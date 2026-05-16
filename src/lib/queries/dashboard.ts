@@ -294,13 +294,13 @@ export async function getWeeklyMuscleCoverage(): Promise<Partial<Record<MuscleGr
 
 export async function getBodyWeightHistory(days = 30) {
   const supabase = await createClient();
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const timeZone = await getUserTimeZone();
+  const sinceKey = addDateKeyDays(zonedDateKey(new Date(), timeZone), -days);
 
   const { data, error } = await supabase
     .from("daily_checkins")
     .select("date, body_weight")
-    .gte("date", localDateStr(since))
+    .gte("date", sinceKey)
     .order("date", { ascending: true });
 
   if (error) console.error("[query] getBodyWeightHistory failed", error.message);

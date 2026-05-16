@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/supabase/server";
+import { getUserTimeZone } from "@/lib/queries/profile";
+import { startOfWeekDateKey, zonedDateKey } from "@/lib/time-zone";
 import type { AccentColor, Units } from "@/types";
 
 interface ProfilePayload {
@@ -23,23 +25,14 @@ interface NotificationPreferencesPayload {
   timezone?: string;
 }
 
-function localDateStr(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function startOfWeek(today = new Date()): Date {
-  const sunday = new Date(today);
-  sunday.setDate(today.getDate() - today.getDay());
-  sunday.setHours(0, 0, 0, 0);
-  return sunday;
-}
-
 async function invalidateCurrentAndFuturePlannedSlots(supabase: Awaited<ReturnType<typeof getSession>>["supabase"], userId: string) {
+  const timeZone = await getUserTimeZone();
+  const currentWeekStart = startOfWeekDateKey(zonedDateKey(new Date(), timeZone));
   const { error } = await supabase
     .from("planned_slots")
     .delete()
     .eq("user_id", userId)
-    .gte("week_start", localDateStr(startOfWeek()));
+    .gte("week_start", currentWeekStart);
   if (error) console.error("[settings] planned slot invalidation failed", error.message);
 }
 

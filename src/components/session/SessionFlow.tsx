@@ -131,8 +131,8 @@ function SessionHeader({ session, saving, draftSaveStatus, hasLoggedSets, onCanc
 
   return (
     <div className="flex items-center gap-3 px-4 pb-4 border-b border-border" style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))" }}>
-      <button type="button" onClick={onCancel} aria-label="Close workout session" className="shrink-0 size-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors">
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="size-4"><path d="M18 6L6 18M6 6l12 12" /></svg>
+      <button type="button" onClick={onCancel} aria-label="Back from workout session" className="shrink-0 size-9 flex items-center justify-center rounded-full border border-white/10 text-white/55 hover:text-white hover:border-white/20 transition-colors">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="size-4"><path d="M15 18l-6-6 6-6" /></svg>
       </button>
       <div className="flex-1 min-w-0">
         <h2 id="workout-session-title" className="font-semibold">Workout Session</h2>
@@ -161,27 +161,38 @@ function SessionHeader({ session, saving, draftSaveStatus, hasLoggedSets, onCanc
   );
 }
 
-function CloseSessionPrompt({ saving, error, onKeepDraft, onDiscard, onReturn }: {
-  saving: boolean;
-  error: string | null;
-  onKeepDraft: () => void;
+function CloseSessionPrompt({ session, exerciseName, onBackToLog, onDiscard, onReturn }: {
+  session: SessionState | null;
+  exerciseName: string | null;
+  onBackToLog: () => void;
   onDiscard: () => void;
   onReturn: () => void;
 }) {
+  const elapsedSeconds = useSessionElapsedSeconds(session);
+  const loggedExercises = session?.exercises.filter((exercise) => exercise.sets.length > 0) ?? [];
+  const latestExercise = exerciseName ?? loggedExercises[loggedExercises.length - 1]?.name ?? "No sets logged yet";
+  const setCount = loggedExercises.reduce((total, exercise) => total + exercise.sets.length, 0);
+
   return (
     <div className="absolute inset-0 z-10 flex items-end bg-black/60 lg:items-center lg:justify-center">
       <div className="w-full border-t border-border bg-[#0A0A0A] p-4 lg:max-w-sm lg:rounded-2xl lg:border">
-        <h3 className="font-semibold">Close workout?</h3>
-        <p className="mt-2 text-sm text-muted">You have logged sets in this session.</p>
-        {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+        <h3 className="font-semibold">Leave workout open?</h3>
+        <p className="mt-2 text-sm text-muted">Go back to the log and keep the timer running, or discard this session.</p>
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          <time dateTime={`PT${elapsedSeconds}S`} className="font-mono tabular-nums text-white" aria-label={`Elapsed ${formatSessionTimer(elapsedSeconds)}`}>
+            {formatSessionTimer(elapsedSeconds)}
+          </time>
+          <span className="text-muted">{latestExercise}</span>
+          <span className="text-muted">{setCount} set{setCount === 1 ? "" : "s"}</span>
+        </div>
         <div className="mt-4 flex flex-col gap-2">
-          <button type="button" onClick={onKeepDraft} disabled={saving} className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium disabled:opacity-50">
-            {saving ? "Saving..." : "Keep draft"}
+          <button type="button" onClick={onBackToLog} className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium">
+            Back to log
           </button>
-          <button type="button" onClick={onDiscard} disabled={saving} className="w-full rounded-lg border border-red-400/30 px-4 py-2 text-sm text-red-300 disabled:opacity-50">
+          <button type="button" onClick={onDiscard} className="w-full rounded-lg border border-red-400/30 px-4 py-2 text-sm text-red-300">
             Discard
           </button>
-          <button type="button" onClick={onReturn} disabled={saving} className="w-full rounded-lg border border-border px-4 py-2 text-sm text-muted disabled:opacity-50">
+          <button type="button" onClick={onReturn} className="w-full rounded-lg border border-border px-4 py-2 text-sm text-muted">
             Return to workout
           </button>
         </div>
@@ -257,7 +268,7 @@ function StrengthGuidance({ balance, projectedSessionCount }: { balance: Strengt
 }
 
 export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
-  const { session, isActive, hasDraft, autosaveFailed, draftSaveStatus, startSession, resumeDraft, discardDraft, addExercise, addSet, updateSet, deleteSet, endSession, pauseSession, cancelSession } = useSession();
+  const { session, isActive, hasDraft, autosaveFailed, draftSaveStatus, startSession, resumeDraft, discardDraft, addExercise, addSet, updateSet, deleteSet, endSession, cancelSession } = useSession();
 
   const [loadedData, setLoadedData] = useState<LoadedData>({ exercises: [], allDayTypes: [] });
   const [uiState, setUiState] = useState<NavState & { showRecentStats: boolean }>({ step: "exercise_search", activeExerciseId: null, showRecentStats: false });
@@ -266,7 +277,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
   const [suggestedSets, setSuggestedSets] = useState<Record<string, SessionSet | undefined>>({});
   const [weeklyStrengthInputs, setWeeklyStrengthInputs] = useState<StrengthBalanceInput[]>([]);
   const [projectedPlan, setProjectedPlan] = useState<ProjectedPlanState>({ inputs: [], sessionCount: 0 });
-  const [closePrompt, setClosePrompt] = useState<{ open: boolean; saving: boolean; error: string | null }>({ open: false, saving: false, error: null });
+  const [closePromptOpen, setClosePromptOpen] = useState(false);
 
   const { exercises, allDayTypes } = loadedData;
   const { step, activeExerciseId, showRecentStats } = uiState;
@@ -487,22 +498,17 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
     setSaveState((prev) => ({ ...prev, saving: false, finalSession: captured }));
   }
 
-  async function handleKeepDraftAndClose() {
-    setClosePrompt({ open: true, saving: true, error: null });
-    const saved = await pauseSession();
-    if (!saved) {
-      setClosePrompt({ open: true, saving: false, error: "Failed to save this draft locally. Return to the workout and try again." });
-      return;
-    }
+  function handleBackToLog() {
+    if (session) saveDraft(session).catch(console.error);
+    setClosePromptOpen(false);
     onClose();
   }
 
   function handleCancelRequest() {
-    if (hasLoggedSets) {
-      setClosePrompt({ open: true, saving: false, error: null });
+    if (session) {
+      setClosePromptOpen(true);
       return;
     }
-    cancelSession();
     onClose();
   }
 
@@ -601,13 +607,13 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
           onDismiss={() => setUiState((prev) => ({ ...prev, showRecentStats: false }))}
         />
       )}
-      {closePrompt.open && (
+      {closePromptOpen && (
         <CloseSessionPrompt
-          saving={closePrompt.saving}
-          error={closePrompt.error}
-          onKeepDraft={handleKeepDraftAndClose}
-          onDiscard={() => { cancelSession(); onClose(); }}
-          onReturn={() => setClosePrompt({ open: false, saving: false, error: null })}
+          session={session}
+          exerciseName={activeExercise?.name ?? null}
+          onBackToLog={handleBackToLog}
+          onDiscard={() => { cancelSession(); setClosePromptOpen(false); onClose(); }}
+          onReturn={() => setClosePromptOpen(false)}
         />
       )}
     </div>

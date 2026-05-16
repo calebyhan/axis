@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { classifyTrend } from "@/lib/body-weight-trend";
+import { dateKeyToLocalDate } from "@/lib/time-zone";
 import { formatDistance } from "@/lib/units";
 import { useState } from "react";
 import type { HistoricalPlanCalendarData, TimeRange } from "@/lib/queries/stats";
@@ -57,6 +58,7 @@ interface Props {
     id: string;
     name: string | null;
     start_time: string;
+    date: string;
     distance: number | null;
     avg_pace: number | null;
     suffer_score: number | null;
@@ -120,15 +122,15 @@ export function StatsClient({
       ? Math.round(hrsWithData.reduce((s, r) => s + r.avg_heartrate!, 0) / hrsWithData.length)
       : null;
   const runChartData = initialRunningData.map((r) => ({
-    date: r.start_time.split("T")[0],
+    date: r.date,
     dist: parseFloat(formatDistance(r.distance ? r.distance / 1000 : 0, units)),
   }));
   const sufferChartData = initialRunningData
     .filter((r) => r.suffer_score != null)
-    .map((r) => ({ date: r.start_time.split("T")[0], suffer: r.suffer_score }));
+    .map((r) => ({ date: r.date, suffer: r.suffer_score }));
   const hrChartData = initialRunningData
     .filter((r) => r.avg_heartrate != null)
-    .map((r) => ({ date: r.start_time.split("T")[0], hr: r.avg_heartrate ?? null }));
+    .map((r) => ({ date: r.date, hr: r.avg_heartrate ?? null }));
   const personalRecords = initialRunningData.flatMap((r) =>
     (r.best_efforts ?? [])
       .filter((effort) => effort.pr_rank === 1)
@@ -136,6 +138,7 @@ export function StatsClient({
         activityId: r.id,
         activityName: r.name,
         startTime: r.start_time,
+        date: r.date,
         effortName: effort.name,
         elapsedTime: effort.elapsed_time,
         distance: effort.distance,
@@ -149,7 +152,7 @@ export function StatsClient({
   }));
   const bodyChartData = computeRolling(convertedBodyData);
   const trend = classifyTrend(
-    initialBodyData.map((d) => ({ date: new Date(d.date), weight: d.body_weight }))
+    initialBodyData.map((d) => ({ date: dateKeyToLocalDate(d.date), weight: d.body_weight }))
   );
   const trendBadge = {
     gaining: { label: "Gaining", color: "text-green-400" },
