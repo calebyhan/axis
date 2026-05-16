@@ -245,6 +245,7 @@ const EXERCISES: Exercise[] = [
   { name: "Standing Calf Raise (Dumbbell)", category: "legs", movement_pattern: "quad_dominant", primary_muscles: ["calves"], secondary_muscles: [], equipment: "dumbbell", is_custom: false },
   { name: "Standing Calf Raise (Barbell)", category: "legs", movement_pattern: "quad_dominant", primary_muscles: ["calves"], secondary_muscles: [], equipment: "barbell", is_custom: false },
   { name: "Seated Calf Raise", category: "legs", movement_pattern: "quad_dominant", primary_muscles: ["calves"], secondary_muscles: [], equipment: "machine", is_custom: false },
+  { name: "Seated Calf Extension Machine", category: "legs", movement_pattern: "quad_dominant", primary_muscles: ["calves"], secondary_muscles: [], equipment: "machine", is_custom: false },
   { name: "Seated Calf Raise (Dumbbell)", category: "legs", movement_pattern: "quad_dominant", primary_muscles: ["calves"], secondary_muscles: [], equipment: "dumbbell", is_custom: false },
   { name: "Single-Leg Calf Raise", category: "legs", movement_pattern: "quad_dominant", primary_muscles: ["calves"], secondary_muscles: [], equipment: "bodyweight", is_custom: false },
   { name: "Single-Leg Calf Raise (Dumbbell)", category: "legs", movement_pattern: "quad_dominant", primary_muscles: ["calves"], secondary_muscles: [], equipment: "dumbbell", is_custom: false },
