@@ -25,7 +25,7 @@ export function RunCard({ activity, units }: Props) {
   const medals = medalCount(activity.best_efforts);
 
   return (
-    <Link href={`/activity/${activity.id}`} className="card surface-hover flex flex-col block overflow-hidden">
+    <Link href={`/activity/${activity.id}`} className="card surface-hover flex flex-col overflow-hidden">
       {activity.summary_polyline && (
         <div className="w-full h-28 bg-white/[0.02] border-b border-border pointer-events-none">
           <PolylinePreview polyline={activity.summary_polyline} />
@@ -35,7 +35,7 @@ export function RunCard({ activity, units }: Props) {
       <div className="p-4 sm:p-5 flex flex-col gap-3">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <span className="truncate text-[10px] text-white/40 uppercase tracking-[0.18em]">
                 {activity.type === "manual_run" ? "Manual Run" : activity.name ?? "Run"}
               </span>
@@ -66,13 +66,13 @@ export function RunCard({ activity, units }: Props) {
           )}
           {distanceDisplay && (
             <div className="text-right shrink-0">
-              <div className="text-xl font-semibold tracking-tight sm:text-2xl">{distanceDisplay}</div>
+              <div className="text-xl font-semibold tracking-normal sm:text-2xl">{distanceDisplay}</div>
               <div className="text-[10px] text-white/40 uppercase tracking-[0.16em]">{distanceUnit(units)}</div>
             </div>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-x-5 gap-y-3 text-sm">
+        <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-sm min-[420px]:grid-cols-3">
           <div>
             <div className="text-[10px] text-white/38 uppercase tracking-[0.14em]">Time</div>
             <div className="font-medium mt-0.5">{formatDuration(activity.duration)}</div>

@@ -208,13 +208,23 @@ export function StatsClient({
       </div>
 
       <div className="flex gap-4 overflow-x-auto border-b border-border" role="tablist" aria-label="Stats sections">
-        {TABS.map((t) => (
+        {TABS.map((t, index) => (
           <button
             key={t.value}
+            id={`stats-tab-${t.value}`}
             type="button"
             role="tab"
             aria-selected={activeTab === t.value}
+            aria-controls={`stats-panel-${t.value}`}
+            tabIndex={activeTab === t.value ? 0 : -1}
             onClick={() => setActiveTab(t.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+              event.preventDefault();
+              const delta = event.key === "ArrowRight" ? 1 : -1;
+              const nextIndex = (index + delta + TABS.length) % TABS.length;
+              setActiveTab(TABS[nextIndex].value);
+            }}
             className={`shrink-0 pb-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
               activeTab === t.value ? "border-accent text-white" : "border-transparent text-muted"
             }`}
@@ -224,62 +234,69 @@ export function StatsClient({
         ))}
       </div>
 
-      {activeTab === "overview" && (
-        <OverviewTab
-          timeRange={timeRange}
-          units={units}
-          current={currentOverview}
-          previous={previousOverview}
-          workoutSummary={workoutSummary}
-          volumeChartData={volumeChartData}
-          runningData={initialRunningData}
-          runChartData={runChartData}
-          bodyChartData={bodyChartData}
-          trainingLoad={trainingLoad}
-          adherence={adherence}
-          personalRecords={personalRecords}
-          latestLoad={latestLoad}
-          tsbInfo={tsbInfo}
-          trendBadge={trendBadge}
-        />
-      )}
-      {activeTab === "workout" && (
-        <WorkoutTab workoutSummary={workoutSummary} volumeChartData={volumeChartData} timeRange={timeRange} units={units} />
-      )}
-      {activeTab === "running" && (
-        <RunningTab
-          runChartData={runChartData}
-          pacesWithData={pacesWithData}
-          sufferChartData={sufferChartData}
-          hrChartData={hrChartData}
-          totalDistanceKm={totalDistanceKm}
-          runCount={runCount}
-          bestPace={bestPace}
-          avgHR={avgHR}
-          personalRecords={personalRecords}
-          units={units}
-        />
-      )}
-      {activeTab === "body" && (
-        <BodyTab
-          bodyChartData={bodyChartData}
-          convertedBodyData={convertedBodyData}
-          initialBodyData={initialBodyData}
-          trendBadge={trendBadge}
-          currentWeight={currentWeight}
-          weightDelta={weightDelta}
-          minWeight={minWeight}
-          maxWeight={maxWeight}
-          units={units}
-          onEditWeighIn={setEditingBodyDate}
-        />
-      )}
-      {activeTab === "load" && (
-        <LoadTab trainingLoad={trainingLoad} latestLoad={latestLoad} tsbInfo={tsbInfo} timeRange={timeRange} />
-      )}
-      {activeTab === "plan" && (
-        <PlanTab adherence={adherence} planCalendarData={planCalendarData} timeRange={timeRange} />
-      )}
+      <div
+        role="tabpanel"
+        id={`stats-panel-${activeTab}`}
+        aria-labelledby={`stats-tab-${activeTab}`}
+        className="min-w-0"
+      >
+        {activeTab === "overview" && (
+          <OverviewTab
+            timeRange={timeRange}
+            units={units}
+            current={currentOverview}
+            previous={previousOverview}
+            workoutSummary={workoutSummary}
+            volumeChartData={volumeChartData}
+            runningData={initialRunningData}
+            runChartData={runChartData}
+            bodyChartData={bodyChartData}
+            trainingLoad={trainingLoad}
+            adherence={adherence}
+            personalRecords={personalRecords}
+            latestLoad={latestLoad}
+            tsbInfo={tsbInfo}
+            trendBadge={trendBadge}
+          />
+        )}
+        {activeTab === "workout" && (
+          <WorkoutTab workoutSummary={workoutSummary} volumeChartData={volumeChartData} timeRange={timeRange} units={units} />
+        )}
+        {activeTab === "running" && (
+          <RunningTab
+            runChartData={runChartData}
+            pacesWithData={pacesWithData}
+            sufferChartData={sufferChartData}
+            hrChartData={hrChartData}
+            totalDistanceKm={totalDistanceKm}
+            runCount={runCount}
+            bestPace={bestPace}
+            avgHR={avgHR}
+            personalRecords={personalRecords}
+            units={units}
+          />
+        )}
+        {activeTab === "body" && (
+          <BodyTab
+            bodyChartData={bodyChartData}
+            convertedBodyData={convertedBodyData}
+            initialBodyData={initialBodyData}
+            trendBadge={trendBadge}
+            currentWeight={currentWeight}
+            weightDelta={weightDelta}
+            minWeight={minWeight}
+            maxWeight={maxWeight}
+            units={units}
+            onEditWeighIn={setEditingBodyDate}
+          />
+        )}
+        {activeTab === "load" && (
+          <LoadTab trainingLoad={trainingLoad} latestLoad={latestLoad} tsbInfo={tsbInfo} timeRange={timeRange} />
+        )}
+        {activeTab === "plan" && (
+          <PlanTab adherence={adherence} planCalendarData={planCalendarData} timeRange={timeRange} />
+        )}
+      </div>
 
       {editingBodyDate && (
         <div className="fixed inset-0 z-50 flex flex-col bg-background lg:bg-black/60 lg:items-center lg:justify-center lg:p-6" role="dialog" aria-modal="true" aria-labelledby="edit-weight-title">

@@ -261,7 +261,7 @@ function ExerciseDetail({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-[0.2em] text-white/45">Exercise</div>
-          <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em]">{exercise.name}</h2>
+          <h2 className="mt-2 text-xl font-semibold tracking-normal">{exercise.name}</h2>
           <div className="mt-2 text-sm capitalize text-muted">
             {exercise.equipment} · {exercise.category} · {formatMovementPattern(exercise.movement_pattern)}
           </div>
@@ -651,7 +651,7 @@ export function MuscleLookupClient() {
         </Link>
         <div className="min-w-0">
           <div className="page-kicker mb-1">Log</div>
-          <h1 className="text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">Muscle Lookup</h1>
+          <h1 className="text-2xl font-semibold tracking-normal sm:text-3xl">Muscle Lookup</h1>
         </div>
       </div>
 

@@ -344,8 +344,8 @@ function EditableSetRow({
   }
 
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.75fr)_minmax(0,0.75fr)_auto] items-end gap-2 rounded-lg bg-background/50 p-2">
-      <div className="pb-2 text-xs text-muted">Set {set.set_number}</div>
+    <div className="grid gap-2 rounded-lg bg-background/50 p-2 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,0.75fr)_minmax(0,0.75fr)_auto] sm:items-end">
+      <div className="text-xs text-muted sm:pb-2">Set {set.set_number}</div>
       <label className="flex min-w-0 flex-col gap-1">
         <span className="text-[11px] text-muted">Weight ({unit})</span>
         <input
@@ -398,7 +398,7 @@ function EditableSetRow({
         type="button"
         onClick={onDelete}
         aria-label={`Delete set ${set.set_number}`}
-        className="mb-0.5 flex size-8 items-center justify-center rounded-full border border-red-400/20 text-red-300 hover:border-red-300/40 hover:text-red-200"
+        className="flex size-10 items-center justify-center rounded-full border border-red-400/20 text-red-300 hover:border-red-300/40 hover:text-red-200 sm:mb-0.5"
       >
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="size-3.5">
           <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />

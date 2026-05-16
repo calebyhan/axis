@@ -20,12 +20,12 @@ export function DeleteActivityButton({ activityId }: { activityId: string }) {
 
   if (confirming) {
     return (
-      <div className="flex flex-col items-end gap-1 shrink-0">
+    <div className="flex flex-col items-end gap-1 shrink-0">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setConfirming(false)}
-            className="text-xs text-white/45 hover:text-white transition-colors"
+            className="rounded-full px-3 py-1.5 text-xs text-white/65 hover:text-white transition-colors"
           >
             Cancel
           </button>
@@ -48,7 +48,7 @@ export function DeleteActivityButton({ activityId }: { activityId: string }) {
       type="button"
       aria-label="Delete activity"
       onClick={() => setConfirming(true)}
-      className="shrink-0 size-9 flex items-center justify-center rounded-full border border-white/10 text-white/45 hover:text-red-400 hover:border-red-400/30 transition-colors"
+      className="shrink-0 size-9 flex items-center justify-center rounded-full border border-white/10 text-white/60 hover:text-red-400 hover:border-red-400/30 transition-colors"
     >
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="size-4">
         <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />

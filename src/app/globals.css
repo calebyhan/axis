@@ -55,8 +55,43 @@ textarea:focus-visible,
 select:focus-visible,
 [role="button"]:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent) !important;
   outline-offset: 3px;
+}
+
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    min-height: 2.75rem;
+  }
+
+  button,
+  [role="button"] {
+    min-width: 2.75rem;
+  }
+
+  nav a,
+  a.card,
+  a.glass-button {
+    min-height: 2.75rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .text-white\/30,
+  .text-white\/35,
+  .text-white\/38,
+  .text-white\/40 {
+    color: rgba(255, 255, 255, 0.56);
+  }
+
+  .text-white\/45,
+  .text-white\/48 {
+    color: rgba(255, 255, 255, 0.62);
+  }
 }
 
 body {
@@ -245,6 +280,10 @@ body {
   padding: var(--top-h) max(1rem, env(safe-area-inset-right, 0px)) var(--nav-h) max(1rem, env(safe-area-inset-left, 0px));
 }
 
+::selection {
+  background: transparent;
+}
+
 @media (min-width: 768px) {
   .page-shell {
     padding-left: 1rem;
@@ -271,7 +310,7 @@ body {
   font-size: clamp(1.9rem, 4vw, 3rem);
   line-height: 1;
   font-weight: 600;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .page-subtitle {
@@ -344,10 +383,6 @@ body {
 .surface-hover:hover {
   transform: translateY(-1px);
   border-color: var(--border-strong);
-}
-
-::selection {
-  background: transparent;
 }
 
 @media (min-width: 768px) {

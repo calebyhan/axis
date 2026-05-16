@@ -21,7 +21,7 @@ export function WeeklyAdherence({ adherence }: Props) {
             {summary.planned > 0 ? `${done} of ${summary.planned} planned sessions done` : "No planned sessions this week"}
           </div>
         </div>
-        <div className="text-2xl font-semibold tracking-[-0.05em] text-white">
+        <div className="text-2xl font-semibold tracking-normal text-white">
           {pctLabel(summary.completionRate)}
         </div>
       </div>

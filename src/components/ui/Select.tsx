@@ -14,9 +14,10 @@ interface Props {
   onChange: (value: string) => void;
   placeholder?: string;
   showEmptyOption?: boolean;
+  ariaLabel?: string;
 }
 
-export function Select({ value, options, onChange, placeholder = "—", showEmptyOption = true }: Props) {
+export function Select({ value, options, onChange, placeholder = "—", showEmptyOption = true, ariaLabel }: Props) {
   const [open, setOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -28,12 +29,30 @@ export function Select({ value, options, onChange, placeholder = "—", showEmpt
   function openDropdown() {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
+    const viewportPadding = 12;
+    const minWidth = Math.max(rect.width, 130);
+    const width = Math.min(minWidth, window.innerWidth - viewportPadding * 2);
+    const left = Math.min(
+      Math.max(viewportPadding, rect.left),
+      window.innerWidth - width - viewportPadding
+    );
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - viewportPadding;
+    const openAbove = spaceBelow < 180 && spaceAbove > spaceBelow;
+    const availableSpace = openAbove ? spaceAbove : spaceBelow;
+    const maxHeight = Math.min(320, Math.max(96, availableSpace - 8));
+
     setDropdownStyle({
       position: "fixed",
-      top: rect.bottom + 6,
-      right: window.innerWidth - rect.right,
-      minWidth: Math.max(rect.width, 130),
+      left,
+      width,
+      maxWidth: window.innerWidth - viewportPadding * 2,
+      maxHeight,
+      overflowY: "auto",
       zIndex: 9999,
+      ...(openAbove
+        ? { bottom: window.innerHeight - rect.top + 6 }
+        : { top: rect.bottom + 6 }),
     });
     setOpen(true);
   }
@@ -88,8 +107,8 @@ export function Select({ value, options, onChange, placeholder = "—", showEmpt
           id={listboxId}
           style={dropdownStyle}
           role="listbox"
-          aria-label={placeholder}
-          className="rounded-2xl border border-border bg-[#161616] shadow-[0_16px_48px_rgba(0,0,0,0.6)] backdrop-blur-xl overflow-hidden animate-select-open"
+          aria-label={ariaLabel ?? placeholder}
+          className="rounded-2xl border border-border bg-[#161616] shadow-[0_16px_48px_rgba(0,0,0,0.6)] backdrop-blur-xl overflow-hidden overscroll-contain animate-select-open"
         >
           <div className="p-1">
             {showEmptyOption && (
@@ -161,6 +180,7 @@ export function Select({ value, options, onChange, placeholder = "—", showEmpt
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listboxId : undefined}
+        aria-label={ariaLabel ? `${ariaLabel}: ${selected?.label ?? placeholder}` : undefined}
         onKeyDown={onTriggerKeyDown}
         onClick={() => (open ? setOpen(false) : openDropdown())}
         className={`flex w-full min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors sm:min-w-[100px] justify-between ${

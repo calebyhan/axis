@@ -53,7 +53,7 @@ function Pill({
   const label = isSkip ? "Skip" : (slot.effective?.name ?? slot.planned.name);
 
   let cls =
-    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer";
+    "inline-flex min-h-8 min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors cursor-pointer";
   let style: React.CSSProperties | undefined;
 
   if (state === "done") {
@@ -75,7 +75,7 @@ function Pill({
   } else if (state === "override-pending") {
     cls += " border-white/25 bg-white/[0.06] text-white/60";
   } else {
-    cls += " border-white/10 bg-white/[0.03] text-white/40";
+    cls += " border-white/10 bg-white/[0.03] text-[rgba(255,255,255,0.4)]";
   }
 
   const showCheck = state === "done" || (state === "override-done" && !isSkip);
@@ -127,10 +127,11 @@ function OverrideModal({ slot, dayName, dayTypes, isPending, error, onClose, onS
   const isSkipSelected = slot.isOverridden && slot.effective === null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} role="dialog" aria-modal="true" aria-labelledby="schedule-override-title">
+    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} role="dialog" aria-modal="true" aria-labelledby="schedule-override-title" tabIndex={-1}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative w-full lg:max-w-sm rounded-t-2xl lg:rounded-2xl bg-[#141414] border border-white/10 p-5 pb-8 lg:pb-5"
+        className="relative w-full lg:max-w-sm rounded-t-2xl lg:rounded-2xl bg-[#141414] border border-white/10 p-5 lg:pb-5"
+        style={{ paddingBottom: "max(2rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))" }}
         role="document"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
@@ -146,7 +147,7 @@ function OverrideModal({ slot, dayName, dayTypes, isPending, error, onClose, onS
             type="button"
             onClick={onClose}
             aria-label="Close schedule override"
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:text-white/70 transition-colors"
+            className="flex size-10 items-center justify-center rounded-full bg-white/5 text-white/65 hover:text-white transition-colors"
           >
             <svg aria-hidden="true" viewBox="0 0 10 10" fill="none" className="w-3 h-3">
               <path d="M1 9L9 1M1 1l8 8" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
@@ -294,18 +295,18 @@ export function WeekChecklist({ items, dayTypes, todayKey }: Props) {
   return (
     <>
       <div className="card divide-y divide-white/5">
-        <div className="px-4 py-3">
+        <div className="px-4 py-2.5">
           <span className="text-[11px] uppercase tracking-[0.24em] text-white/45">Planned sessions</span>
         </div>
         {ordered.map((day) => {
           const dayPassed = day.date <= todayKey;
           const isToday = day.date === todayKey;
           return (
-            <div key={day.dayOfWeek} className="flex items-center gap-3 px-4 py-3">
+            <div key={day.dayOfWeek} className="flex items-center gap-2.5 px-4 py-2">
               <span className={`text-xs w-8 shrink-0 ${isToday ? "text-[#F6D365] font-medium" : "text-white/38"}`}>
                 {DAY_NAMES[day.dayOfWeek]}
               </span>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {day.workout && (
                   <Pill
                     slot={day.workout}

@@ -391,7 +391,7 @@ function StatCard({
 }) {
   return (
     <div className="card p-3 text-center min-w-0">
-      <div className="text-base font-semibold tracking-tight sm:text-lg">
+      <div className="break-words text-base font-semibold tracking-normal sm:text-lg">
         {value}
         {unit && <span className="text-xs font-normal text-muted ml-1">{unit}</span>}
       </div>

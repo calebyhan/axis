@@ -35,7 +35,7 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="page-kicker">Axis</div>
-          <h1 className="text-[2.4rem] font-semibold tracking-[-0.06em]">Personal athletic dashboard</h1>
+          <h1 className="text-[2.4rem] font-semibold tracking-normal">Personal athletic dashboard</h1>
           <p className="text-muted text-sm mt-3">for training, recovery, and long-term progress.</p>
         </div>
 

@@ -20,9 +20,9 @@ import type { Units } from "@/types";
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="card p-3 flex flex-col gap-1 flex-1">
+    <div className="card min-w-0 p-3 flex flex-col gap-1">
       <span className="text-xs text-muted">{label}</span>
-      <span className="text-base font-semibold leading-tight">{value}</span>
+      <span className="break-words text-base font-semibold leading-tight">{value}</span>
     </div>
   );
 }
@@ -108,7 +108,7 @@ export default function RunningTab({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <StatCard
           label={`Distance (${distanceUnit(units)})`}
           value={runCount === 0 ? "—" : formatDistance(totalDistanceKm, units)}
@@ -136,6 +136,7 @@ export default function RunningTab({
                 onChange={setPrFilter}
                 placeholder="All PRs"
                 showEmptyOption={false}
+                ariaLabel="Personal record filter"
               />
             </div>
           )}

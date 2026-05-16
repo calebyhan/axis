@@ -92,18 +92,20 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
       className="fixed inset-0 bg-background/80 z-50 flex items-end"
       onClick={onDismiss}
       onKeyDown={(e) => e.key === "Escape" && onDismiss()}
-      role="presentation"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="recent-stats-title"
       tabIndex={-1}
     >
       <div
         className="w-full card rounded-b-none p-5 pb-nav max-h-[75vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
-        role="none"
+        role="document"
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-medium">{exercise.name}</h3>
-          <button type="button" onClick={onDismiss} className="text-muted text-sm">Close</button>
+          <h3 id="recent-stats-title" className="font-medium">{exercise.name}</h3>
+          <button type="button" onClick={onDismiss} className="rounded-lg px-3 py-2 text-sm text-muted hover:text-white">Close</button>
         </div>
 
         {sets.length === 0 ? (
@@ -115,10 +117,10 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
               <p className="text-xs text-muted mb-2 uppercase tracking-wide">Last Session</p>
               <div className="flex flex-col gap-1">
                 {lastSession.map((s, lastSetIdx) => (
-                  <div key={`last-set-${lastSetIdx}`} className="flex justify-between text-sm">
+                  <div key={`last-set-${lastSetIdx}`} className="grid grid-cols-[3.25rem_minmax(0,1fr)_3.75rem] gap-2 text-sm">
                     <span className="text-muted">Set {s.set_number}</span>
-                    <span>{d(s.weight)} {unit} × {s.reps} @ RPE {s.rpe}</span>
-                    <span className="text-muted">{d(s.e1rm).toFixed(1)}</span>
+                    <span className="min-w-0 truncate">{d(s.weight)} {unit} × {s.reps} @ RPE {s.rpe}</span>
+                    <span className="text-right text-muted">{d(s.e1rm).toFixed(1)}</span>
                   </div>
                 ))}
               </div>

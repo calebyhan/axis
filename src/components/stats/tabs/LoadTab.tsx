@@ -19,9 +19,9 @@ import { STATS_RANGE_LABELS, type TimeRange } from "@/lib/stats-ranges";
 
 function StatCard({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
   return (
-    <div className="card p-3 flex flex-col gap-1 flex-1">
+    <div className="card min-w-0 p-3 flex flex-col gap-1">
       <span className="text-xs text-muted">{label}</span>
-      <span className={`text-base font-semibold leading-tight ${valueClass ?? ""}`}>{value}</span>
+      <span className={`break-words text-base font-semibold leading-tight ${valueClass ?? ""}`}>{value}</span>
     </div>
   );
 }
@@ -37,12 +37,12 @@ export default function LoadTab({ trainingLoad, latestLoad, tsbInfo, timeRange }
   return (
     <div className="flex flex-col gap-5">
       {latestLoad && tsbInfo && (
-        <div className="flex gap-2">
+        <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-3">
           <StatCard label="Fitness (CTL)" value={String(latestLoad.ctl)} />
           <StatCard label="Fatigue (ATL)" value={String(latestLoad.atl)} />
-          <div className="card p-3 flex flex-col gap-1 flex-1">
+          <div className="card min-w-0 p-3 flex flex-col gap-1">
             <span className="text-xs text-muted">Form (TSB)</span>
-            <span className={`text-base font-semibold leading-tight ${tsbInfo.color}`}>
+            <span className={`break-words text-base font-semibold leading-tight ${tsbInfo.color}`}>
               {latestLoad.tsb > 0 ? "+" : ""}{latestLoad.tsb} · {tsbInfo.label}
             </span>
           </div>
@@ -103,7 +103,7 @@ export default function LoadTab({ trainingLoad, latestLoad, tsbInfo, timeRange }
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex gap-4 mt-3 text-xs text-muted">
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted">
               <span className="text-green-400">+5 Fresh</span>
               <span className="text-blue-400">−10–+5 Neutral</span>
               <span className="text-orange-400">−30–−10 Fatigued</span>

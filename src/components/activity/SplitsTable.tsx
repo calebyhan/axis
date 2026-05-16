@@ -23,7 +23,8 @@ export function SplitsTable({ splits, units }: { splits: ActivitySplits; units: 
   return (
     <div>
       <div className="text-xs text-muted uppercase tracking-wider mb-2">Splits</div>
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
+        <div className="min-w-[20rem]">
         <div
           className={`grid text-[10px] text-muted uppercase tracking-wider px-3 py-2 border-b border-border ${
             hasGAP ? "grid-cols-5" : "grid-cols-4"
@@ -64,6 +65,7 @@ export function SplitsTable({ splits, units }: { splits: ActivitySplits; units: 
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );

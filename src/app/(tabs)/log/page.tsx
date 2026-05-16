@@ -150,7 +150,7 @@ function LogAction({
         primary ? "h-32 p-5 lg:h-auto lg:min-h-[18rem] lg:items-end lg:p-6" : "h-32 p-5 lg:h-auto lg:min-h-[8.5rem]"
       } ${className}`}
     >
-      <div className="min-w-0">
+        <div className="min-w-0">
         <div className={primary ? "font-semibold text-lg lg:text-2xl" : "font-medium text-base"}>
           {title}
         </div>
@@ -318,7 +318,7 @@ function StravaImportPreview({
       )}
 
       {!state.loading && !state.error && activity && (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className="truncate text-sm font-medium">{activity.name}</div>
             <div className="mt-1 text-xs text-muted">
@@ -354,9 +354,9 @@ function RecentItem({
   const className = "flex items-start justify-between gap-3 border-t border-border pt-3 first:border-t-0 first:pt-0";
   const content = (
     <>
-      <div>
+      <div className="min-w-0">
         <div className="text-[11px] uppercase tracking-[0.16em] text-muted">{label}</div>
-        <div className="mt-1 text-sm font-medium">{title}</div>
+        <div className="mt-1 truncate text-sm font-medium">{title}</div>
       </div>
       <div className="shrink-0 pt-5 text-right text-xs text-muted">{meta}</div>
     </>

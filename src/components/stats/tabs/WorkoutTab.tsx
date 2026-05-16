@@ -19,9 +19,9 @@ import type { MuscleGroup, MuscleHeatmapDetails, Units } from "@/types";
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="card p-3 flex flex-col gap-1 flex-1">
+    <div className="card min-w-0 p-3 flex flex-col gap-1">
       <span className="text-xs text-muted">{label}</span>
-      <span className="text-base font-semibold leading-tight">{value}</span>
+      <span className="break-words text-base font-semibold leading-tight">{value}</span>
     </div>
   );
 }
@@ -49,7 +49,7 @@ export default function WorkoutTab({ workoutSummary, volumeChartData, timeRange,
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-2 min-[420px]:grid-cols-3">
         <StatCard label="Sessions" value={String(workoutSummary.sessionCount)} />
         <StatCard
           label={`Volume (${weightUnit(units)})`}
@@ -140,7 +140,7 @@ export default function WorkoutTab({ workoutSummary, volumeChartData, timeRange,
                   const maxDisplay = units === "imperial" ? Math.round(maxVol * 2.20462) : maxVol;
                   return (
                     <div key={ex.name} className="flex flex-col gap-1">
-                      <div className="flex justify-between text-sm">
+                      <div className="flex min-w-0 flex-col gap-1 text-sm sm:flex-row sm:justify-between">
                         <span className="font-medium truncate pr-2">{ex.name}</span>
                         <span className="text-muted shrink-0">
                           {formatWeight(ex.volume, units)} {weightUnit(units)} · {ex.sets} sets

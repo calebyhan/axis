@@ -117,7 +117,7 @@ function NotificationToggle({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white/[0.025] px-3 py-2.5">
+    <div className="flex flex-col items-stretch gap-3 rounded-xl border border-border bg-white/[0.025] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
       <label className="flex min-w-0 items-center gap-2 text-sm">
         <input
           type="checkbox"
@@ -128,7 +128,7 @@ function NotificationToggle({
         />
         <span className={disabled ? "text-white/45" : "text-white/80"}>{label}</span>
       </label>
-      {children && <div className="shrink-0">{children}</div>}
+      {children && <div className="w-full shrink-0 sm:w-auto">{children}</div>}
     </div>
   );
 }
@@ -816,6 +816,7 @@ export function SettingsClient({
                       options={strengthTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
                       placeholder="Rest"
                       showEmptyOption={!strengthTypes.some((dt) => isRestName(dt.name))}
+                      ariaLabel={`${DAY_NAMES[dayIdx]} workout plan`}
                       onChange={(val) => {
                         void handleScheduleChange(dayIdx, val);
                       }}
@@ -828,6 +829,7 @@ export function SettingsClient({
                       options={runTypes.map((dt) => ({ value: dt.id, label: dt.name }))}
                       placeholder="Rest"
                       showEmptyOption={!runTypes.some((dt) => isRestName(dt.name))}
+                      ariaLabel={`${DAY_NAMES[dayIdx]} cardio plan`}
                       onChange={(val) => {
                         void handleCardioChange(dayIdx, val);
                       }}

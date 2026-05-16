@@ -63,7 +63,7 @@ function Stat({
 
   return (
     <div className="card-soft p-3.5 text-center">
-      <div className={`text-lg font-semibold tracking-[-0.04em] ${valueClass}`}>
+      <div className={`text-lg font-semibold tracking-normal ${valueClass}`}>
         {value}
         {unit && <span className="text-xs font-normal text-muted ml-1">{unit}</span>}
       </div>

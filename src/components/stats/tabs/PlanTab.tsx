@@ -52,7 +52,7 @@ export default function PlanTab({ adherence, planCalendarData, timeRange }: Prop
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <StatCard label="Adherence" value={rate === null ? "—" : `${rate}%`} />
         <StatCard label="Completed" value={String(totals.completed)} />
         <StatCard label="Missed" value={String(totals.missed)} />
@@ -284,7 +284,7 @@ function SlotCell({ item }: { item: CurrentWeekSlot }) {
 
   return (
     <div className={`min-h-14 rounded-md border px-3 py-2 ${styles.shell}`}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-2 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
         <div className="min-w-0">
           <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/35">{kindLabel}</div>
           <div className="mt-1 truncate text-sm font-medium text-white/80">{item.slot.effective?.name ?? "Skipped"}</div>
@@ -310,9 +310,9 @@ function RestCell({ kind }: { kind: "Workout" | "Cardio" }) {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="card p-3 flex flex-col gap-1">
+    <div className="card min-w-0 p-3 flex flex-col gap-1">
       <span className="text-xs text-muted">{label}</span>
-      <span className="text-base font-semibold leading-tight">{value}</span>
+      <span className="break-words text-base font-semibold leading-tight">{value}</span>
     </div>
   );
 }

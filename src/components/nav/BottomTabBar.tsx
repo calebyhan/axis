@@ -84,7 +84,7 @@ export function BottomTabBar() {
               className={`flex-1 flex flex-col items-center justify-center py-2.5 min-h-[58px] rounded-2xl transition-all ${
                 active
                   ? "bg-white/[0.08] text-white"
-                  : "text-white/48"
+                  : "text-white/62"
               }`}
               aria-label={tab.label}
             >

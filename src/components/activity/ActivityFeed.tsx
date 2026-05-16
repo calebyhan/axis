@@ -52,10 +52,10 @@ function workoutHasMuscleGroup(coverage: Partial<Record<MuscleGroup, number>>, m
 }
 
 function filterChipClass(active: boolean) {
-  return `px-2.5 py-1 rounded-md text-xs transition-colors border ${
+  return `min-h-11 px-3 py-2 rounded-md text-xs transition-colors border ${
     active
       ? "bg-white/10 border-white/20 text-white"
-      : "border-[#1F1F1F] text-white/40 hover:text-white/60"
+      : "border-[#1F1F1F] text-white/60 hover:text-white/80"
   }`;
 }
 
@@ -192,8 +192,8 @@ export function ActivityFeed({ activities, workoutDataMap, dayTypeNames, units }
                     setMuscleFilter(null);
                     setDayTypeFilter(null);
                   }}
-                  className={`min-h-8 flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none ${
-                    typeFilter === opt.value ? "bg-white/10 text-white" : "text-white/40 hover:text-white/60"
+                  className={`min-h-11 flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors sm:flex-none ${
+                    typeFilter === opt.value ? "bg-white/10 text-white" : "text-white/60 hover:text-white/80"
                   }`}
                 >
                   {opt.label}
@@ -215,7 +215,7 @@ export function ActivityFeed({ activities, workoutDataMap, dayTypeNames, units }
               <button
                 type="button"
                 onClick={clearFilters}
-                className="rounded-md px-2.5 py-1 text-xs text-white/45 transition-colors hover:bg-white/6 hover:text-white/70"
+                className="rounded-md px-3 py-2 text-xs text-white/60 transition-colors hover:bg-white/6 hover:text-white/85"
               >
                 Reset
               </button>

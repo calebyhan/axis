@@ -65,7 +65,7 @@ export function OnboardingClient({ initialDisplayName, initialAccent, nextPath }
       <main className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-5xl flex-col gap-6">
         <header className="pt-top">
           <div className="page-kicker">Axis</div>
-          <h1 className="max-w-3xl text-[2.7rem] font-semibold leading-none tracking-[-0.04em] sm:text-[4rem]">
+          <h1 className="max-w-3xl text-[2.7rem] font-semibold leading-none tracking-normal sm:text-[4rem]">
             Finish setup
           </h1>
           <p className="page-subtitle">
@@ -77,7 +77,7 @@ export function OnboardingClient({ initialDisplayName, initialAccent, nextPath }
           <section className="card p-5 sm:p-6">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold tracking-[-0.02em]">Install the app</h2>
+                <h2 className="text-xl font-semibold tracking-normal">Install the app</h2>
                 <p className="mt-1 text-sm text-muted">
                   Axis works best from your home screen.
                 </p>
@@ -98,7 +98,7 @@ export function OnboardingClient({ initialDisplayName, initialAccent, nextPath }
 
           <section className="card flex flex-col gap-5 p-5 sm:p-6">
             <div>
-              <h2 className="text-xl font-semibold tracking-[-0.02em]">Personalize</h2>
+              <h2 className="text-xl font-semibold tracking-normal">Personalize</h2>
               <p className="mt-1 text-sm text-muted">These can be changed later in Settings.</p>
             </div>
 

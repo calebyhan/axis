@@ -123,12 +123,13 @@ export function PendingStravaLinks({ links: initialLinks }: Props) {
             {link.candidates.map((c) => (
               <button
                 key={c.id}
+                type="button"
                 disabled={resolving === link.id}
                 onClick={() => resolve(link.id, c.id)}
-                className="flex items-center justify-between w-full card-soft px-3 py-2.5 text-sm hover:bg-white/5 transition-colors disabled:opacity-40 text-left"
+                className="flex w-full flex-col gap-1 card-soft px-3 py-2.5 text-sm hover:bg-white/5 transition-colors disabled:opacity-40 text-left sm:flex-row sm:items-center sm:justify-between"
               >
-                <span>{c.name ?? "Workout"}</span>
-                <span className="text-white/45 text-xs">{formatTime(c.start_time)} · {formatDuration(c.duration)}</span>
+                <span className="min-w-0 truncate">{c.name ?? "Workout"}</span>
+                <span className="text-white/60 text-xs">{formatTime(c.start_time)} · {formatDuration(c.duration)}</span>
               </button>
             ))}
           </div>
@@ -138,9 +139,10 @@ export function PendingStravaLinks({ links: initialLinks }: Props) {
           )}
 
           <button
+            type="button"
             disabled={resolving === link.id}
             onClick={() => dismiss(link.id)}
-            className="text-xs text-white/30 hover:text-white/50 transition-colors self-end disabled:opacity-40"
+            className="text-xs text-white/60 hover:text-white transition-colors self-end disabled:opacity-40"
           >
             Dismiss
           </button>

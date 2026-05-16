@@ -91,7 +91,7 @@ function LoggedSetRow({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid gap-2 sm:grid-cols-3">
           <div className="flex flex-col gap-1">
             <label htmlFor={`${rowId}-weight`} className="text-[11px] text-muted">Weight ({unit})</label>
             <input
@@ -161,7 +161,7 @@ function LoggedSetRow({
               setEditing(true);
             }}
             aria-label={`Edit set ${setIdx + 1}`}
-            className="flex size-7 items-center justify-center rounded-full border border-white/10 text-white/55 hover:border-white/20 hover:text-white"
+            className="flex size-9 items-center justify-center rounded-full border border-white/10 text-white/55 hover:border-white/20 hover:text-white"
           >
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="size-3.5">
               <path d="M12 20h9" />
@@ -222,7 +222,7 @@ export function SetLogger({ exerciseName, sets, suggestedSet, weightIncrement, u
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1">
           <label htmlFor="set-weight-input" className="text-xs text-muted">Weight ({unit})</label>
           <div className="flex items-center gap-1">
@@ -230,7 +230,7 @@ export function SetLogger({ exerciseName, sets, suggestedSet, weightIncrement, u
               type="button"
               aria-label="Decrease weight"
               onClick={() => setWeightStr(String(Math.max(0, roundDisplayWeight(weightDisplay - weightIncrement))))}
-              className="size-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
+              className="size-11 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >−</button>
             <input
               id="set-weight-input"
@@ -246,7 +246,7 @@ export function SetLogger({ exerciseName, sets, suggestedSet, weightIncrement, u
               type="button"
               aria-label="Increase weight"
               onClick={() => setWeightStr(String(roundDisplayWeight(weightDisplay + weightIncrement)))}
-              className="size-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
+              className="size-11 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >+</button>
           </div>
         </div>
@@ -258,7 +258,7 @@ export function SetLogger({ exerciseName, sets, suggestedSet, weightIncrement, u
               type="button"
               aria-label="Decrease reps"
               onClick={() => setRepsStr(String(Math.max(1, reps - 1)))}
-              className="size-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
+              className="size-11 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >−</button>
             <input
               id="set-reps-input"
@@ -273,7 +273,7 @@ export function SetLogger({ exerciseName, sets, suggestedSet, weightIncrement, u
               type="button"
               aria-label="Increase reps"
               onClick={() => setRepsStr(String(reps + 1))}
-              className="size-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
+              className="size-11 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >+</button>
           </div>
         </div>
@@ -285,7 +285,7 @@ export function SetLogger({ exerciseName, sets, suggestedSet, weightIncrement, u
               type="button"
               aria-label="Decrease RPE"
               onClick={() => setRpeStr(String(Math.max(1, Math.round((rpe - 0.5) * 10) / 10)))}
-              className="size-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
+              className="size-11 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >−</button>
             <input
               id="set-rpe-input"
@@ -301,7 +301,7 @@ export function SetLogger({ exerciseName, sets, suggestedSet, weightIncrement, u
               type="button"
               aria-label="Increase RPE"
               onClick={() => setRpeStr(String(Math.min(10, Math.round((rpe + 0.5) * 10) / 10)))}
-              className="size-7 flex items-center justify-center rounded bg-border text-muted hover:text-white"
+              className="size-11 flex items-center justify-center rounded bg-border text-muted hover:text-white"
             >+</button>
           </div>
         </div>

@@ -30,7 +30,7 @@ export function CalendarMonth({ year, month, activeDays, badge, today = new Date
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium tracking-[-0.02em]">{monthLabel}</span>
+        <span className="text-sm font-medium tracking-normal">{monthLabel}</span>
         {badge && (
           <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-accent font-medium">
             {badge}

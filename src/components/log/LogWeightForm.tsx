@@ -202,10 +202,10 @@ export function LogWeightForm({ onSave, units: propUnits, initialDate }: Props) 
                   const n = parseFloat(formData.value);
                   if (!isNaN(n) && n > 0) setFormData((prev) => ({ ...prev, value: n.toFixed(1) }));
                 }}
-                className="w-36 text-center text-5xl font-light tracking-tight bg-transparent border-b border-accent text-white focus:outline-none pb-1 disabled:opacity-50"
+                className="w-36 text-center text-5xl font-light tracking-normal bg-transparent border-b border-accent text-white focus:outline-none pb-1 disabled:opacity-50"
               />
             ) : (
-              <button type="button" aria-label="Edit body weight" onClick={handleTapNumber} disabled={!formLoaded || busy} className="text-5xl font-light tracking-tight text-white leading-none disabled:opacity-50">
+              <button type="button" aria-label="Edit body weight" onClick={handleTapNumber} disabled={!formLoaded || busy} className="text-5xl font-light tracking-normal text-white leading-none disabled:opacity-50">
                 {formLoaded ? formData.value : "…"}
               </button>
             )}

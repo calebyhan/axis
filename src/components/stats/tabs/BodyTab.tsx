@@ -7,9 +7,9 @@ import type { Units } from "@/types";
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="card p-3 flex flex-col gap-1 flex-1">
+    <div className="card min-w-0 p-3 flex flex-col gap-1">
       <span className="text-xs text-muted">{label}</span>
-      <span className="text-base font-semibold leading-tight">{value}</span>
+      <span className="break-words text-base font-semibold leading-tight">{value}</span>
     </div>
   );
 }
@@ -42,7 +42,7 @@ export default function BodyTab({
   return (
     <div className="flex flex-col gap-5">
       {convertedBodyData.length > 0 && (
-        <div className="flex gap-2">
+        <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-3">
           <StatCard
             label={`Current (${weightUnit(units)})`}
             value={currentWeight !== null ? `${formatWeight(currentWeight, units)}` : "—"}
@@ -118,10 +118,10 @@ export default function BodyTab({
                   type="button"
                   onClick={() => onEditWeighIn(d.date)}
                   aria-label={`Edit weigh-in for ${d.date}`}
-                  className="flex justify-between rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-white/[0.04]"
+                  className="flex min-w-0 justify-between gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-white/[0.04]"
                 >
                   <span className="text-muted">{d.date}</span>
-                  <span className="font-medium">
+                  <span className="shrink-0 font-medium">
                     {formatWeight(d.body_weight, units)} {weightUnit(units)}
                   </span>
                 </button>

@@ -63,15 +63,18 @@ export function RouteMapExpandable({ polyline }: { polyline: string }) {
               style={{ height: "70vh" }}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
-              role="none"
+              role="document"
             >
               <LeafletMap key={`modal-${polyline}`} polyline={polyline} interactive={true} />
               <button
+                type="button"
                 onClick={() => setOpen(false)}
                 className="absolute top-3 right-3 z-[1000] bg-black/70 backdrop-blur-sm border border-white/10 text-white/80 rounded-full size-8 flex items-center justify-center hover:text-white transition-colors text-sm"
                 aria-label="Close map"
               >
-                ✕
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
               </button>
             </div>
           </div>,

@@ -23,14 +23,14 @@ const EMPTY_COVERAGE: Partial<Record<import("@/types").MuscleGroup, number>> = {
 
 export function WorkoutCard({ activity, coverage = EMPTY_COVERAGE, exerciseCount, totalVolume, dayTypeName, units }: Props) {
   return (
-    <Link href={`/activity/${activity.id}`} className="card surface-hover p-4 sm:p-5 flex gap-4 items-center block">
+    <Link href={`/activity/${activity.id}`} className="card surface-hover flex gap-4 p-4 sm:p-5">
       <div className="shrink-0">
         <MiniHeatmap coverage={coverage} />
       </div>
 
       <div className="flex flex-col gap-3 flex-1 min-w-0">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <span className="text-[10px] text-white/40 uppercase tracking-[0.18em]">Workout</span>
             {dayTypeName && (
               <span className="text-[10px] text-white/55 uppercase tracking-[0.14em] px-1.5 py-0.5 rounded bg-white/6 border border-white/8">
@@ -47,7 +47,7 @@ export function WorkoutCard({ activity, coverage = EMPTY_COVERAGE, exerciseCount
           </div>
         </div>
 
-        <div className="flex gap-5 text-sm">
+        <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-sm min-[420px]:grid-cols-3">
           <div>
             <div className="text-[10px] text-white/38 uppercase tracking-[0.14em]">Time</div>
             <div className="font-medium mt-0.5">{formatDuration(activity.duration)}</div>
