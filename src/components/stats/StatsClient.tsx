@@ -6,7 +6,8 @@ import { classifyTrend } from "@/lib/body-weight-trend";
 import { dateKeyToLocalDate } from "@/lib/time-zone";
 import { formatDistance } from "@/lib/units";
 import { useState } from "react";
-import type { HistoricalPlanCalendarData, TimeRange } from "@/lib/queries/stats";
+import type { HistoricalPlanCalendarData } from "@/lib/queries/stats";
+import type { TimeRange } from "@/lib/stats-ranges";
 import type { StrengthBalanceSummary } from "@/lib/strength-balance";
 import type { TrainingLoadPoint } from "@/lib/training-load";
 import type { AdherenceWeek } from "@/lib/adherence";
@@ -53,7 +54,7 @@ interface WorkoutSummary {
 
 interface Props {
   timeRange: TimeRange;
-  initialVolumeData: { week: string; volume: number }[];
+  initialVolumeData: { period: string; volume: number }[];
   initialRunningData: {
     id: string;
     name: string | null;

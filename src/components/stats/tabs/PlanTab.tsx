@@ -14,7 +14,8 @@ import { CHART_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
 import { buildCalendarActiveDays } from "@/lib/calendar";
 import type { AdherenceWeek } from "@/lib/adherence";
 import { dateKeyToLocalDate } from "@/lib/time-zone";
-import type { HistoricalPlanCalendarData, TimeRange } from "@/lib/queries/stats";
+import type { HistoricalPlanCalendarData } from "@/lib/queries/stats";
+import type { TimeRange } from "@/lib/stats-ranges";
 
 interface Props {
   adherence: AdherenceWeek[];

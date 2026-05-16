@@ -2,33 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { computeE1RM } from "@/lib/e1rm";
 import type { CalendarActivity, CalendarDayPlan, CalendarSkipOverride } from "@/lib/calendar";
 import { getUserTimeZone } from "@/lib/queries/profile";
-import { addDateKeyDays, formatZonedDate, zonedDateKey, zonedDateTimeToUtc } from "@/lib/time-zone";
+import { addDateKeyDays, formatZonedDate, zonedDateKey } from "@/lib/time-zone";
+import { getStatsChartBucketDateKey, getStatsRangeBounds, type TimeRange } from "@/lib/stats-ranges";
 import { computeStrengthBalance, strengthInputsFromExerciseSets, type StrengthSetDescriptor } from "@/lib/strength-balance";
 import { addMuscleTagSets, muscleTagSummaries } from "@/lib/muscle-tags";
 import { buildDailyTrainingLoads, computeATLCTLTSB } from "@/lib/training-load";
 import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails, MuscleTag } from "@/types";
-
-export type TimeRange = "week" | "month" | "year" | "all";
-
-function getRangeStartDateKey(range: TimeRange, timeZone: string): string | null {
-  const now = new Date();
-  if (range === "all") return null;
-  if (range === "week") return addDateKeyDays(zonedDateKey(now, timeZone), -7);
-
-  const d = new Date(now);
-  if (range === "month") {
-    d.setMonth(d.getMonth() - 1);
-    return zonedDateKey(d, timeZone);
-  }
-
-  d.setFullYear(d.getFullYear() - 1);
-  return zonedDateKey(d, timeZone);
-}
-
-function getRangeStartInstant(range: TimeRange, timeZone: string): string | null {
-  const dateKey = getRangeStartDateKey(range, timeZone);
-  return dateKey ? zonedDateTimeToUtc(dateKey, timeZone).toISOString() : null;
-}
 
 function normalizeRelation<T>(raw: unknown): T | null {
   if (!raw) return null;
@@ -46,47 +25,67 @@ function workoutDateLabel(startTime: string, timeZone: string): string {
   });
 }
 
+function emptyVolumeBuckets(range: TimeRange, startDateKey: string | null, endDateKey: string): Map<string, number> {
+  const buckets = new Map<string, number>();
+  if (range !== "week" || !startDateKey) return buckets;
+
+  for (let date = startDateKey; date <= endDateKey; date = addDateKeyDays(date, 1)) {
+    buckets.set(date, 0);
+  }
+
+  return buckets;
+}
+
 export async function getVolumeOverTime(range: TimeRange) {
   const supabase = await createClient();
   const timeZone = await getUserTimeZone();
-  const since = getRangeStartInstant(range, timeZone);
+  const bounds = getStatsRangeBounds(range, timeZone);
 
   let query = supabase
     .from("session_sets")
     .select("reps, weight, activities!inner(start_time, type)")
-    .eq("activities.type", "workout");
+    .eq("activities.type", "workout")
+    .lt("activities.start_time", bounds.endExclusiveInstant);
 
-  if (since) query = query.gte("activities.start_time", since);
+  if (bounds.startInstant) query = query.gte("activities.start_time", bounds.startInstant);
 
   const { data, error } = await query;
   if (error) console.error("[query] getVolumeOverTime failed", error.message);
   if (!data) return [];
 
-  const weekly = new Map<string, number>();
+  const volumeByPeriod = emptyVolumeBuckets(range, bounds.startDateKey, bounds.endDateKey);
+  let hasVolume = false;
+
   for (const s of data) {
     const actRaw = s.activities as unknown;
     const act = (Array.isArray(actRaw) ? actRaw[0] : actRaw) as { start_time: string };
-    const week = getISOWeek(zonedDateKey(act.start_time, timeZone));
-    weekly.set(week, (weekly.get(week) ?? 0) + s.reps * s.weight);
+    const dateKey = zonedDateKey(act.start_time, timeZone);
+    const period = getStatsChartBucketDateKey(range, dateKey, bounds.startDateKey);
+    const volume = s.reps * s.weight;
+    if (volume > 0) hasVolume = true;
+    volumeByPeriod.set(period, (volumeByPeriod.get(period) ?? 0) + volume);
   }
 
-  return Array.from(weekly.entries())
+  if (!hasVolume) return [];
+
+  return Array.from(volumeByPeriod.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([week, volume]) => ({ week, volume: Math.round(volume) }));
+    .map(([period, volume]) => ({ period, volume: Math.round(volume) }));
 }
 
 export async function getRunningStats(range: TimeRange) {
   const supabase = await createClient();
   const timeZone = await getUserTimeZone();
-  const since = getRangeStartInstant(range, timeZone);
+  const bounds = getStatsRangeBounds(range, timeZone);
 
   let query = supabase
     .from("activities")
     .select("id, name, start_time, distance, avg_pace, suffer_score, duration, avg_heartrate, best_efforts")
     .in("type", ["run", "manual_run"])
+    .lt("start_time", bounds.endExclusiveInstant)
     .order("start_time");
 
-  if (since) query = query.gte("start_time", since);
+  if (bounds.startInstant) query = query.gte("start_time", bounds.startInstant);
 
   const { data, error } = await query;
   if (error) console.error("[query] getRunningStats failed", error.message);
@@ -99,14 +98,15 @@ export async function getRunningStats(range: TimeRange) {
 export async function getBodyWeightStats(range: TimeRange) {
   const supabase = await createClient();
   const timeZone = await getUserTimeZone();
-  const since = getRangeStartDateKey(range, timeZone);
+  const bounds = getStatsRangeBounds(range, timeZone);
 
   let query = supabase
     .from("daily_checkins")
     .select("date, body_weight")
+    .lt("date", bounds.endExclusiveDateKey)
     .order("date");
 
-  if (since) query = query.gte("date", since);
+  if (bounds.startDateKey) query = query.gte("date", bounds.startDateKey);
 
   const { data, error } = await query;
   if (error) console.error("[query] getBodyWeightStats failed", error.message);
@@ -116,15 +116,16 @@ export async function getBodyWeightStats(range: TimeRange) {
 export async function getE1RMHistory(exerciseId: string, range: TimeRange) {
   const supabase = await createClient();
   const timeZone = await getUserTimeZone();
-  const since = getRangeStartInstant(range, timeZone);
+  const bounds = getStatsRangeBounds(range, timeZone);
 
   let query = supabase
     .from("session_sets")
     .select("reps, weight, activities!inner(start_time)")
     .eq("exercise_id", exerciseId)
+    .lt("activities.start_time", bounds.endExclusiveInstant)
     .order("activities.start_time");
 
-  if (since) query = query.gte("activities.start_time", since);
+  if (bounds.startInstant) query = query.gte("activities.start_time", bounds.startInstant);
 
   const { data, error } = await query;
   if (error) console.error("[query] getE1RMHistory failed", error.message);
@@ -157,23 +158,25 @@ export async function getExercisesForDropdown() {
 export async function getWorkoutSummary(range: TimeRange) {
   const supabase = await createClient();
   const timeZone = await getUserTimeZone();
-  const since = getRangeStartInstant(range, timeZone);
+  const bounds = getStatsRangeBounds(range, timeZone);
 
   const [sessionRes, setsRes] = await Promise.all([
     (() => {
       let q = supabase
         .from("activities")
         .select("id", { count: "exact", head: true })
-        .eq("type", "workout");
-      if (since) q = q.gte("start_time", since);
+        .eq("type", "workout")
+        .lt("start_time", bounds.endExclusiveInstant);
+      if (bounds.startInstant) q = q.gte("start_time", bounds.startInstant);
       return q;
     })(),
     (() => {
       let q = supabase
         .from("session_sets")
         .select("reps, weight, exercise_id, exercises!inner(name, primary_muscles, secondary_muscles, muscle_tags, movement_pattern), activities!inner(start_time, type)")
-        .eq("activities.type", "workout");
-      if (since) q = q.gte("activities.start_time", since);
+        .eq("activities.type", "workout")
+        .lt("activities.start_time", bounds.endExclusiveInstant);
+      if (bounds.startInstant) q = q.gte("activities.start_time", bounds.startInstant);
       return q;
     })(),
   ]);
@@ -258,34 +261,29 @@ export async function getWorkoutSummary(range: TimeRange) {
   };
 }
 
-function getTrainingLoadWindow(range: TimeRange): number {
-  if (range === "week") return 7;
-  if (range === "month") return 30;
-  if (range === "year") return 365;
-  return 730;
-}
-
 export async function getTrainingLoadHistory(range: TimeRange = "month") {
   const supabase = await createClient();
   const timeZone = await getUserTimeZone();
-  const todayKey = zonedDateKey(new Date(), timeZone);
-  const sinceKey = addDateKeyDays(todayKey, -(getTrainingLoadWindow(range) - 1));
-  const sinceISO = zonedDateTimeToUtc(sinceKey, timeZone).toISOString();
+  const bounds = getStatsRangeBounds(range, timeZone);
 
   const [activitiesRes, setsRes] = await Promise.all([
     supabase
       .from("activities")
       .select("start_time, suffer_score")
       .in("type", ["run", "manual_run"])
-      .gte("start_time", sinceISO)
+      .lt("start_time", bounds.endExclusiveInstant)
       .order("start_time"),
     supabase
       .from("session_sets")
       .select("reps, weight, rpe, activities!inner(start_time)")
       .eq("activities.type", "workout")
-      .gte("activities.start_time", sinceISO),
+      .lt("activities.start_time", bounds.endExclusiveInstant),
   ]);
 
+  if (activitiesRes.error) console.error("[query] getTrainingLoadHistory activities failed", activitiesRes.error.message);
+  if (setsRes.error) console.error("[query] getTrainingLoadHistory sets failed", setsRes.error.message);
+
+  const activities = activitiesRes.data ?? [];
   const strengthSets = (setsRes.data ?? []).flatMap((set) => {
     const act = normalizeRelation<{ start_time: string }>(set.activities);
     if (!act) return [];
@@ -296,16 +294,26 @@ export async function getTrainingLoadHistory(range: TimeRange = "month") {
       rpe: set.rpe,
     }];
   });
+  const dataDateKeys = [
+    ...activities.map((activity) => zonedDateKey(activity.start_time, timeZone)),
+    ...strengthSets.map((set) => zonedDateKey(set.start_time, timeZone)),
+  ].sort();
+
+  if (dataDateKeys.length === 0) return [];
+
+  const firstDataKey = dataDateKeys[0];
+  const visibleStartKey = bounds.startDateKey ?? firstDataKey;
+  const computeStartKey = firstDataKey < visibleStartKey ? firstDataKey : visibleStartKey;
 
   const loads = buildDailyTrainingLoads(
-    activitiesRes.data ?? [],
+    activities,
     strengthSets,
-    sinceKey,
-    todayKey,
+    computeStartKey,
+    bounds.endDateKey,
     timeZone
   );
 
-  return computeATLCTLTSB(loads);
+  return computeATLCTLTSB(loads).filter((point) => point.date >= visibleStartKey);
 }
 
 export interface HistoricalPlanCalendarData {
@@ -318,26 +326,23 @@ export interface HistoricalPlanCalendarData {
 export async function getHistoricalPlanCalendarData(range: TimeRange): Promise<HistoricalPlanCalendarData> {
   const supabase = await createClient();
   const timeZone = await getUserTimeZone();
-  const sinceKey = getRangeStartDateKey(range, timeZone);
-  const since = sinceKey ? zonedDateTimeToUtc(sinceKey, timeZone).toISOString() : null;
-  const today = new Date();
-  const todayKey = zonedDateKey(today, timeZone);
+  const bounds = getStatsRangeBounds(range, timeZone);
 
   let activitiesQuery = supabase
     .from("activities")
     .select("start_time, type")
-    .lte("start_time", today.toISOString())
+    .lt("start_time", bounds.endExclusiveInstant)
     .order("start_time", { ascending: true });
 
   let overridesQuery = supabase
     .from("schedule_overrides")
     .select("date, slot")
-    .lte("date", todayKey)
+    .lt("date", bounds.endExclusiveDateKey)
     .is("day_type_id", null);
 
-  if (since) {
-    activitiesQuery = activitiesQuery.gte("start_time", since);
-    overridesQuery = overridesQuery.gte("date", sinceKey);
+  if (bounds.startDateKey && bounds.startInstant) {
+    activitiesQuery = activitiesQuery.gte("start_time", bounds.startInstant);
+    overridesQuery = overridesQuery.gte("date", bounds.startDateKey);
   }
 
   const [activitiesRes, plansRes, overridesRes] = await Promise.all([
@@ -376,15 +381,6 @@ export async function getHistoricalPlanCalendarData(range: TimeRange): Promise<H
     })),
     dayPlans,
     skipOverrides: (overridesRes.data ?? []) as CalendarSkipOverride[],
-    todayKey,
+    todayKey: bounds.endDateKey,
   };
-}
-
-function getISOWeek(dateKey: string): string {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  const d = new Date(Date.UTC(year, month - 1, day, 12));
-  d.setUTCDate(d.getUTCDate() + 4 - ((d.getUTCDay() || 7) - 1));
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1, 12));
-  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
 }

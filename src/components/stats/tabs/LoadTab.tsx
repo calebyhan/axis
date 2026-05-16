@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import { CHART_LINE_TOOLTIP_PROPS, CHART_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
 import type { TrainingLoadPoint } from "@/lib/training-load";
-import type { TimeRange } from "@/lib/queries/stats";
+import { STATS_RANGE_LABELS, type TimeRange } from "@/lib/stats-ranges";
 
 function StatCard({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
   return (
@@ -32,13 +32,6 @@ interface Props {
   tsbInfo: { label: string; color: string } | null;
   timeRange: TimeRange;
 }
-
-const RANGE_LABELS: Record<TimeRange, string> = {
-  week: "Last 7 days",
-  month: "Last 30 days",
-  year: "Last year",
-  all: "Last 2 years",
-};
 
 export default function LoadTab({ trainingLoad, latestLoad, tsbInfo, timeRange }: Props) {
   return (
@@ -65,7 +58,7 @@ export default function LoadTab({ trainingLoad, latestLoad, tsbInfo, timeRange }
           <div className="card p-4">
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-sm font-medium">Fitness & Fatigue</h3>
-              <span className="text-xs text-muted">{RANGE_LABELS[timeRange]}</span>
+              <span className="text-xs text-muted">{STATS_RANGE_LABELS[timeRange]}</span>
             </div>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">

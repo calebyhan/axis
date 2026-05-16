@@ -14,7 +14,7 @@ import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
 import { BalanceScoreCard } from "@/components/strength/BalanceScoreCard";
 import type { StrengthBalanceSummary } from "@/lib/strength-balance";
 import { weightUnit, formatWeight } from "@/lib/units";
-import type { TimeRange } from "@/lib/queries/stats";
+import { STATS_RANGE_CONTEXT_LABELS, type TimeRange } from "@/lib/stats-ranges";
 import type { MuscleGroup, MuscleHeatmapDetails, Units } from "@/types";
 
 function StatCard({ label, value }: { label: string; value: string }) {
@@ -38,17 +38,10 @@ interface WorkoutSummary {
 
 interface Props {
   workoutSummary: WorkoutSummary;
-  volumeChartData: { week: string; volume: number }[];
+  volumeChartData: { period: string; volume: number }[];
   timeRange: TimeRange;
   units: Units;
 }
-
-const RANGE_CONTEXT: Record<TimeRange, string> = {
-  week: "this week",
-  month: "this month",
-  year: "this year",
-  all: "all time",
-};
 
 export default function WorkoutTab({ workoutSummary, volumeChartData, timeRange, units }: Props) {
   const activeMuscleCount = Object.values(workoutSummary.muscleCoverage).filter((count) => (count ?? 0) > 0).length;
@@ -84,13 +77,13 @@ export default function WorkoutTab({ workoutSummary, volumeChartData, timeRange,
             <MuscleHeatmap
               coverage={workoutSummary.muscleCoverage}
               details={workoutSummary.muscleDetails}
-              tooltipContext={RANGE_CONTEXT[timeRange]}
+              tooltipContext={STATS_RANGE_CONTEXT_LABELS[timeRange]}
               size="full"
             />
             <MuscleHeatmap
               coverage={workoutSummary.muscleCoverage}
               details={workoutSummary.muscleDetails}
-              tooltipContext={RANGE_CONTEXT[timeRange]}
+              tooltipContext={STATS_RANGE_CONTEXT_LABELS[timeRange]}
               size="full"
               showBack
             />
@@ -106,7 +99,12 @@ export default function WorkoutTab({ workoutSummary, volumeChartData, timeRange,
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={volumeChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1F1F1F" />
-                  <XAxis dataKey="week" tick={{ fill: "#666", fontSize: 10 }} tickLine={false} />
+                  <XAxis
+                    dataKey="period"
+                    tick={{ fill: "#666", fontSize: 10 }}
+                    tickLine={false}
+                    tickFormatter={(value) => String(value).slice(5)}
+                  />
                   <YAxis
                     tick={{ fill: "#666", fontSize: 10 }}
                     tickLine={false}
@@ -126,7 +124,7 @@ export default function WorkoutTab({ workoutSummary, volumeChartData, timeRange,
 
         <BalanceScoreCard
           balance={workoutSummary.strengthBalance}
-          contextLabel={RANGE_CONTEXT[timeRange]}
+          contextLabel={STATS_RANGE_CONTEXT_LABELS[timeRange]}
           compact
           showInactiveAxes={workoutSummary.totalSets > 0}
         />

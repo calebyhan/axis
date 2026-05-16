@@ -249,7 +249,7 @@ CTL = CTL_previous * (1 - 1/42) + dailyTL * (1/42)
 TSB = CTL - ATL
 ```
 
-The Stats load tab computes the window on demand: 7 days, 30 days, 365 days, or 730 days.
+The Stats load tab displays the selected calendar range (current week, month, year, or all time) after computing ATL/CTL from the user's prior load history.
 
 ### Body Weight Trend
 
