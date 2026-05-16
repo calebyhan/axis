@@ -60,6 +60,14 @@ Primary manual input surface.
 
 Time filter: Week / Month / Year / All.
 
+### Overview Tab
+
+- Landing summary with training status, adherence, active days, range KPIs, and prior-period deltas.
+- Workload section: daily table for Week, grouped training-load chart for longer ranges.
+- Status section for notable plan, strength, running, balance, load, PR, and body-weight changes.
+- Training-area rows for Strength, Running, Body, and Load & Plan, each with compact trend context.
+- Range leaders for top exercise, strongest volume period, longest run, and latest PR.
+
 ### Workout Tab
 
 - Session count, total sets, total volume.

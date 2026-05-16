@@ -6,14 +6,14 @@ import { classifyTrend } from "@/lib/body-weight-trend";
 import { dateKeyToLocalDate } from "@/lib/time-zone";
 import { formatDistance } from "@/lib/units";
 import { useState } from "react";
-import type { HistoricalPlanCalendarData } from "@/lib/queries/stats";
+import type { HistoricalPlanCalendarData, StatsOverviewSnapshot } from "@/lib/queries/stats";
 import type { TimeRange } from "@/lib/stats-ranges";
 import type { StrengthBalanceSummary } from "@/lib/strength-balance";
 import type { TrainingLoadPoint } from "@/lib/training-load";
 import type { AdherenceWeek } from "@/lib/adherence";
 import type { BestEffort, MuscleGroup, MuscleHeatmapDetails, Units } from "@/types";
 
-type Tab = "workout" | "running" | "body" | "load" | "plan";
+type Tab = "overview" | "workout" | "running" | "body" | "load" | "plan";
 
 const TIME_RANGES: { label: string; value: TimeRange }[] = [
   { label: "Week", value: "week" },
@@ -23,6 +23,7 @@ const TIME_RANGES: { label: string; value: TimeRange }[] = [
 ];
 
 const TABS: { label: string; value: Tab }[] = [
+  { label: "Overview", value: "overview" },
   { label: "Workout", value: "workout" },
   { label: "Running", value: "running" },
   { label: "Body", value: "body" },
@@ -32,6 +33,7 @@ const TABS: { label: string; value: Tab }[] = [
 
 const TabLoading = () => <div className="py-8 text-center text-muted text-sm">Loading…</div>;
 
+const OverviewTab = dynamic(() => import("./tabs/OverviewTab"), { ssr: false, loading: TabLoading });
 const WorkoutTab = dynamic(() => import("./tabs/WorkoutTab"), { ssr: false, loading: TabLoading });
 const RunningTab = dynamic(() => import("./tabs/RunningTab"), { ssr: false, loading: TabLoading });
 const BodyTab = dynamic(() => import("./tabs/BodyTab"), { ssr: false, loading: TabLoading });
@@ -72,6 +74,7 @@ interface Props {
   trainingLoad: TrainingLoadPoint[];
   adherence: AdherenceWeek[];
   planCalendarData: HistoricalPlanCalendarData;
+  previousOverview: StatsOverviewSnapshot | null;
   units: Units;
 }
 
@@ -100,10 +103,11 @@ export function StatsClient({
   trainingLoad,
   adherence,
   planCalendarData,
+  previousOverview,
   units,
 }: Props) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<Tab>("workout");
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [editingBodyDate, setEditingBodyDate] = useState<string | null>(null);
 
   // ── Workout ───────────────────────────────────────────────────────────────
@@ -169,6 +173,21 @@ export function StatsClient({
   // ── Load ──────────────────────────────────────────────────────────────────
   const latestLoad = trainingLoad.length > 0 ? trainingLoad[trainingLoad.length - 1] : null;
   const tsbInfo = latestLoad ? tsbStatus(latestLoad.tsb) : null;
+  const activeDays = trainingLoad.filter((point) => point.dailyTL > 0).length;
+  const currentOverview: StatsOverviewSnapshot = {
+    activeDays,
+    totalSessions: workoutSummary.sessionCount + runCount,
+    workoutSessions: workoutSummary.sessionCount,
+    totalSets: workoutSummary.totalSets,
+    totalVolume: workoutSummary.totalVolume,
+    runDistanceKm: totalDistanceKm,
+    runCount,
+    bestPace,
+    avgHR,
+    bodyWeight: currentWeight,
+    bodyWeightDelta: weightDelta,
+    weighIns: initialBodyData.length,
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -188,7 +207,7 @@ export function StatsClient({
         ))}
       </div>
 
-      <div className="flex gap-4 border-b border-border" role="tablist" aria-label="Stats sections">
+      <div className="flex gap-4 overflow-x-auto border-b border-border" role="tablist" aria-label="Stats sections">
         {TABS.map((t) => (
           <button
             key={t.value}
@@ -196,7 +215,7 @@ export function StatsClient({
             role="tab"
             aria-selected={activeTab === t.value}
             onClick={() => setActiveTab(t.value)}
-            className={`pb-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            className={`shrink-0 pb-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
               activeTab === t.value ? "border-accent text-white" : "border-transparent text-muted"
             }`}
           >
@@ -205,6 +224,25 @@ export function StatsClient({
         ))}
       </div>
 
+      {activeTab === "overview" && (
+        <OverviewTab
+          timeRange={timeRange}
+          units={units}
+          current={currentOverview}
+          previous={previousOverview}
+          workoutSummary={workoutSummary}
+          volumeChartData={volumeChartData}
+          runningData={initialRunningData}
+          runChartData={runChartData}
+          bodyChartData={bodyChartData}
+          trainingLoad={trainingLoad}
+          adherence={adherence}
+          personalRecords={personalRecords}
+          latestLoad={latestLoad}
+          tsbInfo={tsbInfo}
+          trendBadge={trendBadge}
+        />
+      )}
       {activeTab === "workout" && (
         <WorkoutTab workoutSummary={workoutSummary} volumeChartData={volumeChartData} timeRange={timeRange} units={units} />
       )}

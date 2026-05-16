@@ -3,6 +3,7 @@ import {
   STATS_RANGE_CONTEXT_LABELS,
   STATS_RANGE_LABELS,
   getStatsChartBucketDateKey,
+  getPreviousStatsRangeBounds,
   getStatsRangeBounds,
 } from "../stats-ranges";
 
@@ -39,6 +40,37 @@ describe("stats range bounds", () => {
       startDateKey: "2026-05-01",
       endDateKey: "2026-05-15",
       endExclusiveDateKey: "2026-05-16",
+    });
+  });
+
+  it("builds comparable previous ranges for deltas", () => {
+    const now = new Date("2026-05-16T16:00:00.000Z");
+
+    expect(getPreviousStatsRangeBounds("week", "America/New_York", now)).toMatchObject({
+      startDateKey: "2026-05-03",
+      endDateKey: "2026-05-09",
+      endExclusiveDateKey: "2026-05-10",
+    });
+    expect(getPreviousStatsRangeBounds("month", "America/New_York", now)).toMatchObject({
+      startDateKey: "2026-04-01",
+      endDateKey: "2026-04-16",
+      endExclusiveDateKey: "2026-04-17",
+    });
+    expect(getPreviousStatsRangeBounds("year", "America/New_York", now)).toMatchObject({
+      startDateKey: "2025-01-01",
+      endDateKey: "2025-05-16",
+      endExclusiveDateKey: "2025-05-17",
+    });
+    expect(getPreviousStatsRangeBounds("all", "America/New_York", now)).toBeNull();
+  });
+
+  it("clamps previous month ranges when the prior month is shorter", () => {
+    const now = new Date("2026-03-31T16:00:00.000Z");
+
+    expect(getPreviousStatsRangeBounds("month", "America/New_York", now)).toMatchObject({
+      startDateKey: "2026-02-01",
+      endDateKey: "2026-02-28",
+      endExclusiveDateKey: "2026-03-01",
     });
   });
 

@@ -8,6 +8,7 @@ import {
   getWorkoutSummary,
   getTrainingLoadHistory,
   getHistoricalPlanCalendarData,
+  getPreviousStatsOverviewSnapshot,
 } from "@/lib/queries/stats";
 import { getAdherenceHistory } from "@/lib/queries/adherence";
 import { getUserTimeZone, getUserUnits } from "@/lib/queries/profile";
@@ -27,7 +28,18 @@ export default async function StatsPage({
   const { range } = await searchParams;
   const timeRange = parseRange(range);
 
-  const [volumeData, runningData, bodyData, workoutSummary, trainingLoad, adherence, planCalendarData, units, timeZone] = await Promise.all([
+  const [
+    volumeData,
+    runningData,
+    bodyData,
+    workoutSummary,
+    trainingLoad,
+    adherence,
+    planCalendarData,
+    previousOverview,
+    units,
+    timeZone,
+  ] = await Promise.all([
     getVolumeOverTime(timeRange),
     getRunningStats(timeRange),
     getBodyWeightStats(timeRange),
@@ -35,6 +47,7 @@ export default async function StatsPage({
     getTrainingLoadHistory(timeRange),
     getAdherenceHistory(timeRange),
     timeRange === "all" ? getHistoricalPlanCalendarData(timeRange) : Promise.resolve(null),
+    getPreviousStatsOverviewSnapshot(timeRange),
     getUserUnits(),
     getUserTimeZone(),
   ]);
@@ -61,6 +74,7 @@ export default async function StatsPage({
         trainingLoad={trainingLoad}
         adherence={adherence}
         planCalendarData={resolvedPlanCalendarData}
+        previousOverview={previousOverview}
         units={units}
       />
     </div>
