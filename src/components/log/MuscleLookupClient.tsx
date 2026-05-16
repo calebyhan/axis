@@ -11,6 +11,7 @@ import { formatWeight, weightUnit } from "@/lib/units";
 import type { AccentColor, Exercise, MuscleGroup, Units } from "@/types";
 
 type SelectedMuscle = MuscleGroup | "all";
+type HistoryFilter = "all" | "logged" | "not_logged";
 
 type ActivityRelation = {
   id: string;
@@ -74,6 +75,12 @@ const MUSCLE_SECTIONS: { label: string; muscles: MuscleGroup[] }[] = [
   { label: "Pull", muscles: ["upper_back", "lats", "traps", "rear_delt", "biceps", "forearm"] },
   { label: "Legs", muscles: ["glutes", "quads", "hamstrings", "calves", "hip_flexors", "adductors", "lower_back"] },
   { label: "Core", muscles: ["abs", "obliques"] },
+];
+
+const HISTORY_FILTERS: { value: HistoryFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "logged", label: "Logged before" },
+  { value: "not_logged", label: "Not logged yet" },
 ];
 
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
@@ -424,12 +431,15 @@ function HistoryPanel({
 export function MuscleLookupClient() {
   const [query, setQuery] = useState("");
   const [selectedMuscle, setSelectedMuscle] = useState<SelectedMuscle>("all");
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [units, setUnits] = useState<Units>("imperial");
   const [accent, setAccent] = useState("#3B82F6");
   const [loadingExercises, setLoadingExercises] = useState(true);
   const [exerciseError, setExerciseError] = useState<string | null>(null);
+  const [loggedExerciseIds, setLoggedExerciseIds] = useState<Set<string>>(() => new Set());
+  const [historyFilterError, setHistoryFilterError] = useState<string | null>(null);
   const [historyRows, setHistoryRows] = useState<HistoryRow[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -485,6 +495,58 @@ export function MuscleLookupClient() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+
+    async function loadLoggedExercises() {
+      if (!authResolved || !userId) {
+        setLoggedExerciseIds(new Set());
+        setHistoryFilterError(null);
+        return;
+      }
+
+      setHistoryFilterError(null);
+
+      const nextIds = new Set<string>();
+      const pageSize = 1000;
+      let from = 0;
+
+      while (!cancelled) {
+        const { data, error } = await supabase
+          .from("session_sets")
+          .select("exercise_id, created_at, activities!inner(type, user_id)")
+          .eq("activities.type", "workout")
+          .eq("activities.user_id", userId)
+          .order("created_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (cancelled) return;
+
+        if (error) {
+          setLoggedExerciseIds(new Set());
+          setHistoryFilterError("Could not load logged exercise filters.");
+          return;
+        }
+
+        for (const row of data ?? []) {
+          if (row.exercise_id) nextIds.add(row.exercise_id);
+        }
+
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+
+      if (!cancelled) setLoggedExerciseIds(nextIds);
+    }
+
+    void loadLoggedExercises();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authResolved, userId]);
 
   const selectedExercise = useMemo(
     () => exercises.find((exercise) => exercise.id === selectedExerciseId) ?? null,
@@ -542,6 +604,10 @@ export function MuscleLookupClient() {
         const muscleMatch = selectedMuscle === "all" || muscles.has(selectedMuscle);
         if (!muscleMatch) return false;
 
+        const isLogged = loggedExerciseIds.has(exercise.id);
+        if (historyFilter === "logged" && !isLogged) return false;
+        if (historyFilter === "not_logged" && isLogged) return false;
+
         if (!normalizedQuery) return true;
 
         const haystack = [
@@ -566,7 +632,7 @@ export function MuscleLookupClient() {
         }
         return a.name.localeCompare(b.name);
       });
-  }, [exercises, query, selectedMuscle]);
+  }, [exercises, historyFilter, loggedExerciseIds, query, selectedMuscle]);
 
   const historySessions = useMemo(() => groupHistory(historyRows), [historyRows]);
   const selectedExerciseMuscles = selectedExercise ? exerciseMuscles(selectedExercise) : new Set<MuscleGroup>();
@@ -602,38 +668,63 @@ export function MuscleLookupClient() {
           className="w-full rounded-xl border border-border bg-background px-3 py-3 text-sm text-white placeholder:text-white/28 focus:border-[var(--accent)] focus:outline-none"
         />
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            aria-pressed={selectedMuscle === "all"}
-            onClick={() => setSelectedMuscle("all")}
-            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-              selectedMuscle === "all"
-                ? "border-[rgba(var(--accent-rgb),0.5)] bg-[rgba(var(--accent-rgb),0.16)] text-white"
-                : "border-white/10 bg-white/[0.035] text-white/62 hover:text-white"
-            }`}
-          >
-            All muscles
-          </button>
-          {MUSCLE_SECTIONS.flatMap((section) =>
-            section.muscles.map((muscle) => (
+        <div className="mt-4">
+          <div className="text-[11px] uppercase tracking-[0.16em] text-muted">History</div>
+          <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Exercise history filter">
+            {HISTORY_FILTERS.map((filter) => (
               <button
-                key={`${section.label}-${muscle}`}
+                key={filter.value}
                 type="button"
-                aria-pressed={selectedMuscle === muscle}
-                onClick={() => setSelectedMuscle(muscle)}
+                aria-pressed={historyFilter === filter.value}
+                onClick={() => setHistoryFilter(filter.value)}
                 className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  selectedMuscle === muscle
+                  historyFilter === filter.value
                     ? "border-[rgba(var(--accent-rgb),0.5)] bg-[rgba(var(--accent-rgb),0.16)] text-white"
-                    : selectedExerciseMuscles.has(muscle)
-                      ? "border-white/14 bg-white/[0.055] text-white/74 hover:text-white"
-                      : "border-white/10 bg-white/[0.035] text-white/62 hover:text-white"
+                    : "border-white/10 bg-white/[0.035] text-white/62 hover:text-white"
                 }`}
               >
-                {muscleLabel(muscle)}
+                {filter.label}
               </button>
-            ))
-          )}
+            ))}
+          </div>
+          {historyFilterError && <div className="mt-2 text-xs text-red-300">{historyFilterError}</div>}
+        </div>
+
+        <div className="mt-4">
+          <div className="text-[11px] uppercase tracking-[0.16em] text-muted">Muscles</div>
+          <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Muscle filter">
+            <button
+              type="button"
+              aria-pressed={selectedMuscle === "all"}
+              onClick={() => setSelectedMuscle("all")}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                selectedMuscle === "all"
+                  ? "border-[rgba(var(--accent-rgb),0.5)] bg-[rgba(var(--accent-rgb),0.16)] text-white"
+                  : "border-white/10 bg-white/[0.035] text-white/62 hover:text-white"
+              }`}
+            >
+              All muscles
+            </button>
+            {MUSCLE_SECTIONS.flatMap((section) =>
+              section.muscles.map((muscle) => (
+                <button
+                  key={`${section.label}-${muscle}`}
+                  type="button"
+                  aria-pressed={selectedMuscle === muscle}
+                  onClick={() => setSelectedMuscle(muscle)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    selectedMuscle === muscle
+                      ? "border-[rgba(var(--accent-rgb),0.5)] bg-[rgba(var(--accent-rgb),0.16)] text-white"
+                      : selectedExerciseMuscles.has(muscle)
+                        ? "border-white/14 bg-white/[0.055] text-white/74 hover:text-white"
+                        : "border-white/10 bg-white/[0.035] text-white/62 hover:text-white"
+                  }`}
+                >
+                  {muscleLabel(muscle)}
+                </button>
+              ))
+            )}
+          </div>
         </div>
       </section>
 
