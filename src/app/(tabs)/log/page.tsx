@@ -163,6 +163,25 @@ function LogAction({
   );
 }
 
+function LookupLink() {
+  return (
+    <Link
+      href="/log/muscles"
+      className="group card surface-hover flex w-full items-center justify-between gap-4 p-5 text-left"
+    >
+      <div className="min-w-0">
+        <div className="font-medium text-base">Muscle Lookup</div>
+        <div className="mt-2 text-sm text-muted">
+          See what each exercise hits and review your history.
+        </div>
+      </div>
+      <span className="shrink-0 flex size-10 items-center justify-center rounded-full border border-white/20 bg-white/[0.08] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-colors group-hover:border-white/30 group-hover:bg-white/[0.12]">
+        <ActionArrow className="size-5" />
+      </span>
+    </Link>
+  );
+}
+
 function ResumeDraftCard({
   session,
   active,
@@ -650,6 +669,8 @@ export default function LogPage() {
             />
           </div>
         </div>
+
+        <LookupLink />
       </div>
 
       {/* Modals */}
