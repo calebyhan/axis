@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { saveWorkoutSession } from "@/app/(tabs)/log/actions";
 import { clearDraft, saveDraft } from "@/lib/idb/session-draft";
 import { buildPlannedSlots, localDateStr, toISODayOfWeek } from "@/lib/planner";
+import { formatSessionTimer, getSessionElapsedSeconds, pauseSessionTimer } from "@/lib/session-timer";
+import { useSessionElapsedSeconds } from "@/hooks/useSessionElapsedSeconds";
 import {
   computeStrengthBalance,
   mergeStrengthInputs,
@@ -23,6 +25,7 @@ import { SetLogger } from "./SetLogger";
 import { RecentStatsPanel } from "./RecentStatsPanel";
 import { SessionSummary } from "./SessionSummary";
 import { MiniHeatmap } from "@/components/heatmap/MiniHeatmap";
+import { BalanceScoreCard } from "@/components/strength/BalanceScoreCard";
 
 type Step = "exercise_search" | "logging";
 
@@ -124,6 +127,7 @@ function SessionHeader({ session, saving, draftSaveStatus, hasLoggedSets, onCanc
     error: "Draft save failed",
   }[draftSaveStatus];
   const loggedExerciseCount = session?.exercises.filter((exercise) => exercise.sets.length > 0).length ?? 0;
+  const elapsedSeconds = useSessionElapsedSeconds(session);
 
   return (
     <div className="flex items-center gap-3 px-4 pb-4 border-b border-border" style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))" }}>
@@ -133,9 +137,18 @@ function SessionHeader({ session, saving, draftSaveStatus, hasLoggedSets, onCanc
       <div className="flex-1 min-w-0">
         <h2 id="workout-session-title" className="font-semibold">Workout Session</h2>
         {session && (
-          <p className="text-xs text-muted mt-0.5">
-            {loggedExerciseCount} exercise{loggedExerciseCount !== 1 ? "s" : ""}
-            {statusText ? ` · ${statusText}` : ""}
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted">
+            <span>{loggedExerciseCount} exercise{loggedExerciseCount !== 1 ? "s" : ""}</span>
+            <span aria-hidden="true">·</span>
+            <time dateTime={`PT${elapsedSeconds}S`} className="font-mono tabular-nums text-white/70" aria-label={`Elapsed ${formatSessionTimer(elapsedSeconds)}`}>
+              {formatSessionTimer(elapsedSeconds)}
+            </time>
+            {statusText && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span>{statusText}</span>
+              </>
+            )}
           </p>
         )}
       </div>
@@ -439,7 +452,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
     if (!session || saving) return;
     setSaveState((prev) => ({ ...prev, saving: true, error: null }));
 
-    const captured = session;
+    const captured = pauseSessionTimer(session);
     const key = captured.startTime.toISOString();
     const loggedExercises = captured.exercises.filter((ex) => ex.sets.length > 0);
     const workedMuscles = loggedExercises.flatMap((ex) => ex.primaryMuscles);
@@ -457,7 +470,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
 
     const result = await saveWorkoutSession({
       start_time: captured.startTime.toISOString(),
-      duration: Math.floor((Date.now() - captured.startTime.getTime()) / 1000),
+      duration: getSessionElapsedSeconds(captured),
       day_type_id: inferredDayType?.id ?? null,
       sets,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -469,7 +482,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
       return;
     }
 
-    endSession();
+    endSession(captured);
     await clearDraft(key).catch(console.error);
     setSaveState((prev) => ({ ...prev, saving: false, finalSession: captured }));
   }
@@ -548,6 +561,16 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
             <p className="text-xs text-muted mb-2 uppercase tracking-wide">Coverage</p>
             <MiniHeatmap coverage={coverage} />
           </div>
+        )}
+
+        {hasLoggedSets && (
+          <BalanceScoreCard
+            balance={actualWeeklyBalance}
+            contextLabel="live this week"
+            compact
+            showInactiveAxes={false}
+            showNudge={false}
+          />
         )}
 
         {hasLoggedSets && <StrengthGuidance balance={weeklyBalance} projectedSessionCount={projectedPlan.sessionCount} />}

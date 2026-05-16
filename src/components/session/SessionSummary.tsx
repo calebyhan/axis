@@ -3,6 +3,7 @@
 import { computeE1RM } from "@/lib/e1rm";
 import { BalanceScoreCard } from "@/components/strength/BalanceScoreCard";
 import { computeStrengthBalance, mergeStrengthInputs, sessionToStrengthInputs, type StrengthBalanceInput } from "@/lib/strength-balance";
+import { formatSessionDuration, getSessionElapsedSeconds } from "@/lib/session-timer";
 import { formatWeight, weightUnit } from "@/lib/units";
 import type { SessionState, Units } from "@/types";
 
@@ -14,11 +15,7 @@ interface Props {
 }
 
 function getDuration(session: SessionState): string {
-  const ms = Date.now() - session.startTime.getTime();
-  const mins = Math.floor(ms / 60_000);
-  const hrs = Math.floor(mins / 60);
-  const rem = mins % 60;
-  return hrs > 0 ? `${hrs}h ${rem}m` : `${mins}m`;
+  return formatSessionDuration(getSessionElapsedSeconds(session));
 }
 
 export function SessionSummary({ session, onClose, units, weeklyStrengthInputs = [] }: Props) {

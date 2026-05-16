@@ -169,7 +169,7 @@ export async function getWeeklyStats() {
     .reduce((sum, a) => sum + (a.distance ?? 0), 0) / 1000;
 
   const sessionCount = (activities ?? []).filter(
-    (a) => a.type === "workout"
+    (a) => a.type === "workout" || a.type === "run" || a.type === "manual_run"
   ).length;
 
   const totalVolume = (sets ?? []).reduce(

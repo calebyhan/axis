@@ -5,6 +5,7 @@ interface Props {
   contextLabel?: string;
   compact?: boolean;
   showInactiveAxes?: boolean;
+  showNudge?: boolean;
 }
 
 function scoreTone(score: number | null): string {
@@ -26,6 +27,7 @@ export function BalanceScoreCard({
   contextLabel = "this week",
   compact = false,
   showInactiveAxes = true,
+  showNudge = true,
 }: Props) {
   const axes = showInactiveAxes ? balance.axes : balance.axes.filter((axis) => axis.score !== null);
   const topNudge = balance.nudges[0];
@@ -45,7 +47,7 @@ export function BalanceScoreCard({
         </div>
       </div>
 
-      {topNudge && (
+      {showNudge && topNudge && (
         <div className="mt-4 rounded-lg border border-yellow-300/20 bg-yellow-300/[0.06] px-3 py-2 text-xs text-yellow-100">
           {topNudge.message}
         </div>

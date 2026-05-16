@@ -109,6 +109,8 @@ export interface SessionExercise {
 // muscleGroupCoverage is intentionally omitted — derive from exercises at render time
 export interface SessionState {
   startTime: Date;
+  timerStartedAt: Date | null;
+  elapsedSeconds: number;
   dayType: DayType | null;
   exercises: SessionExercise[];
 }

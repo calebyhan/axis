@@ -7,8 +7,10 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatRelativeCalendarDate } from "@/lib/dates";
 import { getTodayPlannedSlots, localDateStr, toISODayOfWeek, type PlannedSlot } from "@/lib/planner";
+import { formatSessionTimer } from "@/lib/session-timer";
 import { distanceUnit, formatDistance, formatWeight, weightUnit } from "@/lib/units";
 import { useSession } from "@/context/SessionContext";
+import { useSessionElapsedSeconds } from "@/hooks/useSessionElapsedSeconds";
 import type { Activity, DailyCheckin, DayType, ScheduleOverride, SessionState, Units, WeeklyScheduleRow } from "@/types";
 
 type Panel = null | "session" | "run" | "weight";
@@ -192,8 +194,10 @@ function ResumeDraftCard({
   onResume: () => void;
 }) {
   const counts = sessionCounts(session);
+  const elapsedSeconds = useSessionElapsedSeconds(session);
   const detail = [
     session.dayType?.name ?? "Workout",
+    formatSessionTimer(elapsedSeconds),
     `${counts.exercises} exercise${counts.exercises === 1 ? "" : "s"}`,
     `${counts.sets} set${counts.sets === 1 ? "" : "s"}`,
     formatRelativeDate(session.startTime),

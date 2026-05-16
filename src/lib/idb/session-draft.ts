@@ -24,6 +24,25 @@ function normalizeMovementPattern(value: unknown): MovementPattern {
     : "other";
 }
 
+function parseDate(value: unknown): Date | null {
+  if (value instanceof Date && !isNaN(value.getTime())) return value;
+  if (typeof value !== "string") return null;
+
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+function normalizeElapsedSeconds(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.floor(value))
+    : 0;
+}
+
+function normalizeTimerStartedAt(value: unknown, startTime: Date): Date | null {
+  if (value === null) return null;
+  return parseDate(value) ?? startTime;
+}
+
 async function getDB() {
   return openDB(DB_NAME, 1, {
     upgrade(db) {
@@ -40,7 +59,12 @@ export async function saveDraft(state: SessionState): Promise<void> {
   const key = state.startTime.toISOString();
   await db.put(STORE, {
     key,
-    data: JSON.stringify({ ...state, startTime: key }),
+    data: JSON.stringify({
+      ...state,
+      startTime: key,
+      timerStartedAt: state.timerStartedAt?.toISOString() ?? null,
+      elapsedSeconds: normalizeElapsedSeconds(state.elapsedSeconds),
+    }),
   });
 }
 
@@ -54,13 +78,15 @@ export async function getDraft(): Promise<{ state: SessionState; key: string } |
   const record = all[0];
 
   try {
-    const raw = JSON.parse(record.data) as SessionState & { startTime: string };
+    const raw = JSON.parse(record.data) as SessionState & { startTime: string; timerStartedAt?: string | null; elapsedSeconds?: unknown };
     const startTime = new Date(raw.startTime);
     if (isNaN(startTime.getTime())) {
       console.error("[session-draft] Invalid startTime in draft, clearing", { key: record.key });
       await db.delete(STORE, record.key).catch(() => {});
       return null;
     }
+    const timerStartedAt = normalizeTimerStartedAt(raw.timerStartedAt, startTime);
+    const elapsedSeconds = normalizeElapsedSeconds(raw.elapsedSeconds);
     const exercises = Array.isArray(raw.exercises)
       ? raw.exercises.map((exercise) => ({
           ...exercise,
@@ -72,7 +98,7 @@ export async function getDraft(): Promise<{ state: SessionState; key: string } |
             : [],
         }))
       : [];
-    return { state: { ...raw, startTime, exercises }, key: record.key };
+    return { state: { ...raw, startTime, timerStartedAt, elapsedSeconds, exercises }, key: record.key };
   } catch (err) {
     console.error("[session-draft] Corrupt draft detected, clearing", {
       key: record.key,

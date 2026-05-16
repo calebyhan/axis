@@ -41,6 +41,8 @@ Current shared type:
 ```typescript
 type SessionState = {
   startTime: Date
+  timerStartedAt: Date | null
+  elapsedSeconds: number
   dayType: DayType | null
   exercises: Array<{
     exerciseId: string
@@ -52,6 +54,8 @@ type SessionState = {
   }>
 }
 ```
+
+`timerStartedAt` is the running timer anchor. `elapsedSeconds` is accumulated duration before the current running anchor. Closing with **Keep draft** freezes the timer by folding the current wall-clock delta into `elapsedSeconds` and setting `timerStartedAt` to `null`; resuming starts a new anchor. If the app closes unexpectedly, a draft with a non-null anchor can reconstruct elapsed time from wall clock on reopen.
 
 `e1rm`, `muscleGroupCoverage`, and balance scores are derived at render/query time, not stored in session state.
 
@@ -67,7 +71,7 @@ object store: session_drafts
 key: session.startTime.toISOString()
 ```
 
-Autosave runs shortly after edits and every 30 seconds while a session is open. On app load, `SessionProvider` checks IndexedDB and surfaces a resume/discard prompt. A successful save clears only the draft matching that session start time.
+Autosave runs shortly after edits, every 30 seconds while a session is open, and when the page is hidden. The timer fields are serialized into the same IndexedDB record as the sets, so each draft write updates the session atomically from the app's perspective. On app load, `SessionProvider` checks IndexedDB and surfaces a resume/discard prompt. A successful save clears only the draft matching that session start time.
 
 If autosave fails twice, the UI shows an autosave warning. If final save fails, the captured session is written back to IndexedDB and the user can retry.
 

@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { DayType, SessionExercise, SessionState, SessionSet } from "@/types";
 import { saveDraft, getDraft, clearDraft } from "@/lib/idb/session-draft";
+import { pauseSessionTimer, startSessionTimer } from "@/lib/session-timer";
 
 export type DraftSaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -28,7 +29,7 @@ interface SessionContextValue {
   addSet: (exerciseId: string, set: SessionSet) => void;
   updateSet: (exerciseId: string, setIndex: number, set: SessionSet) => void;
   deleteSet: (exerciseId: string, setIndex: number) => void;
-  endSession: () => SessionState;
+  endSession: (finalSession?: SessionState) => SessionState;
   pauseSession: () => Promise<boolean>;
   cancelSession: () => void;
 }
@@ -92,21 +93,34 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (autosaveRef.current) clearInterval(autosaveRef.current);
       return;
     }
+    const flushDraft = () => {
+      void persistDraft();
+    };
+    const flushHiddenDraft = () => {
+      if (document.visibilityState === "hidden") flushDraft();
+    };
     const debounce = setTimeout(() => {
       void persistDraft(session);
     }, 750);
     autosaveRef.current = setInterval(() => {
       void persistDraft();
     }, 30_000);
+    document.addEventListener("visibilitychange", flushHiddenDraft);
+    window.addEventListener("pagehide", flushDraft);
     return () => {
       clearTimeout(debounce);
       if (autosaveRef.current) clearInterval(autosaveRef.current);
+      document.removeEventListener("visibilitychange", flushHiddenDraft);
+      window.removeEventListener("pagehide", flushDraft);
     };
   }, [persistDraft, session]);
 
   const startSession = useCallback((dayType: DayType | null) => {
+    const now = new Date();
     const newSession: SessionState = {
-      startTime: new Date(),
+      startTime: now,
+      timerStartedAt: now,
+      elapsedSeconds: 0,
       dayType,
       exercises: [],
     };
@@ -121,7 +135,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const resumeDraft = useCallback(() => {
     if (draftData) {
-      setSession(draftData);
+      const resumedDraft = startSessionTimer(draftData);
+      setSession(resumedDraft);
       setHasDraft(false);
       setDraftData(null);
       autosaveFailCount.current = 0;
@@ -187,22 +202,26 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Returns the final session state; caller is responsible for clearDraft after DB write
-  const endSession = useCallback((): SessionState => {
+  const endSession = useCallback((finalSession?: SessionState): SessionState => {
     if (!session) throw new Error("No active session");
-    const finalSession = session;
+    const completedSession = finalSession ?? session;
     setSession(null);
     setAutosaveFailed(false);
     autosaveFailCount.current = 0;
     setDraftSaveStatus("idle");
-    return finalSession;
+    return completedSession;
   }, [session]);
 
   const pauseSession = useCallback(async () => {
-    const saved = await persistDraft();
+    const current = sessionRef.current;
+    if (!current) return true;
+
+    const pausedSession = pauseSessionTimer(current);
+    const saved = await persistDraft(pausedSession);
     if (!saved) return false;
     setSession(null);
     setHasDraft(true);
-    setDraftData(sessionRef.current);
+    setDraftData(pausedSession);
     setAutosaveFailed(false);
     autosaveFailCount.current = 0;
     return true;
