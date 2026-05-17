@@ -579,7 +579,7 @@ export default function OverviewTab({
                   <BarChart data={loadTimeline}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1F1F1F" />
                     <XAxis dataKey="period" tick={{ fill: "#666", fontSize: 10 }} tickLine={false} tickFormatter={(v) => String(v).slice(5)} />
-                    <YAxis tick={{ fill: "#666", fontSize: 10 }} tickLine={false} axisLine={false} />
+                    <YAxis hide />
                     <Tooltip {...CHART_TOOLTIP_PROPS} formatter={(v) => [v, "Training Load"]} />
                     <Bar dataKey="load" fill="var(--accent, #3B82F6)" radius={[3, 3, 0, 0]} />
                   </BarChart>
@@ -613,6 +613,8 @@ export default function OverviewTab({
               <div className="h-24">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={volumeChartData}>
+                    <XAxis dataKey="period" hide />
+                    <YAxis hide />
                     <Tooltip {...CHART_TOOLTIP_PROPS} formatter={(v) => [`${v} ${weightUnit(units)}`, "Volume"]} />
                     <Bar dataKey="volume" fill="var(--accent, #3B82F6)" radius={[2, 2, 0, 0]} />
                   </BarChart>
@@ -630,6 +632,8 @@ export default function OverviewTab({
               <div className="h-24">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={runChartData}>
+                    <XAxis dataKey="date" hide />
+                    <YAxis hide />
                     <Tooltip {...CHART_TOOLTIP_PROPS} formatter={(v) => [`${v} ${distanceUnit(units)}`, "Distance"]} />
                     <Bar dataKey="dist" fill="#22c55e" radius={[2, 2, 0, 0]} />
                   </BarChart>
@@ -647,6 +651,8 @@ export default function OverviewTab({
               <div className="h-24">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={bodyChartData}>
+                    <XAxis dataKey="date" hide />
+                    <YAxis hide />
                     <Tooltip {...CHART_LINE_TOOLTIP_PROPS} />
                     <Line type="monotone" dataKey="rolling" stroke="var(--accent, #3B82F6)" strokeWidth={2} dot={false} />
                   </LineChart>
@@ -664,6 +670,8 @@ export default function OverviewTab({
               <div className="h-24">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trainingLoad}>
+                    <XAxis dataKey="date" hide />
+                    <YAxis hide />
                     <Tooltip {...CHART_LINE_TOOLTIP_PROPS} formatter={(v) => [v, "Form (TSB)"]} />
                     <Line type="monotone" dataKey="tsb" stroke="#a855f7" strokeWidth={2} dot={false} />
                   </LineChart>
