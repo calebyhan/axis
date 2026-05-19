@@ -7,13 +7,12 @@ import {
   dateKeyRangeUtc,
   dateKeyToLocalDate,
   formatZonedDate,
-  isoDayFromDateKey,
   monthStartDateKey,
   startOfWeekDateKey,
   zonedDateKey,
   zonedDateTimeToUtc,
 } from "@/lib/time-zone";
-import type { CalendarActivity } from "@/lib/calendar";
+import { buildActivityStreak, type CalendarActivity } from "@/lib/calendar";
 import { computeStrengthBalance, strengthInputsFromExerciseSets, type StrengthBalanceSummary, type StrengthSetDescriptor } from "@/lib/strength-balance";
 import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails, MuscleTag } from "@/types";
 
@@ -22,7 +21,6 @@ function localDateStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-type ActivityKind = "workout" | "cardio";
 type DayPlan = {
   hasWorkoutSlot: boolean;
   hasCardioSlot: boolean;
@@ -33,12 +31,6 @@ type SkipOverride = {
   date: string;
   slot: "workout" | "cardio";
 };
-
-function getActivityKind(type: string): ActivityKind | null {
-  if (type === "workout") return "workout";
-  if (type === "run" || type === "manual_run" || type === "ride") return "cardio";
-  return null;
-}
 
 function normalizeRelation<T>(raw: unknown): T | null {
   if (!raw) return null;
@@ -55,43 +47,6 @@ function weeklyDateLabel(startTime: string, timeZone: string): string {
     month: "short",
     day: "numeric",
   });
-}
-
-function buildDailyKindMap(
-  activities: { start_time: string; type: string }[],
-  timeZone: string
-): Map<string, Set<ActivityKind>> {
-  const days = new Map<string, Set<ActivityKind>>();
-
-  for (const activity of activities) {
-    const kind = getActivityKind(activity.type);
-    if (!kind) continue;
-    const key = zonedDateKey(activity.start_time, timeZone);
-    const kinds = days.get(key) ?? new Set<ActivityKind>();
-    kinds.add(kind);
-    days.set(key, kinds);
-  }
-
-  return days;
-}
-
-function applySkipOverrides(
-  days: Map<string, Set<ActivityKind>>,
-  overrides: SkipOverride[]
-): Map<string, Set<ActivityKind>> {
-  const merged = new Map<string, Set<ActivityKind>>();
-
-  for (const [key, kinds] of days) {
-    merged.set(key, new Set(kinds));
-  }
-
-  for (const override of overrides) {
-    const kinds = merged.get(override.date) ?? new Set<ActivityKind>();
-    kinds.add(override.slot);
-    merged.set(override.date, kinds);
-  }
-
-  return merged;
 }
 
 const fetchDayPlans = cache(async function fetchDayPlans(): Promise<Map<number, DayPlan>> {
@@ -121,23 +76,6 @@ const fetchDayPlans = cache(async function fetchDayPlans(): Promise<Map<number, 
 
   return plans;
 });
-
-function getDayCompletionCount(
-  kinds: Set<ActivityKind> | undefined,
-  plan?: DayPlan
-): number {
-  const workoutDone = !!plan?.workoutSatisfiedByRest || !!kinds?.has("workout");
-  const cardioDone = !!plan?.cardioSatisfiedByRest || !!kinds?.has("cardio");
-
-  if (plan?.hasWorkoutSlot && plan?.hasCardioSlot) {
-    return Number(workoutDone) + Number(cardioDone);
-  }
-
-  if (plan?.hasWorkoutSlot) return workoutDone ? 1 : 0;
-  if (plan?.hasCardioSlot) return cardioDone ? 1 : 0;
-
-  return kinds ? kinds.size : 0;
-}
 
 export async function getWeeklyStats() {
   const supabase = await createClient();
@@ -311,18 +249,20 @@ export async function getActivityStreak() {
   const supabase = await createClient();
   const timeZone = await getUserTimeZone();
   const todayKey = zonedDateKey(new Date(), timeZone);
-  const weekStart = startOfWeekDateKey(todayKey);
+  const streakStartKey = addDateKeyDays(todayKey, -119);
+  const activityRange = dateKeyRangeUtc(streakStartKey, addDateKeyDays(todayKey, 1), timeZone);
   const [{ data, error }, dayPlans, { data: overrides, error: overridesError }] = await Promise.all([
     supabase
       .from("activities")
       .select("start_time, type")
-      .order("start_time", { ascending: false })
-      .limit(120),
+      .gte("start_time", activityRange.start.toISOString())
+      .lt("start_time", activityRange.end.toISOString())
+      .order("start_time", { ascending: false }),
     fetchDayPlans(),
     supabase
       .from("schedule_overrides")
       .select("date, slot")
-      .gte("date", weekStart)
+      .gte("date", streakStartKey)
       .lte("date", todayKey)
       .is("day_type_id", null),
   ]);
@@ -330,24 +270,18 @@ export async function getActivityStreak() {
   if (error) console.error("[query] getActivityStreak failed", error.message);
   if (overridesError) console.error("[query] getActivityStreak overrides failed", overridesError.message);
 
-  const activityDays = applySkipOverrides(buildDailyKindMap(data ?? [], timeZone), (overrides as SkipOverride[] | null) ?? []);
-  let streak = 0;
+  const activities: CalendarActivity[] = ((data ?? []) as { start_time: string; type: string }[]).map((activity) => ({
+    ...activity,
+    date: zonedDateKey(activity.start_time, timeZone),
+  }));
+  const plans = Array.from(dayPlans.entries()).map(([dayOfWeek, plan]) => ({ dayOfWeek, ...plan }));
 
-  for (let i = 0; i < 120; i++) {
-    const key = addDateKeyDays(todayKey, -i);
-    const kinds = activityDays.get(key);
-    const plan = key >= weekStart ? dayPlans.get(isoDayFromDateKey(key)) : undefined;
-    const completionCount = getDayCompletionCount(kinds, plan);
-    const requiredCount = plan?.hasWorkoutSlot && plan?.hasCardioSlot ? 2 : 1;
-
-    if (completionCount >= requiredCount && requiredCount > 0) {
-      streak++;
-    } else if (i > 0) {
-      break;
-    }
-  }
-
-  return streak;
+  return buildActivityStreak(
+    activities,
+    plans,
+    (overrides as SkipOverride[] | null) ?? [],
+    dateKeyToLocalDate(todayKey)
+  );
 }
 
 export type DayPlanEntry = {

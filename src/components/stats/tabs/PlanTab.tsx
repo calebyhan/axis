@@ -217,12 +217,6 @@ function buildPlanCalendarMonths(
   planCalendarData: HistoricalPlanCalendarData
 ): PlanCalendarMonth[] {
   const months = new Map<string, { year: number; month: number; planned: number; completed: number; activeDays: Map<string, number> }>();
-  const activeDays = buildCalendarActiveDays(
-    planCalendarData.activities,
-    planCalendarData.dayPlans,
-    planCalendarData.skipOverrides,
-    dateKeyToLocalDate(planCalendarData.todayKey)
-  );
   let firstDate: Date | null = null;
 
   for (const week of adherence) {
@@ -240,15 +234,34 @@ function buildPlanCalendarMonths(
     }
   }
 
+  for (const activity of planCalendarData.activities) {
+    const date = parseLocalDate(activity.date ?? activity.start_time.slice(0, 10));
+    if (!firstDate || date < firstDate) firstDate = date;
+  }
+
+  for (const override of planCalendarData.skipOverrides) {
+    const date = parseLocalDate(override.date);
+    if (!firstDate || date < firstDate) firstDate = date;
+  }
+
+  if (!firstDate) return [];
+
+  const today = dateKeyToLocalDate(planCalendarData.todayKey);
+  const visibleStart = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+  const activeDays = buildCalendarActiveDays(
+    planCalendarData.activities,
+    planCalendarData.dayPlans,
+    planCalendarData.skipOverrides,
+    today,
+    visibleStart
+  );
+
   for (const [date, count] of activeDays) {
     const dateValue = parseLocalDate(date);
     getOrCreateMonth(months, dateValue).activeDays.set(date, count);
     if (!firstDate || dateValue < firstDate) firstDate = dateValue;
   }
 
-  if (!firstDate) return [];
-
-  const today = dateKeyToLocalDate(planCalendarData.todayKey);
   const cursor = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
   const final = new Date(today.getFullYear(), today.getMonth(), 1);
 

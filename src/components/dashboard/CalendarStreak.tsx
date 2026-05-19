@@ -15,7 +15,8 @@ interface Props {
 
 export function CalendarStreak({ streak, activities, dayPlans, skipOverrides, todayKey }: Props) {
   const today = dateKeyToLocalDate(todayKey);
-  const activeDays = buildCalendarActiveDays(activities, dayPlans, skipOverrides, today);
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const activeDays = buildCalendarActiveDays(activities, dayPlans, skipOverrides, today, monthStart);
 
   return (
     <CalendarMonth
