@@ -207,7 +207,7 @@ export function StatsClient({
         ))}
       </div>
 
-      <div className="flex gap-4 overflow-x-auto border-b border-border" role="tablist" aria-label="Stats sections">
+      <div className="flex gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x border-b border-border" role="tablist" aria-label="Stats sections">
         {TABS.map((t, index) => (
           <button
             key={t.value}
