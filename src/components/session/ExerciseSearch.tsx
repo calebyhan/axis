@@ -1,9 +1,9 @@
 "use client";
 
 import { useId, useMemo, useRef, useState } from "react";
-import Fuse from "fuse.js";
 import type { Exercise, MuscleGroup } from "@/types";
 import { summarizeMuscleTags } from "@/lib/muscle-tags";
+import { muscleGroupLabel, searchExercises } from "@/lib/exercise-search";
 
 interface Props {
   exercises: Exercise[];
@@ -11,10 +11,6 @@ interface Props {
   scoredOrder?: string[];
   defaultMuscles?: MuscleGroup[];
   collapseUntilTyped?: boolean;
-}
-
-function muscleLabel(m: MuscleGroup): string {
-  return m.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export function ExerciseSearch({
@@ -28,12 +24,14 @@ export function ExerciseSearch({
   const [selectedMuscles, setSelectedMuscles] = useState<MuscleGroup[] | "all" | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchId = useId();
+  const normalizedQuery = query.trim();
 
   const activeMuscs = useMemo(() => {
     if (selectedMuscles === "all") return null;
     if (selectedMuscles) return selectedMuscles;
+    if (normalizedQuery) return null;
     return defaultMuscles && defaultMuscles.length > 0 ? defaultMuscles : null;
-  }, [defaultMuscles, selectedMuscles]);
+  }, [defaultMuscles, normalizedQuery, selectedMuscles]);
 
   const filtered = useMemo(() => {
     if (!activeMuscs) return exercises;
@@ -45,7 +43,7 @@ export function ExerciseSearch({
 
   const results = useMemo(() => {
     const pool = filtered;
-    if (!query.trim()) {
+    if (!normalizedQuery) {
       if (scoredOrder && scoredOrder.length > 0) {
         const idMap = new Map(pool.map((e) => [e.id, e]));
         const ordered = scoredOrder.flatMap((id) => (idMap.has(id) ? [idMap.get(id)!] : []));
@@ -54,22 +52,16 @@ export function ExerciseSearch({
       }
       return pool.slice(0, 40);
     }
-    return new Fuse(pool, {
-      keys: ["name", "category"],
-      threshold: 0.35,
-      distance: 80,
-    })
-      .search(query)
-      .map((r) => r.item)
-      .slice(0, 20);
-  }, [query, filtered, scoredOrder]);
+
+    return searchExercises(pool, normalizedQuery, 20);
+  }, [filtered, normalizedQuery, scoredOrder]);
 
   function toggleMuscle(m: MuscleGroup) {
     setSelectedMuscles((prev) => {
-      const current =
-        prev === "all"
-          ? null
-          : prev ?? (defaultMuscles && defaultMuscles.length > 0 ? defaultMuscles : null);
+      const implicitMuscles = normalizedQuery
+        ? null
+        : (defaultMuscles && defaultMuscles.length > 0 ? defaultMuscles : null);
+      const current = prev === "all" ? null : prev ?? implicitMuscles;
 
       if (!current) return [m];
       if (current.includes(m)) {
@@ -111,7 +103,7 @@ export function ExerciseSearch({
                   on ? "bg-accent text-white" : "bg-border text-muted hover:text-white"
                 }`}
               >
-                {muscleLabel(m)}
+                {muscleGroupLabel(m)}
               </button>
             );
           })}
@@ -125,7 +117,7 @@ export function ExerciseSearch({
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search exercises…"
+        placeholder="Search exercise, muscle, equipment…"
         className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-[var(--accent)] transition-colors"
       />
 
