@@ -239,7 +239,7 @@ Computed in TypeScript with `computeE1RM()`. One-rep sets return the actual weig
 
 Daily training load combines run and strength signals:
 
-- Run TL: sum of `suffer_score`, capped at 200 per day in the query.
+- Run TL: derived from run duration and available intensity signal, capped at 200 per day. Strava `suffer_score` is not used as the source of truth, so free and subscriber runs are scored consistently.
 - Strength TL: `SUM(reps * weight * rpe) / 1000`, capped at 200.
 - Daily TL: `runTL + strengthTL`.
 

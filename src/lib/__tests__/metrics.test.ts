@@ -12,7 +12,7 @@ import {
   roundDisplayWeight,
   weightUnit,
 } from "../units";
-import { buildDailyTrainingLoads, computeATLCTLTSB, normalizeStrengthTL } from "../training-load";
+import { buildDailyTrainingLoads, computeATLCTLTSB, computeRunTrainingLoad, normalizeStrengthTL } from "../training-load";
 
 describe("computeE1RM", () => {
   it("returns the actual weight for one-rep max attempts", () => {
@@ -125,7 +125,7 @@ describe("training load metrics", () => {
     expect(
       buildDailyTrainingLoads(
         [
-          { start_time: "2026-05-14T01:00:00.000Z", suffer_score: 42 },
+          { start_time: "2026-05-14T01:00:00.000Z", type: "run", source: "strava", duration: 42 * 60, suffer_score: 42 },
         ],
         [
           { start_time: "2026-05-16T01:30:00.000Z", reps: 5, weight: 100, rpe: 8 },
@@ -140,6 +140,47 @@ describe("training load metrics", () => {
       { date: "2026-05-15", runTL: 0, strengthTL: 4 },
       { date: "2026-05-16", runTL: 0, strengthTL: 0 },
     ]);
+  });
+
+  it("derives Strava run load without depending on subscriber-only suffer score", () => {
+    const freeRun = {
+      start_time: "2026-05-13T12:00:00.000Z",
+      type: "run",
+      source: "strava",
+      duration: 60 * 60,
+      avg_heartrate: null,
+      suffer_score: null,
+    };
+    const premiumRun = {
+      ...freeRun,
+      suffer_score: 160,
+    };
+
+    expect(computeRunTrainingLoad(freeRun)).toBe(60);
+    expect(computeRunTrainingLoad(premiumRun)).toBe(60);
+  });
+
+  it("uses available HR or manual effort as the run intensity signal", () => {
+    expect(
+      computeRunTrainingLoad({
+        start_time: "2026-05-13T12:00:00.000Z",
+        type: "run",
+        source: "strava",
+        duration: 60 * 60,
+        avg_heartrate: 150,
+        suffer_score: null,
+      })
+    ).toBe(75);
+
+    expect(
+      computeRunTrainingLoad({
+        start_time: "2026-05-13T12:00:00.000Z",
+        type: "manual_run",
+        source: "manual",
+        duration: 30 * 60,
+        suffer_score: 200,
+      })
+    ).toBe(54);
   });
 
   it("sorts load days, smooths ATL/CTL from starting values, and rounds displayed points", () => {

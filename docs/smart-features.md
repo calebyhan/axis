@@ -60,6 +60,7 @@ Adherence is computed from effective planned slots and logged activities:
 Stats Load computes:
 
 - Daily TL = run TL + normalized strength TL.
+- Run TL is duration-based and uses average heart rate when available, or manual perceived effort for manual runs. Strava subscriber-only `suffer_score` does not drive training load.
 - ATL = 7-day exponential weighted average.
 - CTL = 42-day exponential weighted average.
 - TSB = CTL - ATL.
@@ -118,6 +119,12 @@ weight * (1 + reps / 30)
 
 ```text
 min(200, SUM(reps * weight * rpe) / 1000)
+```
+
+### Run Training Load
+
+```text
+min(200, duration_minutes * intensity_multiplier)
 ```
 
 ### ATL / CTL / TSB

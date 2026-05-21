@@ -371,7 +371,7 @@ export async function getTrainingLoadHistory(range: TimeRange = "month") {
   const [activitiesRes, setsRes] = await Promise.all([
     supabase
       .from("activities")
-      .select("start_time, suffer_score")
+      .select("type, source, start_time, duration, avg_heartrate, suffer_score")
       .in("type", ["run", "manual_run"])
       .lt("start_time", bounds.endExclusiveInstant)
       .order("start_time"),

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Activity, BestEffort, Units } from "@/types";
+import { computeRunTrainingLoad } from "@/lib/training-load";
 import { formatDistance, formatPace, distanceUnit } from "@/lib/units";
 import { PolylinePreview } from "./PolylinePreview";
 
@@ -14,6 +15,10 @@ function medalCount(efforts: BestEffort[] | null): number {
   return efforts?.filter((effort) => effort.pr_rank != null && effort.pr_rank >= 1 && effort.pr_rank <= 3).length ?? 0;
 }
 
+function formatLoad(load: number): string {
+  return Number.isInteger(load) ? String(load) : load.toFixed(1);
+}
+
 interface Props {
   activity: Activity;
   units: Units;
@@ -23,6 +28,7 @@ export function RunCard({ activity, units }: Props) {
   const distanceKm = activity.distance ? activity.distance / 1000 : null;
   const distanceDisplay = distanceKm !== null ? formatDistance(distanceKm, units) : null;
   const medals = medalCount(activity.best_efforts);
+  const runLoad = computeRunTrainingLoad(activity);
 
   return (
     <Link href={`/activity/${activity.id}`} className="card surface-hover flex flex-col overflow-hidden">
@@ -39,9 +45,9 @@ export function RunCard({ activity, units }: Props) {
               <span className="truncate text-[10px] text-white/40 uppercase tracking-[0.18em]">
                 {activity.type === "manual_run" ? "Manual Run" : activity.name ?? "Run"}
               </span>
-              {activity.suffer_score != null && (
-                <span className="shrink-0 text-[10px] text-red-300 uppercase tracking-[0.14em] px-1.5 py-0.5 rounded bg-red-400/8 border border-red-400/12">
-                  Suffer {activity.suffer_score}
+              {runLoad > 0 && (
+                <span className="shrink-0 text-[10px] text-indigo-200 uppercase tracking-[0.14em] px-1.5 py-0.5 rounded bg-indigo-400/8 border border-indigo-400/12">
+                  Load {formatLoad(runLoad)}
                 </span>
               )}
             </div>

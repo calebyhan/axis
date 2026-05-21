@@ -5,6 +5,7 @@ import { getActivityWithSets } from "@/lib/queries/activity";
 import { getUserTimeZone, getUserUnits } from "@/lib/queries/profile";
 import { addMuscleTagSets, muscleTagSummaries } from "@/lib/muscle-tags";
 import { hasSplits } from "@/lib/splits";
+import { computeRunTrainingLoad } from "@/lib/training-load";
 import { formatZonedDate } from "@/lib/time-zone";
 import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
 import { formatDistance, formatPace, distanceUnit } from "@/lib/units";
@@ -23,6 +24,10 @@ function formatDuration(secs: number | null): string {
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function formatLoad(load: number): string {
+  return Number.isInteger(load) ? String(load) : load.toFixed(1);
 }
 
 const BEST_EFFORT_ORDER = [
@@ -230,6 +235,7 @@ export default async function ActivityDetailPage({
   const bestEfforts = Array.isArray(activity.best_efforts) ? (activity.best_efforts as BestEffort[]) : [];
   const medalCount =
     bestEfforts.filter((effort) => achievementMeta(effort.pr_rank) !== null).length;
+  const runLoad = isRun ? computeRunTrainingLoad(activity) : null;
 
   return (
     <div className="page-shell flex flex-col gap-6">
@@ -273,6 +279,9 @@ export default async function ActivityDetailPage({
           <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3 sm:grid-cols-4">
             <StatCard label="Distance" value={distanceKm ? formatDistance(distanceKm, units) : "—"} unit={distanceUnit(units)} />
             <StatCard label="Duration" value={formatDuration(activity.duration)} />
+            {runLoad != null && runLoad > 0 && (
+              <StatCard label="Run Load" value={formatLoad(runLoad)} />
+            )}
             <StatCard label="Avg Pace" value={formatPace(activity.avg_pace, units)} />
             <StatCard label="Avg HR" value={activity.avg_heartrate ? `${Math.round(activity.avg_heartrate)}` : "—"} unit={activity.avg_heartrate ? "bpm" : undefined} />
             {activity.max_heartrate != null && (
@@ -289,9 +298,6 @@ export default async function ActivityDetailPage({
             )}
             {activity.avg_watts != null && (
               <StatCard label="Power" value={`${Math.round(activity.avg_watts)}`} unit="W" />
-            )}
-            {activity.suffer_score != null && (
-              <StatCard label="Suffer" value={`${activity.suffer_score}`} />
             )}
             {medalCount > 0 && (
               <StatCard label="Medals" value={`${medalCount}`} />
