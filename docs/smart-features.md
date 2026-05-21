@@ -27,17 +27,19 @@ The live session mini heatmap counts primary-muscle sets in the current in-memor
 
 ### Smart Strength Guidance
 
-Axis computes balance from set counts, exercise `movement_pattern`, primary muscles, and secondary muscles.
+Axis computes balance from set counts, exercise `movement_pattern`, primary muscles, and secondary muscles. Movement patterns are used first; relevant isolation exercises with `movement_pattern = 'other'` can still count through their muscle assignments, so work like leg curls, lateral raises, and rear-delt fly is not invisible to balance guidance.
 
 Live session guidance combines saved current-week work with the active unsaved session, then checks remaining planned strength sessions before showing compact nudges. Future plans are projected from `day_types.muscle_focus`, so a planned Pull or Legs day can suppress a current gap warning even before those sets are logged.
 
-- Push/pull.
-- Horizontal push/pull.
-- Quad/hinge.
-- Vertical push/pull.
-- Elbow flexion/extension.
-- Upper/lower.
-- Front/rear delt emphasis.
+Balance uses target ranges rather than assuming every pair should be 50/50:
+
+- Push/pull allows pull volume to run slightly ahead of push volume.
+- Horizontal push/pull allows equal or pull-biased work.
+- Quads/posterior chain counts hip hinges plus direct hamstring, glute, and lower-back isolation.
+- Vertical push/pull uses a broader target range than horizontal work.
+- Elbow flexion/extension uses a broad direct-arm range and is weighted below compound movement axes.
+- Upper/lower is a coverage nudge, not part of the headline score.
+- Front/rear delt emphasis allows rear-delt work to run ahead more than front-delt work.
 
 The same scoring engine powers post-session summaries, weekly dashboard context, and workout stats. Exercise search can prioritize movements or muscles that match the current low side when the rest of the plan does not already cover it.
 
@@ -102,7 +104,7 @@ These ideas are referenced by product direction but are not current behavior:
 - Template-based set completion rate.
 - Automated weekly summary generation through `weekly_summaries`.
 - Distance-threshold and suffer-score-median plan matching.
-- Strength-ratio tracking thresholds.
+- User-configurable strength-balance target ranges.
 - Deload detection.
 
 ---

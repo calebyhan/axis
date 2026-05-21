@@ -43,6 +43,36 @@ describe("computeStrengthBalance", () => {
     expect(summary.nudges.some((nudge) => nudge.message === "Heavy horizontal push today. Add a horizontal pull?")).toBe(true);
   });
 
+  it("allows pull volume to run slightly ahead of push volume", () => {
+    const summary = computeStrengthBalance([
+      input({
+        movementPattern: "horizontal_push",
+        primaryMuscles: ["chest", "front_delt", "triceps"],
+        sets: 4,
+      }),
+      input({
+        movementPattern: "horizontal_pull",
+        primaryMuscles: ["upper_back", "lats", "rear_delt"],
+        sets: 6,
+      }),
+    ], { scopeLabel: "today", nudgeLimit: 10 });
+
+    expect(summary.axes.find((axis) => axis.id === "push_pull")).toMatchObject({
+      left: 4,
+      right: 6,
+      score: 100,
+      status: "balanced",
+    });
+    expect(summary.axes.find((axis) => axis.id === "horizontal_push_pull")).toMatchObject({
+      left: 4,
+      right: 6,
+      score: 100,
+      status: "balanced",
+    });
+    expect(summary.nudges.some((nudge) => nudge.axisId === "push_pull")).toBe(false);
+    expect(summary.nudges.some((nudge) => nudge.axisId === "horizontal_push_pull")).toBe(false);
+  });
+
   it("uses muscle emphasis for front and rear delt balance", () => {
     const summary = computeStrengthBalance([
       input({
@@ -60,7 +90,7 @@ describe("computeStrengthBalance", () => {
     expect(summary.axes.find((axis) => axis.id === "front_rear_shoulder")).toMatchObject({
       left: 4,
       right: 1,
-      score: 25,
+      score: 33,
       status: "gap",
     });
     expect(summary.nudges.some((nudge) => nudge.message.includes("front-delt work"))).toBe(true);
@@ -97,7 +127,30 @@ describe("computeStrengthBalance", () => {
     expect(computeStrengthBalance(inputs).axes.find((axis) => axis.id === "quad_hinge")).toMatchObject({
       left: 2,
       right: 1,
-      score: 50,
+      score: 67,
+      status: "watch",
+    });
+  });
+
+  it("counts hamstring isolation toward the posterior-chain side", () => {
+    const summary = computeStrengthBalance([
+      input({
+        movementPattern: "quad_dominant",
+        primaryMuscles: ["quads"],
+        sets: 4,
+      }),
+      input({
+        movementPattern: "other",
+        primaryMuscles: ["hamstrings"],
+        sets: 3,
+      }),
+    ], { scopeLabel: "today", nudgeLimit: 10 });
+
+    expect(summary.axes.find((axis) => axis.id === "quad_hinge")).toMatchObject({
+      left: 4,
+      right: 3,
+      score: 100,
+      status: "balanced",
     });
   });
 

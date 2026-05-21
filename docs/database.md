@@ -263,6 +263,8 @@ Linear regression over the selected body-weight points in stored kilograms:
 
 Coverage uses `session_sets -> exercises.primary_muscles`. Secondary muscles are stored and used in search/filtering, but coverage counts are currently based on primary muscles.
 
+Strength balance is separate from heatmap coverage. It combines movement patterns with primary/secondary muscle assignments and scores each axis against a target range rather than a strict 50/50 split.
+
 ### Plan Adherence
 
 `deriveAdherence()` greedily assigns activities to effective planned slots by type match and temporal proximity. A matched activity on the planned date is `completed`; a match on another date in the same week is `swapped`; past unmatched slots are `missed`; future unmatched slots are `pending`; skipped overrides are `skipped`.
@@ -271,7 +273,7 @@ Coverage uses `session_sets -> exercises.primary_muscles`. Secondary muscles are
 
 ## Seed Data
 
-Antagonist movement pairs:
+Base antagonist movement pairs:
 
 ```sql
 ('horizontal_push', 'horizontal_pull')
@@ -279,5 +281,7 @@ Antagonist movement pairs:
 ('quad_dominant', 'hip_hinge')
 ('elbow_flexion', 'elbow_extension')
 ```
+
+The balance engine also uses muscle assignments to catch isolation work that does not fit one of those movement patterns, such as hamstring curls, lateral raises, rear-delt isolation, calf work, and hip isolation.
 
 Exercise taxonomy is seeded from the Wger open dataset plus local mapping logic in `scripts/seed-exercises.ts`.

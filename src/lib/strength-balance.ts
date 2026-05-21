@@ -87,6 +87,11 @@ interface BalanceAxisDefinition {
   leftLabel: string;
   rightLabel: string;
   minTotal: number;
+  target: {
+    minRightToLeft?: number;
+    maxRightToLeft?: number;
+  };
+  scoreWeight?: number;
   left: (inputs: StrengthBalanceInput[]) => number;
   right: (inputs: StrengthBalanceInput[]) => number;
   suggestions: Record<"left" | "right", { patterns: MovementPattern[]; muscles: MuscleGroup[] }>;
@@ -101,6 +106,12 @@ const PULL_PATTERNS: MovementPattern[] = ["horizontal_pull", "vertical_pull", "e
 const UPPER_PATTERNS: MovementPattern[] = [...PUSH_PATTERNS, ...PULL_PATTERNS];
 const LOWER_PATTERNS: MovementPattern[] = ["quad_dominant", "hip_hinge"];
 
+const PUSH_MUSCLES: MuscleGroup[] = ["chest", "front_delt", "lateral_delt", "triceps"];
+const PULL_MUSCLES: MuscleGroup[] = ["upper_back", "lats", "traps", "rear_delt", "biceps"];
+const UPPER_MUSCLES: MuscleGroup[] = [...PUSH_MUSCLES, ...PULL_MUSCLES, "forearm"];
+const LOWER_MUSCLES: MuscleGroup[] = ["quads", "hamstrings", "glutes", "lower_back", "calves", "hip_flexors", "adductors"];
+const QUAD_MUSCLES: MuscleGroup[] = ["quads", "hip_flexors"];
+const POSTERIOR_CHAIN_MUSCLES: MuscleGroup[] = ["hamstrings", "glutes", "lower_back"];
 const BACK_MUSCLES: MuscleGroup[] = ["upper_back", "lats", "traps", "rear_delt"];
 const CHEST_TRICEPS_MUSCLES: MuscleGroup[] = ["chest", "triceps"];
 const DEFAULT_PROJECTED_PATTERN_SETS = 4;
@@ -124,6 +135,32 @@ function countPatterns(inputs: StrengthBalanceInput[], patterns: MovementPattern
     inputs.reduce((sum, input) => (
       patternSet.has(input.movementPattern) ? sum + input.sets : sum
     ), 0)
+  );
+}
+
+function countStimulus(
+  inputs: StrengthBalanceInput[],
+  patterns: MovementPattern[],
+  muscles: MuscleGroup[],
+  blockedPatterns: MovementPattern[] = []
+): number {
+  const patternSet = new Set(patterns);
+  const muscleSet = new Set(muscles);
+  const blockedPatternSet = new Set(blockedPatterns);
+
+  return roundCount(
+    inputs.reduce((sum, input) => {
+      if (blockedPatternSet.has(input.movementPattern)) return sum;
+      if (patternSet.has(input.movementPattern)) return sum + input.sets;
+
+      const primaryHit = input.primaryMuscles.some((muscle) => muscleSet.has(muscle));
+      if (primaryHit) return sum + input.sets * PRIMARY_MUSCLE_WEIGHT;
+
+      const secondaryHit = input.secondaryMuscles.some((muscle) => muscleSet.has(muscle));
+      if (secondaryHit) return sum + input.sets * SECONDARY_MUSCLE_WEIGHT;
+
+      return sum;
+    }, 0)
   );
 }
 
@@ -208,16 +245,18 @@ const AXIS_DEFINITIONS: BalanceAxisDefinition[] = [
     leftLabel: "Push",
     rightLabel: "Pull",
     minTotal: 4,
-    left: (inputs) => countPatterns(inputs, PUSH_PATTERNS),
-    right: (inputs) => countPatterns(inputs, PULL_PATTERNS),
+    target: { minRightToLeft: 1, maxRightToLeft: 1.75 },
+    scoreWeight: 1.25,
+    left: (inputs) => countStimulus(inputs, PUSH_PATTERNS, PUSH_MUSCLES, PULL_PATTERNS),
+    right: (inputs) => countStimulus(inputs, PULL_PATTERNS, PULL_MUSCLES, PUSH_PATTERNS),
     suggestions: {
-      left: { patterns: PUSH_PATTERNS, muscles: ["chest", "front_delt", "lateral_delt", "triceps"] },
+      left: { patterns: PUSH_PATTERNS, muscles: PUSH_MUSCLES },
       right: { patterns: PULL_PATTERNS, muscles: ["upper_back", "lats", "rear_delt", "biceps"] },
     },
     message: (dominantSide, scopeLabel) =>
       dominantSide === "left"
         ? `Push work is ahead ${scopeLabel}. Add a pull?`
-        : `Pull work is ahead ${scopeLabel}. Add a push?`,
+        : `Pull work is well ahead ${scopeLabel}. Add a push?`,
   },
   {
     id: "horizontal_push_pull",
@@ -225,6 +264,7 @@ const AXIS_DEFINITIONS: BalanceAxisDefinition[] = [
     leftLabel: "Horizontal push",
     rightLabel: "Horizontal pull",
     minTotal: 3,
+    target: { minRightToLeft: 1, maxRightToLeft: 2 },
     left: (inputs) => countPatterns(inputs, ["horizontal_push"]),
     right: (inputs) => countPatterns(inputs, ["horizontal_pull"]),
     suggestions: {
@@ -238,20 +278,21 @@ const AXIS_DEFINITIONS: BalanceAxisDefinition[] = [
   },
   {
     id: "quad_hinge",
-    label: "Quad / Hinge",
+    label: "Quads / Posterior Chain",
     leftLabel: "Quad",
-    rightLabel: "Hinge",
+    rightLabel: "Posterior",
     minTotal: 3,
-    left: (inputs) => countPatterns(inputs, ["quad_dominant"]),
-    right: (inputs) => countPatterns(inputs, ["hip_hinge"]),
+    target: { minRightToLeft: 0.75, maxRightToLeft: 1.5 },
+    left: (inputs) => countStimulus(inputs, ["quad_dominant"], QUAD_MUSCLES, ["hip_hinge"]),
+    right: (inputs) => countStimulus(inputs, ["hip_hinge"], POSTERIOR_CHAIN_MUSCLES, ["quad_dominant"]),
     suggestions: {
       left: { patterns: ["quad_dominant"], muscles: ["quads"] },
       right: { patterns: ["hip_hinge"], muscles: ["hamstrings", "glutes", "lower_back"] },
     },
     message: (dominantSide, scopeLabel) =>
       dominantSide === "left"
-        ? `Quad volume is ahead of hinge volume ${scopeLabel}.`
-        : `Hinge volume is ahead of quad volume ${scopeLabel}.`,
+        ? `Quad-dominant work is ahead of posterior-chain work ${scopeLabel}.`
+        : `Posterior-chain work is ahead of quad work ${scopeLabel}.`,
   },
   {
     id: "vertical_push_pull",
@@ -259,6 +300,8 @@ const AXIS_DEFINITIONS: BalanceAxisDefinition[] = [
     leftLabel: "Vertical push",
     rightLabel: "Vertical pull",
     minTotal: 3,
+    target: { minRightToLeft: 0.75, maxRightToLeft: 2 },
+    scoreWeight: 0.75,
     left: (inputs) => countPatterns(inputs, ["vertical_push"]),
     right: (inputs) => countPatterns(inputs, ["vertical_pull"]),
     suggestions: {
@@ -276,8 +319,10 @@ const AXIS_DEFINITIONS: BalanceAxisDefinition[] = [
     leftLabel: "Flexion",
     rightLabel: "Extension",
     minTotal: 3,
-    left: (inputs) => countPatterns(inputs, ["elbow_flexion"]),
-    right: (inputs) => countPatterns(inputs, ["elbow_extension"]),
+    target: { minRightToLeft: 0.5, maxRightToLeft: 2 },
+    scoreWeight: 0.5,
+    left: (inputs) => countStimulus(inputs, ["elbow_flexion"], ["biceps"], ["elbow_extension"]),
+    right: (inputs) => countStimulus(inputs, ["elbow_extension"], ["triceps"], ["elbow_flexion"]),
     suggestions: {
       left: { patterns: ["elbow_flexion"], muscles: ["biceps", "forearm"] },
       right: { patterns: ["elbow_extension"], muscles: ["triceps"] },
@@ -293,8 +338,10 @@ const AXIS_DEFINITIONS: BalanceAxisDefinition[] = [
     leftLabel: "Upper",
     rightLabel: "Lower",
     minTotal: 4,
-    left: (inputs) => countPatterns(inputs, UPPER_PATTERNS),
-    right: (inputs) => countPatterns(inputs, LOWER_PATTERNS),
+    target: { minRightToLeft: 0.5, maxRightToLeft: 1.5 },
+    scoreWeight: 0,
+    left: (inputs) => countStimulus(inputs, UPPER_PATTERNS, UPPER_MUSCLES, LOWER_PATTERNS),
+    right: (inputs) => countStimulus(inputs, LOWER_PATTERNS, LOWER_MUSCLES, UPPER_PATTERNS),
     suggestions: {
       left: { patterns: UPPER_PATTERNS, muscles: ["chest", "upper_back", "lats", "front_delt", "lateral_delt", "rear_delt"] },
       right: { patterns: LOWER_PATTERNS, muscles: ["quads", "hamstrings", "glutes"] },
@@ -310,6 +357,7 @@ const AXIS_DEFINITIONS: BalanceAxisDefinition[] = [
     leftLabel: "Front delt",
     rightLabel: "Rear delt",
     minTotal: 3,
+    target: { minRightToLeft: 0.75, maxRightToLeft: 4 },
     left: (inputs) => countMuscleGroup(inputs, ["front_delt"]),
     right: (inputs) => countMuscleGroup(inputs, ["rear_delt"]),
     suggestions: {
@@ -322,6 +370,43 @@ const AXIS_DEFINITIONS: BalanceAxisDefinition[] = [
         : `Rear delts are ahead of front-delt work ${scopeLabel}.`,
   },
 ];
+
+function scoreAgainstTarget(
+  left: number,
+  right: number,
+  target: BalanceAxisDefinition["target"]
+): Pick<BalanceAxisResult, "score" | "dominantSide" | "lowSide"> {
+  if (left === 0 && right === 0) {
+    return { score: null, dominantSide: null, lowSide: null };
+  }
+
+  if (left === 0) {
+    if (target.maxRightToLeft === undefined) {
+      return { score: 100, dominantSide: null, lowSide: null };
+    }
+    return { score: 0, dominantSide: "right", lowSide: "left" };
+  }
+
+  const ratio = right / left;
+
+  if (target.minRightToLeft !== undefined && ratio < target.minRightToLeft) {
+    return {
+      score: Math.round(Math.max(0, Math.min(100, (ratio / target.minRightToLeft) * 100))),
+      dominantSide: "left",
+      lowSide: "right",
+    };
+  }
+
+  if (target.maxRightToLeft !== undefined && ratio > target.maxRightToLeft) {
+    return {
+      score: Math.round(Math.max(0, Math.min(100, (target.maxRightToLeft / ratio) * 100))),
+      dominantSide: "right",
+      lowSide: "left",
+    };
+  }
+
+  return { score: 100, dominantSide: null, lowSide: null };
+}
 
 function scoreAxis(definition: BalanceAxisDefinition, inputs: StrengthBalanceInput[]): BalanceAxisResult {
   const left = definition.left(inputs);
@@ -344,11 +429,7 @@ function scoreAxis(definition: BalanceAxisDefinition, inputs: StrengthBalanceInp
     };
   }
 
-  const high = Math.max(left, right);
-  const low = Math.min(left, right);
-  const score = high === 0 ? null : Math.round((low / high) * 100);
-  const dominantSide = left === right ? null : left > right ? "left" : "right";
-  const lowSide = dominantSide === "left" ? "right" : dominantSide === "right" ? "left" : null;
+  const { score, dominantSide, lowSide } = scoreAgainstTarget(left, right, definition.target);
 
   return {
     id: definition.id,
@@ -424,9 +505,17 @@ export function computeStrengthBalance(
   const nudgeLimit = options.nudgeLimit ?? 3;
   const activeInputs = inputs.filter((input) => input.sets > 0);
   const axes = AXIS_DEFINITIONS.map((definition) => scoreAxis(definition, activeInputs));
-  const scoredAxes = axes.filter((axis): axis is BalanceAxisResult & { score: number } => axis.score !== null);
-  const score = scoredAxes.length > 0
-    ? Math.round(scoredAxes.reduce((sum, axis) => sum + axis.score, 0) / scoredAxes.length)
+  const scoredAxes = axes
+    .map((axis) => ({
+      axis,
+      weight: AXIS_DEFINITIONS.find((definition) => definition.id === axis.id)?.scoreWeight ?? 1,
+    }))
+    .filter((entry): entry is { axis: BalanceAxisResult & { score: number }; weight: number } => (
+      entry.axis.score !== null && entry.weight > 0
+    ));
+  const scoreWeight = scoredAxes.reduce((sum, entry) => sum + entry.weight, 0);
+  const score = scoredAxes.length > 0 && scoreWeight > 0
+    ? Math.round(scoredAxes.reduce((sum, entry) => sum + entry.axis.score * entry.weight, 0) / scoreWeight)
     : null;
 
   const axisNudges = axes
@@ -450,10 +539,10 @@ export function computeStrengthBalance(
     nudges,
     totals: {
       sets: activeInputs.reduce((sum, input) => sum + input.sets, 0),
-      push: countPatterns(activeInputs, PUSH_PATTERNS),
-      pull: countPatterns(activeInputs, PULL_PATTERNS),
-      upper: countPatterns(activeInputs, UPPER_PATTERNS),
-      lower: countPatterns(activeInputs, LOWER_PATTERNS),
+      push: countStimulus(activeInputs, PUSH_PATTERNS, PUSH_MUSCLES, PULL_PATTERNS),
+      pull: countStimulus(activeInputs, PULL_PATTERNS, PULL_MUSCLES, PUSH_PATTERNS),
+      upper: countStimulus(activeInputs, UPPER_PATTERNS, UPPER_MUSCLES, LOWER_PATTERNS),
+      lower: countStimulus(activeInputs, LOWER_PATTERNS, LOWER_MUSCLES, UPPER_PATTERNS),
       frontDelt: countMuscleGroup(activeInputs, ["front_delt"]),
       rearDelt: countMuscleGroup(activeInputs, ["rear_delt"]),
       chestTriceps: countMuscleGroup(activeInputs, CHEST_TRICEPS_MUSCLES),
