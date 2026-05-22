@@ -9,6 +9,8 @@ import {
 
 export type TimeRange = "week" | "month" | "year" | "all";
 
+export const DEFAULT_TIME_RANGE: TimeRange = "week";
+
 export const VALID_TIME_RANGES: TimeRange[] = ["week", "month", "year", "all"];
 
 export const STATS_RANGE_LABELS: Record<TimeRange, string> = {

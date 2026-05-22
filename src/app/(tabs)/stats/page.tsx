@@ -14,11 +14,11 @@ import {
 import { getAdherenceHistory } from "@/lib/queries/adherence";
 import { getUserTimeZone, getUserUnits } from "@/lib/queries/profile";
 import { zonedDateKey } from "@/lib/time-zone";
-import { VALID_TIME_RANGES, type TimeRange } from "@/lib/stats-ranges";
+import { DEFAULT_TIME_RANGE, VALID_TIME_RANGES, type TimeRange } from "@/lib/stats-ranges";
 import { StatsClient } from "@/components/stats/StatsClient";
 
 function parseRange(raw: string | undefined): TimeRange {
-  return VALID_TIME_RANGES.includes(raw as TimeRange) ? (raw as TimeRange) : "month";
+  return VALID_TIME_RANGES.includes(raw as TimeRange) ? (raw as TimeRange) : DEFAULT_TIME_RANGE;
 }
 
 export default async function StatsPage({

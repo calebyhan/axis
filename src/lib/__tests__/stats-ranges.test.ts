@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_TIME_RANGE,
   STATS_RANGE_CONTEXT_LABELS,
   STATS_RANGE_LABELS,
   getStatsChartBucketDateKey,
@@ -8,6 +9,10 @@ import {
 } from "../stats-ranges";
 
 describe("stats range bounds", () => {
+  it("uses week as the default stats range", () => {
+    expect(DEFAULT_TIME_RANGE).toBe("week");
+  });
+
   it("uses current calendar periods in the user's time zone", () => {
     const now = new Date("2026-05-16T16:00:00.000Z");
 
