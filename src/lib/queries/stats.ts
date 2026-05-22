@@ -13,6 +13,13 @@ import {
 import { computeStrengthBalance, strengthInputsFromExerciseSets, type StrengthSetDescriptor } from "@/lib/strength-balance";
 import { addMuscleTagSets, muscleTagSummaries } from "@/lib/muscle-tags";
 import { buildDailyTrainingLoads, computeATLCTLTSB } from "@/lib/training-load";
+import {
+  DEFAULT_HR_ZONES,
+  DEFAULT_MAX_HEART_RATE,
+  maxHeartRateToZones,
+  normalizeHRZoneMethod,
+  normalizeHRZones,
+} from "@/lib/hr-zones";
 import { deriveWorkoutPersonalRecords, type WorkoutPersonalRecord, type WorkoutPrSetRow } from "@/lib/workout-prs";
 import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails, MuscleTag } from "@/types";
 
@@ -391,10 +398,13 @@ export async function getWorkoutSummary(range: TimeRange) {
 
 export async function getTrainingLoadHistory(range: TimeRange = "month") {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const timeZone = await getUserTimeZone();
   const bounds = getStatsRangeBounds(range, timeZone);
 
-  const [activitiesRes, setsRes] = await Promise.all([
+  const [activitiesRes, setsRes, profileRes] = await Promise.all([
     supabase
       .from("activities")
       .select("type, source, start_time, duration, avg_heartrate, suffer_score")
@@ -406,12 +416,29 @@ export async function getTrainingLoadHistory(range: TimeRange = "month") {
       .select("reps, weight, rpe, activities!inner(start_time)")
       .eq("activities.type", "workout")
       .lt("activities.start_time", bounds.endExclusiveInstant),
+    user
+      ? supabase
+          .from("profiles")
+          .select("hr_zones, hr_zone_method, max_heart_rate, strava_hr_zones")
+          .eq("id", user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   if (activitiesRes.error) console.error("[query] getTrainingLoadHistory activities failed", activitiesRes.error.message);
   if (setsRes.error) console.error("[query] getTrainingLoadHistory sets failed", setsRes.error.message);
+  if (profileRes.error) console.error("[query] getTrainingLoadHistory profile failed", profileRes.error.message);
 
   const activities = activitiesRes.data ?? [];
+  const customHRZones = normalizeHRZones(profileRes.data?.hr_zones);
+  const stravaHRZones = normalizeHRZones(profileRes.data?.strava_hr_zones);
+  const maxHRZones = maxHeartRateToZones(profileRes.data?.max_heart_rate ?? DEFAULT_MAX_HEART_RATE) ?? DEFAULT_HR_ZONES;
+  const hrZoneMethod = normalizeHRZoneMethod(profileRes.data?.hr_zone_method) ?? (customHRZones ? "custom" : stravaHRZones ? "strava" : "max_hr");
+  const activeHRZones = hrZoneMethod === "custom"
+    ? customHRZones ?? maxHRZones
+    : hrZoneMethod === "strava"
+      ? stravaHRZones ?? maxHRZones
+      : maxHRZones;
   const strengthSets = (setsRes.data ?? []).flatMap((set) => {
     const act = normalizeRelation<{ start_time: string }>(set.activities);
     if (!act) return [];
@@ -438,7 +465,8 @@ export async function getTrainingLoadHistory(range: TimeRange = "month") {
     strengthSets,
     computeStartKey,
     bounds.endDateKey,
-    timeZone
+    timeZone,
+    activeHRZones
   );
 
   return computeATLCTLTSB(loads).filter((point) => point.date >= visibleStartKey);

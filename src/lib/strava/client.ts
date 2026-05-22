@@ -1,6 +1,21 @@
 import { getValidStravaToken } from "./token";
 
 const STRAVA_BASE = "https://www.strava.com/api/v3";
+const MAX_ERROR_BODY_LENGTH = 500;
+
+export class StravaAPIError extends Error {
+  status: number;
+  path: string;
+  body: string | null;
+
+  constructor(status: number, path: string, body: string | null) {
+    super(`Strava API error ${status}: ${path}`);
+    this.name = "StravaAPIError";
+    this.status = status;
+    this.path = path;
+    this.body = body;
+  }
+}
 
 async function stravaFetch(userId: string, path: string, params?: Record<string, string>) {
   const token = await getValidStravaToken(userId);
@@ -13,7 +28,12 @@ async function stravaFetch(userId: string, path: string, params?: Record<string,
     next: { revalidate: 0 },
   });
   if (!res.ok) {
-    throw new Error(`Strava API error ${res.status}: ${path}`);
+    const body = await res.text().catch(() => "");
+    throw new StravaAPIError(
+      res.status,
+      path,
+      body ? body.slice(0, MAX_ERROR_BODY_LENGTH) : null
+    );
   }
   return res.json();
 }

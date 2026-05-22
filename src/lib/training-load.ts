@@ -1,4 +1,5 @@
 import { addDateKeyDays, zonedDateKey } from "@/lib/time-zone";
+import type { HRZone } from "@/lib/hr-zones";
 
 export interface DailyLoad {
   date: string; // ISO date yyyy-MM-dd
@@ -42,6 +43,7 @@ const MANUAL_EFFORT_MULTIPLIERS: Record<number, number> = {
   4: 1.4,
   5: 1.8,
 };
+const HR_ZONE_MULTIPLIERS = [0.7, 1, 1.25, 1.6, 2];
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -56,9 +58,18 @@ function manualEffortFromScore(sufferScore: number | null | undefined): number |
   return clamp(Math.round(sufferScore / 50) + 1, 1, 5);
 }
 
-function heartRateMultiplier(avgHeartrate: number | null | undefined): number | null {
+function findHRZoneIndex(value: number, zones: HRZone[]): number {
+  return zones.findIndex((zone) => value >= zone.min && (zone.max === -1 || value < zone.max));
+}
+
+function heartRateMultiplier(avgHeartrate: number | null | undefined, hrZones?: HRZone[] | null): number | null {
   if (avgHeartrate == null || !Number.isFinite(avgHeartrate) || avgHeartrate <= 0) {
     return null;
+  }
+
+  if (hrZones?.length) {
+    const zoneIndex = findHRZoneIndex(avgHeartrate, hrZones);
+    if (zoneIndex >= 0) return HR_ZONE_MULTIPLIERS[zoneIndex] ?? HR_ZONE_MULTIPLIERS[HR_ZONE_MULTIPLIERS.length - 1];
   }
 
   if (avgHeartrate < 120) return 0.7;
@@ -68,21 +79,21 @@ function heartRateMultiplier(avgHeartrate: number | null | undefined): number | 
   return 2;
 }
 
-function intensityMultiplier(activity: TrainingLoadActivityInput): number {
+function intensityMultiplier(activity: TrainingLoadActivityInput, hrZones?: HRZone[] | null): number {
   if (activity.source === "manual" || activity.type === "manual_run") {
     const effort = manualEffortFromScore(activity.suffer_score);
     return effort ? MANUAL_EFFORT_MULTIPLIERS[effort] : 1;
   }
 
-  return heartRateMultiplier(activity.avg_heartrate) ?? 1;
+  return heartRateMultiplier(activity.avg_heartrate, hrZones) ?? 1;
 }
 
-export function computeRunTrainingLoad(activity: TrainingLoadActivityInput): number {
+export function computeRunTrainingLoad(activity: TrainingLoadActivityInput, hrZones?: HRZone[] | null): number {
   const duration = activity.duration ?? 0;
   if (!Number.isFinite(duration) || duration <= 0) return 0;
 
   const durationMinutes = duration / 60;
-  return roundLoad(Math.min(RUN_LOAD_CAP, durationMinutes * intensityMultiplier(activity)));
+  return roundLoad(Math.min(RUN_LOAD_CAP, durationMinutes * intensityMultiplier(activity, hrZones)));
 }
 
 export function buildDailyTrainingLoads(
@@ -90,7 +101,8 @@ export function buildDailyTrainingLoads(
   strengthSets: TrainingLoadStrengthSetInput[],
   startDate: string,
   endDate: string,
-  timeZone: string
+  timeZone: string,
+  hrZones?: HRZone[] | null
 ): DailyLoad[] {
   const dayLoads = new Map<string, { runTL: number; strengthTL: number }>();
 
@@ -99,7 +111,7 @@ export function buildDailyTrainingLoads(
     if (!isWithinDateKeyRange(day, startDate, endDate)) continue;
 
     const entry = dayLoads.get(day) ?? { runTL: 0, strengthTL: 0 };
-    entry.runTL = Math.min(RUN_LOAD_CAP, entry.runTL + computeRunTrainingLoad(activity));
+    entry.runTL = Math.min(RUN_LOAD_CAP, entry.runTL + computeRunTrainingLoad(activity, hrZones));
     dayLoads.set(day, entry);
   }
 

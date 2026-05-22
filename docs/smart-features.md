@@ -62,11 +62,26 @@ Adherence is computed from effective planned slots and logged activities:
 Stats Load computes:
 
 - Daily TL = run TL + normalized strength TL.
-- Run TL is duration-based and uses average heart rate when available, or manual perceived effort for manual runs. Strava subscriber-only `suffer_score` does not drive training load.
+- Run TL is duration-based and uses the user's active heart-rate zones when average heart rate is available, or manual perceived effort for manual runs. Strava subscriber-only `suffer_score` does not drive Strava run load.
 - ATL = 7-day exponential weighted average.
 - CTL = 42-day exponential weighted average.
 - TSB = CTL - ATL.
 - TSB labels: Fresh, Neutral, Fatigued, Overreaching.
+
+### Running Zones
+
+Heart-rate zones are method-based:
+
+- `custom`: user-edited zone dividers.
+- `strava`: live or cached Strava athlete zones, falling back to max-HR zones when unavailable.
+- `max_hr`: simple 60/70/80/90% dividers from `profiles.max_heart_rate`.
+
+The only HR zone suggestion is a transparent max-HR update: if recent activity max HR exceeds the stored max HR by more than two bpm, Settings can suggest updating `profiles.max_heart_rate`. The suggested card shows the current dividers, suggested dividers, and each changed boundary before the user accepts it.
+
+Pace zones are still user-controlled with optional suggestions:
+
+- Pace suggestions use stored Strava best efforts plus a small sample of recent Strava streams when available to estimate threshold pace.
+- Suggestions can be accepted into `profiles.pace_zones` or ignored until the generated suggestion hash changes.
 
 ### Running PRs
 

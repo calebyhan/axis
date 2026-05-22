@@ -19,6 +19,7 @@ export const DEFAULT_PACE_ZONES: PaceZone[] = [
 ];
 
 const REQUIRED_ZONE_COUNT = 6;
+const REQUIRED_BOUNDARY_COUNT = REQUIRED_ZONE_COUNT - 1;
 const METERS_PER_MILE = 1609.34;
 
 function finiteNumber(value: unknown): number | null {
@@ -58,6 +59,47 @@ export function normalizePaceZones(value: unknown): PaceZone[] | null {
   }
 
   return zones;
+}
+
+export function normalizePaceZoneBoundaries(value: unknown): number[] | null {
+  if (!Array.isArray(value) || value.length !== REQUIRED_BOUNDARY_COUNT) return null;
+
+  const boundaries: number[] = [];
+  let previous: number | null = null;
+
+  for (const source of value) {
+    const boundary = finiteNumber(source);
+    if (boundary == null) return null;
+
+    const normalizedBoundary = Math.round(boundary);
+    if (normalizedBoundary <= 0) return null;
+    if (previous != null && normalizedBoundary >= previous) return null;
+
+    boundaries.push(normalizedBoundary);
+    previous = normalizedBoundary;
+  }
+
+  return boundaries;
+}
+
+export function paceZonesToBoundaries(value: unknown): number[] | null {
+  const zones = normalizePaceZones(value);
+  if (!zones) return null;
+
+  return zones.slice(0, -1).map((zone) => zone.min);
+}
+
+export function paceBoundariesToZones(value: unknown): PaceZone[] | null {
+  const boundaries = normalizePaceZoneBoundaries(value);
+  if (!boundaries) return null;
+
+  const zones: PaceZone[] = boundaries.map((boundary, index) => ({
+    min: boundary,
+    max: index === 0 ? -1 : boundaries[index - 1],
+  }));
+  zones.push({ min: 0, max: boundaries[boundaries.length - 1] });
+
+  return normalizePaceZones(zones);
 }
 
 export function paceSecondsPerKmToUnitSeconds(secondsPerKm: number, units: Units): number {

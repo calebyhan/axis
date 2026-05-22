@@ -1,4 +1,4 @@
-import type { HRZone } from "@/lib/hr-zones";
+import type { HRZone, HRZoneMethod } from "@/lib/hr-zones";
 import type { PaceZone } from "@/lib/pace-zones";
 
 export type AccentColor = "blue" | "green" | "orange" | "purple";
@@ -184,7 +184,17 @@ export interface Profile {
   strava_refresh_token: string | null;
   token_expires_at: string | null;
   hr_zones: HRZone[] | null;
+  hr_zone_method: HRZoneMethod;
+  max_heart_rate: number;
   pace_zones: PaceZone[] | null;
+  strava_hr_zones: HRZone[] | null;
+  strava_hr_zones_synced_at: string | null;
+  strava_hr_zones_hash: string | null;
+  ignored_hr_zone_suggestion_hash: string | null;
+  ignored_pace_zone_suggestion_hash: string | null;
+  last_hr_zone_suggestion_basis: Record<string, unknown> | null;
+  last_pace_zone_suggestion_basis: Record<string, unknown> | null;
+  last_zone_suggestions_generated_at: string | null;
 }
 
 export interface DailyCheckin {

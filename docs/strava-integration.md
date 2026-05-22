@@ -158,8 +158,17 @@ Heart-rate zones are fetched from:
 GET /api/strava/zones
 ```
 
-Resolution order is custom `profiles.hr_zones`, Strava athlete zones, then Axis fallback zones.
+Resolution follows `profiles.hr_zone_method`: custom `profiles.hr_zones`, max-HR zones from `profiles.max_heart_rate`, or live Strava athlete zones with cached Strava zones as fallback. If Strava is unavailable and no cache exists, Axis falls back to max-HR zones.
 The same response includes pace zones from custom `profiles.pace_zones`, falling back to Axis defaults.
+
+The route reads core profile fields before optional cached-zone columns, so a pending cache migration should not block live Strava zone import. When the route falls back from live Strava zones, the JSON response includes diagnostics:
+
+- `stravaError: "strava_auth_failed"` means Strava returned `401`; reconnect Strava to refresh access.
+- `stravaError: "missing_profile_read_all_scope"` means Strava returned `403`; reconnect and approve `profile:read_all`.
+- `stravaError: "strava_api_402"` means Strava denied zone access for the account.
+- `stravaError: "invalid_zone_shape"` means Strava responded, but did not return five usable heart-rate zones.
+
+Cache read/write failures are logged server-side and do not prevent a live Strava zone response.
 
 Both read-only endpoints are eligible for service-worker data caching.
 

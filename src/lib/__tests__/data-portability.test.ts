@@ -35,6 +35,8 @@ describe("data portability", () => {
         accent_color: "blue",
         display_name: "Caleb",
         hr_zones: TEST_HR_ZONES,
+        hr_zone_method: "custom",
+        max_heart_rate: 190,
         pace_zones: TEST_PACE_ZONES,
         strava_access_token: "secret",
       },
@@ -80,6 +82,8 @@ describe("data portability", () => {
       accent_color: "blue",
       display_name: "Caleb",
       hr_zones: TEST_HR_ZONES,
+      hr_zone_method: "custom",
+      max_heart_rate: 190,
       pace_zones: TEST_PACE_ZONES,
     });
     expect(parsed.day_types).toEqual(data.day_types);
@@ -105,6 +109,8 @@ describe("data portability", () => {
         id: "old-user",
         units: "metric",
         hr_zones: TEST_HR_ZONES,
+        hr_zone_method: "custom",
+        max_heart_rate: 188,
         pace_zones: TEST_PACE_ZONES,
         strava_access_token: "secret",
         created_at: "2026-05-13T00:00:00.000Z",
@@ -120,6 +126,8 @@ describe("data portability", () => {
       id: "new-user",
       units: "metric",
       hr_zones: TEST_HR_ZONES,
+      hr_zone_method: "custom",
+      max_heart_rate: 188,
       pace_zones: TEST_PACE_ZONES,
     });
     expect(prepared.weekly_schedule).toEqual([{ user_id: "new-user", day_of_week: 0, active: true }]);

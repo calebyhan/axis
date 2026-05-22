@@ -183,6 +183,28 @@ describe("training load metrics", () => {
     ).toBe(54);
   });
 
+  it("uses supplied HR zones for Strava run load intensity", () => {
+    expect(
+      computeRunTrainingLoad(
+        {
+          start_time: "2026-05-13T12:00:00.000Z",
+          type: "run",
+          source: "strava",
+          duration: 60 * 60,
+          avg_heartrate: 150,
+          suffer_score: null,
+        },
+        [
+          { min: 0, max: 100 },
+          { min: 100, max: 130 },
+          { min: 130, max: 145 },
+          { min: 145, max: 160 },
+          { min: 160, max: -1 },
+        ]
+      )
+    ).toBe(96);
+  });
+
   it("sorts load days, smooths ATL/CTL from starting values, and rounds displayed points", () => {
     expect(
       computeATLCTLTSB(

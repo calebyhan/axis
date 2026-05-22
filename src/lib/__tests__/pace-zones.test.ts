@@ -3,9 +3,12 @@ import {
   DEFAULT_PACE_ZONES,
   formatPaceSeconds,
   normalizePaceZones,
+  paceBoundariesToZones,
   paceSecondsPerKmToUnitSeconds,
   paceUnitSecondsToSecondsPerKm,
+  paceZonesToBoundaries,
   parsePaceInput,
+  normalizePaceZoneBoundaries,
 } from "@/lib/pace-zones";
 
 describe("pace zones", () => {
@@ -62,5 +65,24 @@ describe("pace zones", () => {
 
   it("keeps a built-in fallback", () => {
     expect(normalizePaceZones(DEFAULT_PACE_ZONES)).toEqual(DEFAULT_PACE_ZONES);
+  });
+
+  it("converts ordered divider values to contiguous pace zones", () => {
+    expect(normalizePaceZoneBoundaries([420, 360, 315, 285, 255])).toEqual([420, 360, 315, 285, 255]);
+    expect(paceBoundariesToZones([420, 360, 315, 285, 255])).toEqual([
+      { min: 420, max: -1 },
+      { min: 360, max: 420 },
+      { min: 315, max: 360 },
+      { min: 285, max: 315 },
+      { min: 255, max: 285 },
+      { min: 0, max: 255 },
+    ]);
+    expect(paceZonesToBoundaries(DEFAULT_PACE_ZONES)).toEqual([420, 360, 315, 285, 255]);
+  });
+
+  it("rejects dividers that cross or collapse neighboring pace zones", () => {
+    expect(normalizePaceZoneBoundaries([420, 420, 315, 285, 255])).toBeNull();
+    expect(normalizePaceZoneBoundaries([420, 430, 315, 285, 255])).toBeNull();
+    expect(paceBoundariesToZones([420, 360, 315, 285, 0])).toBeNull();
   });
 });

@@ -49,6 +49,8 @@ const PROFILE_COLUMNS = [
   "display_name",
   "onboarding_completed_at",
   "hr_zones",
+  "hr_zone_method",
+  "max_heart_rate",
   "pace_zones",
   "created_at",
 ] as const;

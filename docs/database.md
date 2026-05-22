@@ -19,6 +19,8 @@ token_expires_at TIMESTAMPTZ
 units TEXT NOT NULL DEFAULT 'imperial' CHECK (units IN ('metric', 'imperial'))
 accent_color TEXT NOT NULL DEFAULT 'blue' CHECK (accent_color IN ('blue', 'green', 'orange', 'purple'))
 hr_zones JSONB
+hr_zone_method TEXT NOT NULL DEFAULT 'strava' CHECK (hr_zone_method IN ('custom', 'strava', 'max_hr'))
+max_heart_rate INTEGER NOT NULL DEFAULT 190 CHECK (max_heart_rate BETWEEN 100 AND 240)
 pace_zones JSONB
 long_run_distance_threshold NUMERIC NOT NULL DEFAULT 16
 display_name TEXT

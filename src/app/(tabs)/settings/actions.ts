@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/supabase/server";
 import { getUserTimeZone } from "@/lib/queries/profile";
 import { startOfWeekDateKey, zonedDateKey } from "@/lib/time-zone";
-import { normalizeHRZones, type HRZone } from "@/lib/hr-zones";
+import { normalizeHRZoneMethod, normalizeHRZones, normalizeMaxHeartRate, type HRZone, type HRZoneMethod } from "@/lib/hr-zones";
 import { normalizePaceZones, type PaceZone } from "@/lib/pace-zones";
 import type { AccentColor, Units } from "@/types";
 
@@ -13,7 +13,11 @@ interface ProfilePayload {
   accent_color?: AccentColor;
   display_name?: string | null;
   hr_zones?: HRZone[] | null;
+  hr_zone_method?: HRZoneMethod;
+  max_heart_rate?: number;
   pace_zones?: PaceZone[] | null;
+  ignored_hr_zone_suggestion_hash?: string | null;
+  ignored_pace_zone_suggestion_hash?: string | null;
 }
 
 interface NotificationPreferencesPayload {
@@ -59,6 +63,18 @@ export async function saveProfile(payload: ProfilePayload): Promise<{ error: str
     }
   }
 
+  if (payload.hr_zone_method !== undefined) {
+    const method = normalizeHRZoneMethod(payload.hr_zone_method);
+    if (!method) return { error: "Invalid heart rate zone method." };
+    update.hr_zone_method = method;
+  }
+
+  if (payload.max_heart_rate !== undefined) {
+    const maxHeartRate = normalizeMaxHeartRate(payload.max_heart_rate);
+    if (!maxHeartRate) return { error: "Max heart rate must be between 100 and 240 bpm." };
+    update.max_heart_rate = maxHeartRate;
+  }
+
   if (payload.pace_zones !== undefined) {
     if (payload.pace_zones === null) {
       update.pace_zones = null;
@@ -67,6 +83,14 @@ export async function saveProfile(payload: ProfilePayload): Promise<{ error: str
       if (!zones) return { error: "Invalid pace zones." };
       update.pace_zones = zones;
     }
+  }
+
+  if (payload.ignored_hr_zone_suggestion_hash !== undefined) {
+    update.ignored_hr_zone_suggestion_hash = payload.ignored_hr_zone_suggestion_hash?.slice(0, 64) ?? null;
+  }
+
+  if (payload.ignored_pace_zone_suggestion_hash !== undefined) {
+    update.ignored_pace_zone_suggestion_hash = payload.ignored_pace_zone_suggestion_hash?.slice(0, 64) ?? null;
   }
 
   const { error } = await supabase
