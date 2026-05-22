@@ -158,6 +158,9 @@ Heart-rate zones are fetched from:
 GET /api/strava/zones
 ```
 
+Resolution order is custom `profiles.hr_zones`, Strava athlete zones, then Axis fallback zones.
+The same response includes pace zones from custom `profiles.pace_zones`, falling back to Axis defaults.
+
 Both read-only endpoints are eligible for service-worker data caching.
 
 ---

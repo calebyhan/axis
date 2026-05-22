@@ -1,3 +1,6 @@
+import type { HRZone } from "@/lib/hr-zones";
+import type { PaceZone } from "@/lib/pace-zones";
+
 export type AccentColor = "blue" | "green" | "orange" | "purple";
 
 export type Units = "metric" | "imperial";
@@ -180,6 +183,8 @@ export interface Profile {
   strava_access_token: string | null;
   strava_refresh_token: string | null;
   token_expires_at: string | null;
+  hr_zones: HRZone[] | null;
+  pace_zones: PaceZone[] | null;
 }
 
 export interface DailyCheckin {

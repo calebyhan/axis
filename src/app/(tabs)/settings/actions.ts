@@ -4,12 +4,16 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/supabase/server";
 import { getUserTimeZone } from "@/lib/queries/profile";
 import { startOfWeekDateKey, zonedDateKey } from "@/lib/time-zone";
+import { normalizeHRZones, type HRZone } from "@/lib/hr-zones";
+import { normalizePaceZones, type PaceZone } from "@/lib/pace-zones";
 import type { AccentColor, Units } from "@/types";
 
 interface ProfilePayload {
   units?: Units;
   accent_color?: AccentColor;
   display_name?: string | null;
+  hr_zones?: HRZone[] | null;
+  pace_zones?: PaceZone[] | null;
 }
 
 interface NotificationPreferencesPayload {
@@ -40,15 +44,34 @@ export async function saveProfile(payload: ProfilePayload): Promise<{ error: str
   const { supabase, user } = await getSession();
   if (!user) return { error: "Not authenticated" };
 
+  const update: ProfilePayload & { id: string } = {
+    id: user.id,
+    ...payload,
+  };
+
+  if (payload.hr_zones !== undefined) {
+    if (payload.hr_zones === null) {
+      update.hr_zones = null;
+    } else {
+      const zones = normalizeHRZones(payload.hr_zones);
+      if (!zones) return { error: "Invalid heart rate zones." };
+      update.hr_zones = zones;
+    }
+  }
+
+  if (payload.pace_zones !== undefined) {
+    if (payload.pace_zones === null) {
+      update.pace_zones = null;
+    } else {
+      const zones = normalizePaceZones(payload.pace_zones);
+      if (!zones) return { error: "Invalid pace zones." };
+      update.pace_zones = zones;
+    }
+  }
+
   const { error } = await supabase
     .from("profiles")
-    .upsert(
-      {
-        id: user.id,
-        ...payload,
-      },
-      { onConflict: "id" }
-    );
+    .upsert(update, { onConflict: "id" });
 
   if (error) return { error: error.message };
   return { error: null };

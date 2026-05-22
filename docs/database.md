@@ -18,6 +18,8 @@ strava_refresh_token TEXT
 token_expires_at TIMESTAMPTZ
 units TEXT NOT NULL DEFAULT 'imperial' CHECK (units IN ('metric', 'imperial'))
 accent_color TEXT NOT NULL DEFAULT 'blue' CHECK (accent_color IN ('blue', 'green', 'orange', 'purple'))
+hr_zones JSONB
+pace_zones JSONB
 long_run_distance_threshold NUMERIC NOT NULL DEFAULT 16
 display_name TEXT
 onboarding_completed_at TIMESTAMPTZ

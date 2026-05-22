@@ -9,6 +9,23 @@ import {
   preparePortableImport,
 } from "@/lib/data-portability";
 
+const TEST_HR_ZONES = [
+  { min: 0, max: 120 },
+  { min: 120, max: 140 },
+  { min: 140, max: 160 },
+  { min: 160, max: 180 },
+  { min: 180, max: -1 },
+];
+
+const TEST_PACE_ZONES = [
+  { min: 420, max: -1 },
+  { min: 360, max: 420 },
+  { min: 315, max: 360 },
+  { min: 285, max: 315 },
+  { min: 255, max: 285 },
+  { min: 0, max: 255 },
+];
+
 describe("data portability", () => {
   it("round-trips portable data through CSV", () => {
     const data = createPortableData({
@@ -17,6 +34,8 @@ describe("data portability", () => {
         units: "imperial",
         accent_color: "blue",
         display_name: "Caleb",
+        hr_zones: TEST_HR_ZONES,
+        pace_zones: TEST_PACE_ZONES,
         strava_access_token: "secret",
       },
       day_types: [
@@ -60,6 +79,8 @@ describe("data portability", () => {
       units: "imperial",
       accent_color: "blue",
       display_name: "Caleb",
+      hr_zones: TEST_HR_ZONES,
+      pace_zones: TEST_PACE_ZONES,
     });
     expect(parsed.day_types).toEqual(data.day_types);
     expect(parsed.activities).toEqual(data.activities);
@@ -83,6 +104,8 @@ describe("data portability", () => {
       profile: {
         id: "old-user",
         units: "metric",
+        hr_zones: TEST_HR_ZONES,
+        pace_zones: TEST_PACE_ZONES,
         strava_access_token: "secret",
         created_at: "2026-05-13T00:00:00.000Z",
       },
@@ -93,7 +116,12 @@ describe("data portability", () => {
 
     const prepared = preparePortableImport(data, "new-user");
 
-    expect(prepared.profile).toEqual({ id: "new-user", units: "metric" });
+    expect(prepared.profile).toEqual({
+      id: "new-user",
+      units: "metric",
+      hr_zones: TEST_HR_ZONES,
+      pace_zones: TEST_PACE_ZONES,
+    });
     expect(prepared.weekly_schedule).toEqual([{ user_id: "new-user", day_of_week: 0, active: true }]);
     expect(prepared.daily_checkins).toEqual([{ user_id: "new-user", date: "2026-05-13", body_weight: 82 }]);
     expect(prepared.session_sets).toEqual([{ activity_id: "activity-1", reps: 5 }]);

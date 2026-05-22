@@ -9,8 +9,14 @@ const STREAM_KEYS = ["time", "distance", "altitude", "heartrate", "cadence", "wa
 // Downsample an array to at most maxPoints by taking every nth element.
 function downsample<T>(arr: T[], maxPoints: number): T[] {
   if (arr.length <= maxPoints) return arr;
-  const n = Math.ceil(arr.length / maxPoints);
-  return arr.filter((_, i) => i % n === 0);
+  if (maxPoints <= 1) return [arr[0]];
+
+  const n = Math.ceil((arr.length - 1) / (maxPoints - 1));
+  const sampled = arr.filter((_, i) => i % n === 0);
+  const last = arr[arr.length - 1];
+
+  if (sampled[sampled.length - 1] !== last) sampled.push(last);
+  return sampled;
 }
 
 export async function GET(

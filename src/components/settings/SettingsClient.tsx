@@ -7,6 +7,17 @@ import { saveNotificationPreferences, saveProfile, saveWeeklyScheduleDay } from 
 import { Select } from "@/components/ui/Select";
 import { MiniHeatmap } from "@/components/heatmap/MiniHeatmap";
 import { ACCENT_COLORS } from "@/lib/accent-colors";
+import { DEFAULT_HR_ZONES, normalizeHRZones, type HRZone, type HRZoneSource } from "@/lib/hr-zones";
+import {
+  DEFAULT_PACE_ZONES,
+  formatPaceSeconds,
+  normalizePaceZones,
+  paceSecondsPerKmToUnitSeconds,
+  paceUnitSecondsToSecondsPerKm,
+  parsePaceInput,
+  type PaceZone,
+  type PaceZoneSource,
+} from "@/lib/pace-zones";
 import { getOrCreatePushSubscription, pushSupported, savePushSubscription } from "@/lib/pwa/push-subscription";
 import {
   coercePortableData,
@@ -40,6 +51,17 @@ interface Props {
 }
 
 type NotificationPrefsState = Omit<NotificationPreferences, "user_id">;
+
+type HRZoneDraft = { min: string; max: string };
+
+type HRZonesResponse = {
+  hr?: HRZone[] | null;
+  source?: HRZoneSource;
+  pace?: PaceZone[] | null;
+  paceSource?: PaceZoneSource;
+};
+
+type PaceZoneDraft = { min: string; max: string };
 
 const DEFAULT_NOTIFICATION_PREFS: NotificationPrefsState = {
   enabled: false,
@@ -129,6 +151,486 @@ function NotificationToggle({
         <span className={disabled ? "text-white/45" : "text-white/80"}>{label}</span>
       </label>
       {children && <div className="w-full shrink-0 sm:w-auto">{children}</div>}
+    </div>
+  );
+}
+
+function zonesToDraft(zones: HRZone[]): HRZoneDraft[] {
+  return zones.map((zone) => ({
+    min: String(zone.min),
+    max: zone.max === -1 ? "" : String(zone.max),
+  }));
+}
+
+function draftToZones(draft: HRZoneDraft[]): { zones: HRZone[] | null; error: string | null } {
+  const zones: HRZone[] = [];
+
+  for (let index = 0; index < draft.length; index += 1) {
+    const row = draft[index];
+    const min = Number(row.min);
+    const max = row.max.trim() === "" ? -1 : Number(row.max);
+    const isLast = index === draft.length - 1;
+
+    if (!Number.isFinite(min) || min < 0) {
+      return { zones: null, error: "Each zone needs a non-negative minimum." };
+    }
+    if (!Number.isInteger(min)) {
+      return { zones: null, error: "Heart-rate zone values must be whole bpm numbers." };
+    }
+    if (!isLast && row.max.trim() === "") {
+      return { zones: null, error: "Only the final zone can be open-ended." };
+    }
+    if (row.max.trim() !== "" && (!Number.isFinite(max) || !Number.isInteger(max))) {
+      return { zones: null, error: "Heart-rate zone values must be whole bpm numbers." };
+    }
+
+    zones.push({ min, max });
+  }
+
+  const normalized = normalizeHRZones(zones);
+  if (!normalized) {
+    return { zones: null, error: "Zones must be five ascending ranges with each max above its min." };
+  }
+
+  return { zones: normalized, error: null };
+}
+
+function sourceDescription(source: HRZoneSource | null, stravaConnected: boolean): string {
+  if (source === "profile") return "Using your custom zones.";
+  if (source === "strava") return "Using zones from Strava until you save custom zones.";
+  if (stravaConnected) return "Using fallback zones because Strava zones are unavailable.";
+  return "Using fallback zones because Strava is not connected.";
+}
+
+function HRZonesSettings({
+  initialZones,
+  stravaConnected,
+}: {
+  initialZones: HRZone[] | null | undefined;
+  stravaConnected: boolean;
+}) {
+  const router = useRouter();
+  const initialCustomZones = normalizeHRZones(initialZones);
+  const [draft, setDraft] = useState<HRZoneDraft[]>(() => zonesToDraft(initialCustomZones ?? DEFAULT_HR_ZONES));
+  const [source, setSource] = useState<HRZoneSource | null>(initialCustomZones ? "profile" : null);
+  const [loading, setLoading] = useState(!initialCustomZones);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadZones() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/strava/zones", { cache: "no-store" });
+      const body = await response.json().catch(() => null) as HRZonesResponse | null;
+      if (!response.ok) throw new Error("Failed to load heart-rate zones.");
+
+      const zones = normalizeHRZones(body?.hr) ?? DEFAULT_HR_ZONES;
+      setDraft(zonesToDraft(zones));
+      setSource(body?.source ?? "default");
+    } catch {
+      setDraft(zonesToDraft(DEFAULT_HR_ZONES));
+      setSource("default");
+      setError("Could not load Strava zones. Using fallback zones.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadInitialZones() {
+      try {
+        const response = await fetch("/api/strava/zones", { cache: "no-store" });
+        const body = await response.json().catch(() => null) as HRZonesResponse | null;
+        if (!active) return;
+        if (!response.ok) throw new Error("Failed to load heart-rate zones.");
+
+        const zones = normalizeHRZones(body?.hr) ?? DEFAULT_HR_ZONES;
+        setDraft(zonesToDraft(zones));
+        setSource(body?.source ?? "default");
+      } catch {
+        if (!active) return;
+        setDraft(zonesToDraft(DEFAULT_HR_ZONES));
+        setSource("default");
+        setError("Could not load Strava zones. Using fallback zones.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadInitialZones();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function updateDraft(index: number, key: keyof HRZoneDraft, value: string) {
+    setDraft((current) =>
+      current.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, [key]: value.replace(/[^\d]/g, "") } : row
+      )
+    );
+    setMessage(null);
+    setError(null);
+  }
+
+  async function saveZones() {
+    if (saving) return;
+    const parsed = draftToZones(draft);
+    if (parsed.error || !parsed.zones) {
+      setError(parsed.error);
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    const result = await saveProfile({ hr_zones: parsed.zones });
+    setSaving(false);
+
+    if (result.error) {
+      setError("Failed to save heart-rate zones. Please try again.");
+      return;
+    }
+
+    setDraft(zonesToDraft(parsed.zones));
+    setSource("profile");
+    setMessage("Heart-rate zones saved.");
+    setTimeout(() => setMessage(null), 2000);
+    router.refresh();
+  }
+
+  async function resetZones() {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    const result = await saveProfile({ hr_zones: null });
+    setSaving(false);
+
+    if (result.error) {
+      setError("Failed to reset heart-rate zones. Please try again.");
+      return;
+    }
+
+    setMessage(stravaConnected ? "Using Strava zones." : "Using fallback zones.");
+    await loadZones();
+    setTimeout(() => setMessage(null), 2000);
+    router.refresh();
+  }
+
+  return (
+    <div className="card p-4 flex flex-col gap-4">
+      <div>
+        <div className="font-medium text-sm">Heart-rate zones</div>
+        <div className="text-xs text-muted mt-0.5">
+          {loading ? "Loading zones..." : sourceDescription(source, stravaConnected)}
+        </div>
+      </div>
+
+      <div className="grid gap-2">
+        {draft.map((zone, index) => (
+          <div
+            key={`hr-zone-${index}`}
+            className="grid grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)] items-end gap-2"
+          >
+            <div className="pb-2 text-xs font-medium text-white/70">Z{index + 1}</div>
+            <label className="flex min-w-0 flex-col gap-1 text-[10px] uppercase tracking-[0.14em] text-muted">
+              Min
+              <input
+                type="text"
+                inputMode="numeric"
+                value={zone.min}
+                disabled={loading || saving}
+                onChange={(event) => updateDraft(index, "min", event.target.value)}
+                className="min-w-0 rounded-lg border border-border bg-white/[0.03] px-2 py-2 text-sm text-white disabled:opacity-50"
+              />
+            </label>
+            <label className="flex min-w-0 flex-col gap-1 text-[10px] uppercase tracking-[0.14em] text-muted">
+              Max
+              <input
+                type="text"
+                inputMode="numeric"
+                value={zone.max}
+                placeholder={index === draft.length - 1 ? "Max" : undefined}
+                disabled={loading || saving}
+                onChange={(event) => updateDraft(index, "max", event.target.value)}
+                className="min-w-0 rounded-lg border border-border bg-white/[0.03] px-2 py-2 text-sm text-white placeholder:text-white/25 disabled:opacity-50"
+              />
+            </label>
+          </div>
+        ))}
+      </div>
+
+      {(message || error) && (
+        <div className={`text-xs ${error ? "text-red-400" : "text-green-400"}`}>
+          {error ?? message}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+        <button
+          type="button"
+          onClick={() => void saveZones()}
+          disabled={loading || saving}
+          className="rounded-lg bg-accent px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save zones"}
+        </button>
+        <button
+          type="button"
+          onClick={() => void resetZones()}
+          disabled={loading || saving}
+          className="rounded-lg border border-border px-3 py-2 text-xs text-muted transition-colors hover:text-white disabled:opacity-50"
+        >
+          {stravaConnected ? "Use Strava zones" : "Use default zones"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function paceZonesToDraft(zones: PaceZone[], units: Units): PaceZoneDraft[] {
+  return zones.map((zone, index) => ({
+    min: index === zones.length - 1 && zone.min === 0
+      ? ""
+      : formatPaceSeconds(paceSecondsPerKmToUnitSeconds(zone.min, units)),
+    max: zone.max === -1 ? "" : formatPaceSeconds(paceSecondsPerKmToUnitSeconds(zone.max, units)),
+  }));
+}
+
+function draftToPaceZones(draft: PaceZoneDraft[], units: Units): { zones: PaceZone[] | null; error: string | null } {
+  const zones: PaceZone[] = [];
+
+  for (let index = 0; index < draft.length; index += 1) {
+    const row = draft[index];
+    const isFirst = index === 0;
+    const isLast = index === draft.length - 1;
+    const minUnitSeconds = row.min.trim() === "" && isLast ? 0 : parsePaceInput(row.min);
+    const maxUnitSeconds = row.max.trim() === "" && isFirst ? -1 : parsePaceInput(row.max);
+
+    if (minUnitSeconds == null || minUnitSeconds < 0) {
+      return { zones: null, error: "Each pace zone needs a fastest pace like 6:30." };
+    }
+    if (maxUnitSeconds == null || maxUnitSeconds < -1) {
+      return { zones: null, error: "Each pace zone needs a slowest pace like 7:30." };
+    }
+    if (!isFirst && row.max.trim() === "") {
+      return { zones: null, error: "Only Zone 1 can have an open slow end." };
+    }
+    if (!isLast && row.min.trim() === "") {
+      return { zones: null, error: "Only Zone 6 can have an open fast end." };
+    }
+
+    zones.push({
+      min: Math.round(paceUnitSecondsToSecondsPerKm(minUnitSeconds, units)),
+      max: maxUnitSeconds === -1 ? -1 : Math.round(paceUnitSecondsToSecondsPerKm(maxUnitSeconds, units)),
+    });
+  }
+
+  const normalized = normalizePaceZones(zones);
+  if (!normalized) {
+    return { zones: null, error: "Pace zones must run from slow Zone 1 to fast Zone 6 without overlap." };
+  }
+
+  return { zones: normalized, error: null };
+}
+
+function paceSourceDescription(source: PaceZoneSource | null): string {
+  if (source === "profile") return "Using your custom pace zones.";
+  return "Using fallback pace zones until you save custom zones.";
+}
+
+function PaceZonesSettings({
+  initialZones,
+  units,
+}: {
+  initialZones: PaceZone[] | null | undefined;
+  units: Units;
+}) {
+  const router = useRouter();
+  const initialCustomZones = normalizePaceZones(initialZones);
+  const [draft, setDraft] = useState<PaceZoneDraft[]>(() => paceZonesToDraft(initialCustomZones ?? DEFAULT_PACE_ZONES, units));
+  const [source, setSource] = useState<PaceZoneSource | null>(initialCustomZones ? "profile" : null);
+  const [loading, setLoading] = useState(!initialCustomZones);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const paceUnit = units === "imperial" ? "min/mi" : "min/km";
+
+  async function loadZones() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/strava/zones", { cache: "no-store" });
+      const body = await response.json().catch(() => null) as HRZonesResponse | null;
+      if (!response.ok) throw new Error("Failed to load pace zones.");
+
+      const zones = normalizePaceZones(body?.pace) ?? DEFAULT_PACE_ZONES;
+      setDraft(paceZonesToDraft(zones, units));
+      setSource(body?.paceSource ?? "default");
+    } catch {
+      setDraft(paceZonesToDraft(DEFAULT_PACE_ZONES, units));
+      setSource("default");
+      setError("Could not load pace zones. Using fallback zones.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadInitialZones() {
+      try {
+        const response = await fetch("/api/strava/zones", { cache: "no-store" });
+        const body = await response.json().catch(() => null) as HRZonesResponse | null;
+        if (!active) return;
+        if (!response.ok) throw new Error("Failed to load pace zones.");
+
+        const zones = normalizePaceZones(body?.pace) ?? DEFAULT_PACE_ZONES;
+        setDraft(paceZonesToDraft(zones, units));
+        setSource(body?.paceSource ?? "default");
+      } catch {
+        if (!active) return;
+        setDraft(paceZonesToDraft(DEFAULT_PACE_ZONES, units));
+        setSource("default");
+        setError("Could not load pace zones. Using fallback zones.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadInitialZones();
+    return () => {
+      active = false;
+    };
+  }, [units]);
+
+  function updateDraft(index: number, key: keyof PaceZoneDraft, value: string) {
+    setDraft((current) =>
+      current.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, [key]: value.replace(/[^\d:]/g, "") } : row
+      )
+    );
+    setMessage(null);
+    setError(null);
+  }
+
+  async function saveZones() {
+    if (saving) return;
+    const parsed = draftToPaceZones(draft, units);
+    if (parsed.error || !parsed.zones) {
+      setError(parsed.error);
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    const result = await saveProfile({ pace_zones: parsed.zones });
+    setSaving(false);
+
+    if (result.error) {
+      setError("Failed to save pace zones. Please try again.");
+      return;
+    }
+
+    setDraft(paceZonesToDraft(parsed.zones, units));
+    setSource("profile");
+    setMessage("Pace zones saved.");
+    setTimeout(() => setMessage(null), 2000);
+    router.refresh();
+  }
+
+  async function resetZones() {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    const result = await saveProfile({ pace_zones: null });
+    setSaving(false);
+
+    if (result.error) {
+      setError("Failed to reset pace zones. Please try again.");
+      return;
+    }
+
+    setMessage("Using fallback pace zones.");
+    await loadZones();
+    setTimeout(() => setMessage(null), 2000);
+    router.refresh();
+  }
+
+  return (
+    <div className="card p-4 flex flex-col gap-4">
+      <div>
+        <div className="font-medium text-sm">Pace zones</div>
+        <div className="text-xs text-muted mt-0.5">
+          {loading ? "Loading zones..." : `${paceSourceDescription(source)} Values are shown as ${paceUnit}.`}
+        </div>
+      </div>
+
+      <div className="grid gap-2">
+        {draft.map((zone, index) => (
+          <div
+            key={`pace-zone-${index}`}
+            className="grid grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)] items-end gap-2"
+          >
+            <div className="pb-2 text-xs font-medium text-white/70">Z{index + 1}</div>
+            <label className="flex min-w-0 flex-col gap-1 text-[10px] uppercase tracking-[0.14em] text-muted">
+              Fastest
+              <input
+                type="text"
+                inputMode="numeric"
+                value={zone.min}
+                placeholder={index === draft.length - 1 ? "Open" : "6:00"}
+                disabled={loading || saving}
+                onChange={(event) => updateDraft(index, "min", event.target.value)}
+                className="min-w-0 rounded-lg border border-border bg-white/[0.03] px-2 py-2 text-sm text-white placeholder:text-white/25 disabled:opacity-50"
+              />
+            </label>
+            <label className="flex min-w-0 flex-col gap-1 text-[10px] uppercase tracking-[0.14em] text-muted">
+              Slowest
+              <input
+                type="text"
+                inputMode="numeric"
+                value={zone.max}
+                placeholder={index === 0 ? "Open" : "7:00"}
+                disabled={loading || saving}
+                onChange={(event) => updateDraft(index, "max", event.target.value)}
+                className="min-w-0 rounded-lg border border-border bg-white/[0.03] px-2 py-2 text-sm text-white placeholder:text-white/25 disabled:opacity-50"
+              />
+            </label>
+          </div>
+        ))}
+      </div>
+
+      {(message || error) && (
+        <div className={`text-xs ${error ? "text-red-400" : "text-green-400"}`}>
+          {error ?? message}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+        <button
+          type="button"
+          onClick={() => void saveZones()}
+          disabled={loading || saving}
+          className="rounded-lg bg-accent px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save zones"}
+        </button>
+        <button
+          type="button"
+          onClick={() => void resetZones()}
+          disabled={loading || saving}
+          className="rounded-lg border border-border px-3 py-2 text-xs text-muted transition-colors hover:text-white disabled:opacity-50"
+        >
+          Use default zones
+        </button>
+      </div>
     </div>
   );
 }
@@ -387,7 +889,7 @@ export function SettingsClient({
     ] = await Promise.all([
       supabase
         .from("profiles")
-        .select("id, units, accent_color, display_name, onboarding_completed_at, created_at")
+        .select("id, units, accent_color, display_name, onboarding_completed_at, hr_zones, pace_zones, created_at")
         .eq("id", userId)
         .maybeSingle(),
       supabase
@@ -951,6 +1453,14 @@ export function SettingsClient({
                 </div>
               </div>
             </div>
+          </Section>
+
+          <Section title="Heart Rate">
+            <HRZonesSettings initialZones={profile?.hr_zones} stravaConnected={stravaConnected} />
+          </Section>
+
+          <Section title="Pace">
+            <PaceZonesSettings initialZones={profile?.pace_zones} units={units} />
           </Section>
 
           <Section title="Notifications">

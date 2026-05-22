@@ -48,6 +48,8 @@ const PROFILE_COLUMNS = [
   "accent_color",
   "display_name",
   "onboarding_completed_at",
+  "hr_zones",
+  "pace_zones",
   "created_at",
 ] as const;
 
