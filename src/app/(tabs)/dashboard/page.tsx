@@ -64,50 +64,50 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="mobile-landscape-stack grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="card p-5 sm:p-6">
-          <div className="text-[11px] uppercase tracking-[0.24em] text-white/45 mb-3">This Week</div>
-          <WeeklyStatsSummary {...weeklyStats} units={units} />
+      <div className="mobile-landscape-stack grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
+        <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-5">
+          <div className="order-1 grid gap-5 xl:order-none">
+            <div className="card p-5 sm:p-6">
+              <div className="text-[11px] uppercase tracking-[0.24em] text-white/45 mb-3">This Week</div>
+              <WeeklyStatsSummary {...weeklyStats} units={units} />
+            </div>
+            <WeeklyAdherence adherence={adherence} />
+          </div>
+
+          <div className="order-2 xl:order-none">
+            <CalendarStreak
+              streak={streak}
+              activities={activeDays.activities}
+              dayPlans={activeDays.dayPlans}
+              skipOverrides={activeDays.skipOverrides}
+              todayKey={activeDays.todayKey}
+            />
+          </div>
+
+          <div className="order-5 xl:order-none">
+            <BodyWeightSparkline data={bodyWeightData} units={units} />
+          </div>
         </div>
-        <div className="hidden lg:block">
-          <WeeklyMuscleCoverage
-            coverage={weeklyMuscleCoverageSummary.coverage}
-            details={weeklyMuscleCoverageSummary.details}
-            totalSets={weeklyMuscleCoverageSummary.totalSets}
-            strengthBalance={weeklyMuscleCoverageSummary.strengthBalance}
-          />
+
+        <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-5">
+          <div className="order-3 xl:order-none">
+            <WeekChecklist
+              items={checklistItems}
+              dayTypes={checklistData.dayTypes as DayType[]}
+              todayKey={checklistData.todayKey}
+            />
+          </div>
+
+          <div className="order-4 xl:order-none">
+            <WeeklyMuscleCoverage
+              coverage={weeklyMuscleCoverageSummary.coverage}
+              details={weeklyMuscleCoverageSummary.details}
+              totalSets={weeklyMuscleCoverageSummary.totalSets}
+              strengthBalance={weeklyMuscleCoverageSummary.strengthBalance}
+            />
+          </div>
         </div>
       </div>
-
-      <WeeklyAdherence adherence={adherence} />
-
-      <div className="mobile-landscape-stack grid gap-5 lg:grid-cols-3">
-        <div className="mobile-landscape-unspan lg:col-span-2">
-          <CalendarStreak
-            streak={streak}
-            activities={activeDays.activities}
-            dayPlans={activeDays.dayPlans}
-            skipOverrides={activeDays.skipOverrides}
-            todayKey={activeDays.todayKey}
-          />
-        </div>
-        <WeekChecklist
-          items={checklistItems}
-          dayTypes={checklistData.dayTypes as DayType[]}
-          todayKey={checklistData.todayKey}
-        />
-      </div>
-
-      <div className="lg:hidden">
-        <WeeklyMuscleCoverage
-          coverage={weeklyMuscleCoverageSummary.coverage}
-          details={weeklyMuscleCoverageSummary.details}
-          totalSets={weeklyMuscleCoverageSummary.totalSets}
-          strengthBalance={weeklyMuscleCoverageSummary.strengthBalance}
-        />
-      </div>
-
-      <BodyWeightSparkline data={bodyWeightData} units={units} />
     </div>
   );
 }

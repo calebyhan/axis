@@ -700,7 +700,7 @@ function ZoneSuggestionBox({
     <div className="rounded-lg border border-accent/30 bg-accent/10 p-3">
       <div className="text-xs font-medium text-white/85">Suggested update</div>
       <div className="mt-1 text-xs leading-relaxed text-white/60">{detail}</div>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
           onClick={onAccept}
@@ -1054,7 +1054,7 @@ function HRZonesSettings({
         startLabel={`${domain.min} bpm`}
         endLabel={`${domain.max} bpm`}
         segments={segments}
-        summaryGridClassName="grid-cols-2 sm:grid-cols-5 lg:grid-cols-2 xl:grid-cols-5"
+        summaryGridClassName="grid-cols-2 sm:grid-cols-5"
         valueToPercent={(value) => ((value - domain.min) / (domain.max - domain.min)) * 100}
         percentToValue={(percent) => domain.min + (percent / 100) * (domain.max - domain.min)}
         formatValue={(value) => `${Math.round(value)} bpm`}
@@ -1098,7 +1098,7 @@ function HRZonesSettings({
         </div>
       )}
 
-      <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
           onClick={() => void saveHeartRateSettings()}
@@ -1344,7 +1344,7 @@ function PaceZonesSettings({
         startLabel={`Slow ${formatPaceSeconds(domain.slow)}`}
         endLabel={`Fast ${formatPaceSeconds(domain.fast)}`}
         segments={segments}
-        summaryGridClassName="grid-cols-2 sm:grid-cols-3 xl:grid-cols-6"
+        summaryGridClassName="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
         valueToPercent={(value) => ((domain.slow - value) / (domain.slow - domain.fast)) * 100}
         percentToValue={(percent) => domain.slow - (percent / 100) * (domain.slow - domain.fast)}
         formatValue={(value) => `${formatPaceSeconds(value)} ${paceUnit}`}
@@ -1388,7 +1388,7 @@ function PaceZonesSettings({
         </div>
       )}
 
-      <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
           onClick={() => void savePaceSettings()}
@@ -2084,8 +2084,9 @@ export function SettingsClient({
         </div>
       )}
 
-      <div className="mobile-landscape-stack grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-        <Section title="Weekly Schedule">
+      <div className="mobile-landscape-stack grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
+        <div className="flex min-w-0 flex-col gap-5">
+          <Section title="Weekly Schedule">
           <div className="card overflow-hidden divide-y divide-border">
             <div className="hidden xl:grid grid-cols-[minmax(7rem,1fr)_minmax(9rem,10rem)_minmax(9rem,10rem)] items-center px-4 py-2 gap-4">
               <span className="text-xs text-muted" />
@@ -2164,83 +2165,6 @@ export function SettingsClient({
               </div>
             </div>
           </div>
-        </Section>
-
-        <div className="flex flex-col gap-5">
-          <Section title="Profile">
-            <div className="card p-4 flex flex-col gap-3">
-              <div>
-                <div className="font-medium text-sm">Display name</div>
-                <div className="text-xs text-muted mt-0.5">
-                  Leave blank to use your Google account name automatically.
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
-                <input
-                  id="display-name"
-                  type="text"
-                  value={displayNameDraft}
-                  onChange={(e) => setDisplayNameDraft(e.target.value)}
-                  placeholder="Use Google name"
-                  className="min-w-0 flex-1 rounded-xl border border-border bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-white/25 focus:border-border-strong focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleDisplayNameSave()}
-                  disabled={saving || displayNameDraft.trim() === displayName}
-                  className="rounded-xl border border-border px-3 py-2 text-sm text-white/80 transition-colors hover:border-border-strong hover:text-white disabled:opacity-50"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </Section>
-
-          <Section title="Preferences">
-            <div className="card p-4 flex flex-col gap-5">
-              <div className="flex flex-col gap-3">
-                <div className="font-medium text-sm">Units</div>
-                <div className="grid grid-cols-2 gap-2" role="group" aria-label="Units">
-                  {(["metric", "imperial"] as const).map((u) => (
-                    <button
-                      key={u}
-                      type="button"
-                      aria-pressed={units === u}
-                      onClick={() => void handleUnitsChange(u)}
-                      disabled={saving}
-                      className={`py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${
-                        units === u ? "border-accent text-accent" : "border-border text-muted"
-                      } disabled:opacity-50`}
-                    >
-                      {u}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="h-px bg-border" />
-
-              <div className="flex flex-col gap-3">
-                <div className="font-medium text-sm">Accent color</div>
-                <div className="flex flex-wrap gap-3" role="group" aria-label="Accent color">
-                  {ACCENT_COLORS.map((c) => (
-                    <button
-                      key={c.value}
-                      type="button"
-                      aria-label={`${c.label} accent color`}
-                      aria-pressed={accent === c.value}
-                      onClick={() => void handleAccentChange(c.value)}
-                      disabled={saving}
-                      style={{ background: c.hex }}
-                      className={`w-10 h-10 rounded-full border-2 transition-all ${
-                        accent === c.value ? "border-white scale-110" : "border-transparent"
-                      } disabled:opacity-50`}
-                      title={c.label}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
           </Section>
 
           <Section title="Heart Rate">
@@ -2262,267 +2186,357 @@ export function SettingsClient({
               onSuggestionHandled={() => setZoneSuggestions((current) => ({ ...current, pace: null }))}
             />
           </Section>
+        </div>
 
-          <Section title="Notifications">
-            <div className="card p-4 flex flex-col gap-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:flex-col lg:items-stretch xl:flex-row xl:items-center">
+        <div className="flex min-w-0 flex-col gap-5">
+          <div className="order-3 xl:order-1">
+            <Section title="Profile">
+              <div className="card p-4 flex flex-col gap-3">
                 <div>
-                  <div className="font-medium text-sm">
-                    {notificationPrefs.enabled ? "Enabled" : "Disabled"}
-                  </div>
+                  <div className="font-medium text-sm">Display name</div>
                   <div className="text-xs text-muted mt-0.5">
-                    {notificationSubscriptionCount > 0
-                      ? `${notificationSubscriptionCount} device${notificationSubscriptionCount === 1 ? "" : "s"} subscribed`
-                      : notificationStatus.checked && !notificationStatus.supported
-                      ? "Unavailable in this browser"
-                      : "No subscribed devices"}
+                    Leave blank to use your Google account name automatically.
                   </div>
                 </div>
-                {notificationPrefs.enabled ? (
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    id="display-name"
+                    type="text"
+                    value={displayNameDraft}
+                    onChange={(e) => setDisplayNameDraft(e.target.value)}
+                    placeholder="Use Google name"
+                    className="min-w-0 flex-1 rounded-xl border border-border bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-white/25 focus:border-border-strong focus:outline-none"
+                  />
                   <button
                     type="button"
-                    onClick={() => void disableNotifications()}
-                    disabled={notificationStatus.saving}
-                    className="text-xs text-red-400 border border-red-400/30 rounded-lg px-3 py-2 disabled:opacity-50"
+                    onClick={() => void handleDisplayNameSave()}
+                    disabled={saving || displayNameDraft.trim() === displayName}
+                    className="rounded-xl border border-border px-3 py-2 text-sm text-white/80 transition-colors hover:border-border-strong hover:text-white disabled:opacity-50"
                   >
-                    {notificationStatus.saving ? "Saving…" : "Disable"}
+                    Save
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => void enableNotifications()}
-                    disabled={notificationStatus.saving || !notificationStatus.supported}
-                    className="text-xs bg-accent text-white rounded-lg px-3 py-2 font-medium disabled:opacity-50"
-                  >
-                    {notificationStatus.saving ? "Enabling…" : "Enable"}
-                  </button>
-                )}
-              </div>
-
-              {(notificationStatus.message || notificationStatus.error) && (
-                <div className={`text-xs ${notificationStatus.error ? "text-red-400" : "text-green-400"}`}>
-                  {notificationStatus.error ?? notificationStatus.message}
                 </div>
-              )}
+              </div>
+            </Section>
+          </div>
 
-              <div className="h-px bg-border" />
+          <div className="order-4 xl:order-2">
+            <Section title="Preferences">
+              <div className="card p-4 flex flex-col gap-5">
+                <div className="flex flex-col gap-3">
+                  <div className="font-medium text-sm">Units</div>
+                  <div className="grid grid-cols-2 gap-2" role="group" aria-label="Units">
+                    {(["metric", "imperial"] as const).map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        aria-pressed={units === u}
+                        onClick={() => void handleUnitsChange(u)}
+                        disabled={saving}
+                        className={`py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${
+                          units === u ? "border-accent text-accent" : "border-border text-muted"
+                        } disabled:opacity-50`}
+                      >
+                        {u}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-              <div className="flex flex-col gap-3">
-                <NotificationToggle
-                  label="Today’s plan"
-                  checked={notificationPrefs.today_plan_enabled}
-                  disabled={!notificationPrefs.enabled || notificationStatus.saving}
-                  onChange={(checked) => void persistNotificationPatch({ today_plan_enabled: checked })}
-                >
-                  <input
-                    type="time"
-                    value={notificationPrefs.today_plan_time}
-                    disabled={!notificationPrefs.enabled || !notificationPrefs.today_plan_enabled || notificationStatus.saving}
-                    onChange={(e) => void persistNotificationPatch({ today_plan_time: e.target.value })}
-                    className="rounded-lg border border-border bg-white/[0.03] px-2 py-1.5 text-xs text-white disabled:opacity-40"
-                  />
-                </NotificationToggle>
+                <div className="h-px bg-border" />
 
-                <NotificationToggle
-                  label="Pending Strava links"
-                  checked={notificationPrefs.pending_strava_enabled}
-                  disabled={!notificationPrefs.enabled || notificationStatus.saving}
-                  onChange={(checked) => void persistNotificationPatch({ pending_strava_enabled: checked })}
-                />
+                <div className="flex flex-col gap-3">
+                  <div className="font-medium text-sm">Accent color</div>
+                  <div className="flex flex-wrap gap-3" role="group" aria-label="Accent color">
+                    {ACCENT_COLORS.map((c) => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        aria-label={`${c.label} accent color`}
+                        aria-pressed={accent === c.value}
+                        onClick={() => void handleAccentChange(c.value)}
+                        disabled={saving}
+                        style={{ background: c.hex }}
+                        className={`w-10 h-10 rounded-full border-2 transition-all ${
+                          accent === c.value ? "border-white scale-110" : "border-transparent"
+                        } disabled:opacity-50`}
+                        title={c.label}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Section>
+          </div>
 
-                <NotificationToggle
-                  label="Plan nudge"
-                  checked={notificationPrefs.plan_nudge_enabled}
-                  disabled={!notificationPrefs.enabled || notificationStatus.saving}
-                  onChange={(checked) => void persistNotificationPatch({ plan_nudge_enabled: checked })}
-                >
-                  <input
-                    type="time"
-                    value={notificationPrefs.plan_nudge_time}
-                    disabled={!notificationPrefs.enabled || !notificationPrefs.plan_nudge_enabled || notificationStatus.saving}
-                    onChange={(e) => void persistNotificationPatch({ plan_nudge_time: e.target.value })}
-                    className="rounded-lg border border-border bg-white/[0.03] px-2 py-1.5 text-xs text-white disabled:opacity-40"
-                  />
-                </NotificationToggle>
-
-                <NotificationToggle
-                  label="Weekly review"
-                  checked={notificationPrefs.weekly_review_enabled}
-                  disabled={!notificationPrefs.enabled || notificationStatus.saving}
-                  onChange={(checked) => void persistNotificationPatch({ weekly_review_enabled: checked })}
-                >
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={notificationPrefs.weekly_review_day}
-                      disabled={!notificationPrefs.enabled || !notificationPrefs.weekly_review_enabled || notificationStatus.saving}
-                      onChange={(e) => void persistNotificationPatch({ weekly_review_day: Number(e.target.value) })}
-                      className="rounded-lg border border-border bg-[#0A0A0A] px-2 py-1.5 text-xs text-white disabled:opacity-40"
+          <div className="order-5 xl:order-3">
+            <Section title="Notifications">
+              <div className="card p-4 flex flex-col gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="font-medium text-sm">
+                      {notificationPrefs.enabled ? "Enabled" : "Disabled"}
+                    </div>
+                    <div className="text-xs text-muted mt-0.5">
+                      {notificationSubscriptionCount > 0
+                        ? `${notificationSubscriptionCount} device${notificationSubscriptionCount === 1 ? "" : "s"} subscribed`
+                        : notificationStatus.checked && !notificationStatus.supported
+                        ? "Unavailable in this browser"
+                        : "No subscribed devices"}
+                    </div>
+                  </div>
+                  {notificationPrefs.enabled ? (
+                    <button
+                      type="button"
+                      onClick={() => void disableNotifications()}
+                      disabled={notificationStatus.saving}
+                      className="text-xs text-red-400 border border-red-400/30 rounded-lg px-3 py-2 disabled:opacity-50"
                     >
-                      {NOTIFICATION_DAYS.map((day) => (
-                        <option key={day.value} value={day.value}>{day.label}</option>
-                      ))}
-                    </select>
+                      {notificationStatus.saving ? "Saving…" : "Disable"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void enableNotifications()}
+                      disabled={notificationStatus.saving || !notificationStatus.supported}
+                      className="text-xs bg-accent text-white rounded-lg px-3 py-2 font-medium disabled:opacity-50"
+                    >
+                      {notificationStatus.saving ? "Enabling…" : "Enable"}
+                    </button>
+                  )}
+                </div>
+
+                {(notificationStatus.message || notificationStatus.error) && (
+                  <div className={`text-xs ${notificationStatus.error ? "text-red-400" : "text-green-400"}`}>
+                    {notificationStatus.error ?? notificationStatus.message}
+                  </div>
+                )}
+
+                <div className="h-px bg-border" />
+
+                <div className="flex flex-col gap-3">
+                  <NotificationToggle
+                    label="Today’s plan"
+                    checked={notificationPrefs.today_plan_enabled}
+                    disabled={!notificationPrefs.enabled || notificationStatus.saving}
+                    onChange={(checked) => void persistNotificationPatch({ today_plan_enabled: checked })}
+                  >
                     <input
                       type="time"
-                      value={notificationPrefs.weekly_review_time}
-                      disabled={!notificationPrefs.enabled || !notificationPrefs.weekly_review_enabled || notificationStatus.saving}
-                      onChange={(e) => void persistNotificationPatch({ weekly_review_time: e.target.value })}
+                      value={notificationPrefs.today_plan_time}
+                      disabled={!notificationPrefs.enabled || !notificationPrefs.today_plan_enabled || notificationStatus.saving}
+                      onChange={(e) => void persistNotificationPatch({ today_plan_time: e.target.value })}
                       className="rounded-lg border border-border bg-white/[0.03] px-2 py-1.5 text-xs text-white disabled:opacity-40"
                     />
+                  </NotificationToggle>
+
+                  <NotificationToggle
+                    label="Pending Strava links"
+                    checked={notificationPrefs.pending_strava_enabled}
+                    disabled={!notificationPrefs.enabled || notificationStatus.saving}
+                    onChange={(checked) => void persistNotificationPatch({ pending_strava_enabled: checked })}
+                  />
+
+                  <NotificationToggle
+                    label="Plan nudge"
+                    checked={notificationPrefs.plan_nudge_enabled}
+                    disabled={!notificationPrefs.enabled || notificationStatus.saving}
+                    onChange={(checked) => void persistNotificationPatch({ plan_nudge_enabled: checked })}
+                  >
+                    <input
+                      type="time"
+                      value={notificationPrefs.plan_nudge_time}
+                      disabled={!notificationPrefs.enabled || !notificationPrefs.plan_nudge_enabled || notificationStatus.saving}
+                      onChange={(e) => void persistNotificationPatch({ plan_nudge_time: e.target.value })}
+                      className="rounded-lg border border-border bg-white/[0.03] px-2 py-1.5 text-xs text-white disabled:opacity-40"
+                    />
+                  </NotificationToggle>
+
+                  <NotificationToggle
+                    label="Weekly review"
+                    checked={notificationPrefs.weekly_review_enabled}
+                    disabled={!notificationPrefs.enabled || notificationStatus.saving}
+                    onChange={(checked) => void persistNotificationPatch({ weekly_review_enabled: checked })}
+                  >
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={notificationPrefs.weekly_review_day}
+                        disabled={!notificationPrefs.enabled || !notificationPrefs.weekly_review_enabled || notificationStatus.saving}
+                        onChange={(e) => void persistNotificationPatch({ weekly_review_day: Number(e.target.value) })}
+                        className="rounded-lg border border-border bg-[#0A0A0A] px-2 py-1.5 text-xs text-white disabled:opacity-40"
+                      >
+                        {NOTIFICATION_DAYS.map((day) => (
+                          <option key={day.value} value={day.value}>{day.label}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="time"
+                        value={notificationPrefs.weekly_review_time}
+                        disabled={!notificationPrefs.enabled || !notificationPrefs.weekly_review_enabled || notificationStatus.saving}
+                        onChange={(e) => void persistNotificationPatch({ weekly_review_time: e.target.value })}
+                        className="rounded-lg border border-border bg-white/[0.03] px-2 py-1.5 text-xs text-white disabled:opacity-40"
+                      />
+                    </div>
+                  </NotificationToggle>
+                </div>
+              </div>
+            </Section>
+          </div>
+
+          <div className="order-1 xl:order-4">
+            <Section title="Strava">
+              <div className="card p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between xl:flex-col xl:items-stretch">
+                <div>
+                  <div className="font-medium text-sm">
+                    {stravaConnected ? "Connected" : "Not connected"}
                   </div>
-                </NotificationToggle>
+                  <div className="text-xs text-muted mt-0.5">
+                    {stravaConnected
+                      ? "Activities sync automatically via webhook"
+                      : "Connect to sync runs automatically"}
+                  </div>
+                </div>
+                {stravaConnected ? (
+                  <button
+                    type="button"
+                    onClick={handleDisconnectStrava}
+                    disabled={disconnecting}
+                    className="text-xs text-red-400 border border-red-400/30 rounded-lg px-3 py-2 disabled:opacity-50"
+                  >
+                    {disconnecting ? "Disconnecting…" : "Disconnect"}
+                  </button>
+                ) : (
+                  <a
+                    href="/api/strava/connect"
+                    className="text-center text-xs bg-[#FC4C02] text-white rounded-lg px-3 py-2 font-medium"
+                  >
+                    Connect Strava
+                  </a>
+                )}
               </div>
-            </div>
-          </Section>
+            </Section>
+          </div>
 
-          <Section title="Strava">
-            <div className="card p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:flex-col lg:items-stretch xl:flex-row xl:items-center">
-              <div>
-                <div className="font-medium text-sm">
-                  {stravaConnected ? "Connected" : "Not connected"}
+          <div className="order-2 xl:order-5">
+            <Section title="Data & Storage">
+              <div className="card p-4 flex flex-col gap-3">
+                <div>
+                  <div className="font-medium text-sm">Export</div>
+                  <div className="text-xs text-muted mt-0.5">
+                    Includes profile preferences, schedule, overrides, planned slots, day types, activities, sets, and check-ins.
+                  </div>
                 </div>
-                <div className="text-xs text-muted mt-0.5">
-                  {stravaConnected
-                    ? "Activities sync automatically via webhook"
-                    : "Connect to sync runs automatically"}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => void exportData("json")}
+                    disabled={!!portableStatus.exporting || !!portableStatus.importing}
+                    className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    {portableStatus.exporting === "json" ? "Exporting…" : "Export JSON"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void exportData("csv")}
+                    disabled={!!portableStatus.exporting || !!portableStatus.importing}
+                    className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    {portableStatus.exporting === "csv" ? "Exporting…" : "Export CSV"}
+                  </button>
                 </div>
-              </div>
-              {stravaConnected ? (
+
+                <div className="h-px bg-border" />
+
+                <div>
+                  <div className="font-medium text-sm">Import</div>
+                  <div className="text-xs text-muted mt-0.5">
+                    Merges an Axis JSON or CSV export into this account.
+                  </div>
+                </div>
+                {(portableStatus.message || portableStatus.error) && (
+                  <div className={`text-xs ${portableStatus.error ? "text-red-400" : "text-green-400"}`}>
+                    {portableStatus.error ?? portableStatus.message}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => jsonImportInputRef.current?.click()}
+                    disabled={!!portableStatus.exporting || !!portableStatus.importing}
+                    className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    {portableStatus.importing === "json" ? "Importing…" : "Import JSON"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => csvImportInputRef.current?.click()}
+                    disabled={!!portableStatus.exporting || !!portableStatus.importing}
+                    className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    {portableStatus.importing === "csv" ? "Importing…" : "Import CSV"}
+                  </button>
+                </div>
+                <input
+                  ref={jsonImportInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  className="hidden"
+                  onChange={(e) => {
+                    handleImportFile("json", e.currentTarget.files?.[0] ?? null);
+                    e.currentTarget.value = "";
+                  }}
+                />
+                <input
+                  ref={csvImportInputRef}
+                  type="file"
+                  accept="text/csv,.csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    handleImportFile("csv", e.currentTarget.files?.[0] ?? null);
+                    e.currentTarget.value = "";
+                  }}
+                />
+
+                <div className="h-px bg-border" />
+
+                <div>
+                  <div className="font-medium text-sm">Offline storage</div>
+                  <div className="text-xs text-muted mt-0.5">
+                    Clears offline pages, static assets, and cached read-only API responses.
+                  </div>
+                </div>
+                {(cacheStatus.message || cacheStatus.error) && (
+                  <div className={`text-xs ${cacheStatus.error ? "text-red-400" : "text-green-400"}`}>
+                    {cacheStatus.error ?? cacheStatus.message}
+                  </div>
+                )}
                 <button
                   type="button"
-                  onClick={handleDisconnectStrava}
-                  disabled={disconnecting}
-                  className="text-xs text-red-400 border border-red-400/30 rounded-lg px-3 py-2 disabled:opacity-50"
-                >
-                  {disconnecting ? "Disconnecting…" : "Disconnect"}
-                </button>
-              ) : (
-                <a
-                  href="/api/strava/connect"
-                  className="text-center text-xs bg-[#FC4C02] text-white rounded-lg px-3 py-2 font-medium"
-                >
-                  Connect Strava
-                </a>
-              )}
-            </div>
-          </Section>
-
-          <Section title="Data & Storage">
-            <div className="card p-4 flex flex-col gap-3">
-              <div>
-                <div className="font-medium text-sm">Export</div>
-                <div className="text-xs text-muted mt-0.5">
-                  Includes profile preferences, schedule, overrides, planned slots, day types, activities, sets, and check-ins.
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => void exportData("json")}
-                  disabled={!!portableStatus.exporting || !!portableStatus.importing}
+                  onClick={() => void clearOfflineCache()}
+                  disabled={cacheStatus.clearing}
                   className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
                 >
-                  {portableStatus.exporting === "json" ? "Exporting…" : "Export JSON"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void exportData("csv")}
-                  disabled={!!portableStatus.exporting || !!portableStatus.importing}
-                  className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
-                >
-                  {portableStatus.exporting === "csv" ? "Exporting…" : "Export CSV"}
+                  {cacheStatus.clearing ? "Clearing…" : "Clear offline cache"}
                 </button>
               </div>
+            </Section>
+          </div>
 
-              <div className="h-px bg-border" />
-
-              <div>
-                <div className="font-medium text-sm">Import</div>
-                <div className="text-xs text-muted mt-0.5">
-                  Merges an Axis JSON or CSV export into this account.
-                </div>
-              </div>
-              {(portableStatus.message || portableStatus.error) && (
-                <div className={`text-xs ${portableStatus.error ? "text-red-400" : "text-green-400"}`}>
-                  {portableStatus.error ?? portableStatus.message}
-                </div>
-              )}
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => jsonImportInputRef.current?.click()}
-                  disabled={!!portableStatus.exporting || !!portableStatus.importing}
-                  className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
-                >
-                  {portableStatus.importing === "json" ? "Importing…" : "Import JSON"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => csvImportInputRef.current?.click()}
-                  disabled={!!portableStatus.exporting || !!portableStatus.importing}
-                  className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
-                >
-                  {portableStatus.importing === "csv" ? "Importing…" : "Import CSV"}
-                </button>
-              </div>
-              <input
-                ref={jsonImportInputRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={(e) => {
-                  handleImportFile("json", e.currentTarget.files?.[0] ?? null);
-                  e.currentTarget.value = "";
-                }}
-              />
-              <input
-                ref={csvImportInputRef}
-                type="file"
-                accept="text/csv,.csv"
-                className="hidden"
-                onChange={(e) => {
-                  handleImportFile("csv", e.currentTarget.files?.[0] ?? null);
-                  e.currentTarget.value = "";
-                }}
-              />
-
-              <div className="h-px bg-border" />
-
-              <div>
-                <div className="font-medium text-sm">Offline storage</div>
-                <div className="text-xs text-muted mt-0.5">
-                  Clears offline pages, static assets, and cached read-only API responses.
-                </div>
-              </div>
-              {(cacheStatus.message || cacheStatus.error) && (
-                <div className={`text-xs ${cacheStatus.error ? "text-red-400" : "text-green-400"}`}>
-                  {cacheStatus.error ?? cacheStatus.message}
-                </div>
-              )}
+          <div className="order-6">
+            <Section title="Account">
               <button
                 type="button"
-                onClick={() => void clearOfflineCache()}
-                disabled={cacheStatus.clearing}
-                className="w-full border border-border py-3 rounded-lg text-sm text-muted hover:text-white transition-colors disabled:opacity-50"
+                onClick={async () => {
+                  await deleteAxisCaches();
+                  await supabase.auth.signOut();
+                  router.push("/login");
+                }}
+                className="w-full border border-red-400/30 py-3 rounded-lg text-sm text-red-400 hover:border-red-400/60 transition-colors"
               >
-                {cacheStatus.clearing ? "Clearing…" : "Clear offline cache"}
+                Sign out
               </button>
-            </div>
-          </Section>
-
-          <Section title="Account">
-            <button
-              type="button"
-              onClick={async () => {
-                await deleteAxisCaches();
-                await supabase.auth.signOut();
-                router.push("/login");
-              }}
-              className="w-full border border-red-400/30 py-3 rounded-lg text-sm text-red-400 hover:border-red-400/60 transition-colors"
-            >
-              Sign out
-            </button>
-          </Section>
+            </Section>
+          </div>
         </div>
       </div>
     </div>

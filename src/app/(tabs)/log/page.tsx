@@ -165,11 +165,11 @@ function LogAction({
   );
 }
 
-function LookupLink() {
+function LookupLink({ className = "" }: { className?: string }) {
   return (
     <Link
       href="/log/muscles"
-      className="group card surface-hover flex w-full items-center justify-between gap-4 p-5 text-left"
+      className={`group card surface-hover flex w-full items-center justify-between gap-4 p-5 text-left ${className}`}
     >
       <div className="min-w-0">
         <div className="font-medium text-base">Muscle Lookup</div>
@@ -233,12 +233,14 @@ function TodayPlanCard({
   slots,
   onStartWorkout,
   onLogRun,
+  className = "",
 }: {
   loading: boolean;
   dateLabel: string;
   slots: PlannedSlot[];
   onStartWorkout: () => void;
   onLogRun: () => void;
+  className?: string;
 }) {
   const workoutSlot = slots.find((slot) => slot.kind === "workout");
   const cardioSlot = slots.find((slot) => slot.kind === "cardio");
@@ -246,7 +248,7 @@ function TodayPlanCard({
   const canLogRun = cardioSlot?.effective && !isRestPlan(cardioSlot.effective);
 
   return (
-    <div className="card p-4 flex flex-col gap-4">
+    <div className={`card p-4 flex flex-col gap-4 ${className}`}>
       <div>
         <div className="text-xs uppercase tracking-[0.18em] text-muted">Today&apos;s Plan</div>
         <div className="mt-1 text-sm text-white/80">{dateLabel}</div>
@@ -284,15 +286,17 @@ function StravaImportPreview({
   state,
   units,
   onImport,
+  className = "",
 }: {
   state: StravaPreviewState;
   units: Units;
   onImport: (id: number) => void;
+  className?: string;
 }) {
   const activity = state.activities[0];
 
   return (
-    <div className="card p-4 flex flex-col gap-3">
+    <div className={`card p-4 flex flex-col gap-3 ${className}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-medium">Strava import</div>
         {state.activities.length > 1 && (
@@ -389,6 +393,7 @@ function RecentActivityContext({
   run,
   weight,
   onEditWeight,
+  className = "",
 }: {
   loading: boolean;
   units: Units;
@@ -397,9 +402,10 @@ function RecentActivityContext({
   run: RecentActivity | null;
   weight: RecentWeight | null;
   onEditWeight: (date: string) => void;
+  className?: string;
 }) {
   return (
-    <div className="card p-4 flex flex-col gap-3">
+    <div className={`card p-4 flex flex-col gap-3 ${className}`}>
       <div className="text-sm font-medium">Recent context</div>
       {loading ? (
         <div className="text-sm text-muted">Loading recent activity…</div>
@@ -631,35 +637,39 @@ export default function LogPage() {
           />
         )}
 
-        <div className="mobile-landscape-stack grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-          <div className="flex flex-col gap-4">
+        <div className="mobile-landscape-stack grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start xl:auto-rows-fr xl:grid-cols-3 xl:items-stretch">
+          <div className="flex min-w-0 flex-col gap-4 xl:contents">
             <TodayPlanCard
               loading={overview.loading}
               dateLabel={overview.dateLabel}
               slots={overview.todaySlots}
               onStartWorkout={() => setPanel("session")}
               onLogRun={() => setPanel("run")}
+              className="min-w-0 xl:col-span-2 xl:h-full"
             />
 
             <LogAction
               title="Start Workout Session"
               description="Log sets, track progress, and keep the flow moving."
               onClick={() => setPanel("session")}
+              className="min-w-0 xl:row-span-2 xl:h-full"
               primary
             />
           </div>
 
-          <div className="flex flex-col gap-4">
-            <div className="grid gap-4 lg:grid-cols-1">
+          <div className="flex min-w-0 flex-col gap-4 xl:contents">
+            <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:contents">
               <LogAction
                 title="Log Run"
                 description="Import from Strava or enter manually."
                 onClick={() => setPanel("run")}
+                className="min-w-0 xl:h-full"
               />
               <LogAction
                 title="Log Body Weight"
                 description="Add, backdate, or update a weigh-in."
                 onClick={() => openWeightPanel()}
+                className="min-w-0 xl:h-full"
               />
             </div>
 
@@ -667,6 +677,7 @@ export default function LogPage() {
               state={stravaPreview}
               units={overview.units}
               onImport={(activityId) => void handleStravaImport(activityId)}
+              className="min-w-0 xl:h-full"
             />
 
             <RecentActivityContext
@@ -677,11 +688,12 @@ export default function LogPage() {
               run={overview.recentRun}
               weight={overview.recentWeight}
               onEditWeight={openWeightPanel}
+              className="min-w-0 xl:h-full"
             />
+
+            <LookupLink className="min-w-0 xl:h-full" />
           </div>
         </div>
-
-        <LookupLink />
       </div>
 
       {/* Modals */}

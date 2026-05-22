@@ -236,6 +236,7 @@ export default async function ActivityDetailPage({
   const medalCount =
     bestEfforts.filter((effort) => achievementMeta(effort.pr_rank) !== null).length;
   const runLoad = isRun ? computeRunTrainingLoad(activity) : null;
+  const hasRunPrimaryContent = isRun && Boolean(activity.summary_polyline || activity.strava_activity_id);
 
   return (
     <div className="page-shell flex flex-col gap-6">
@@ -267,120 +268,144 @@ export default async function ActivityDetailPage({
 
       {/* ── RUN DETAIL ─────────────────────────────────────────────────── */}
       {isRun && (
-        <>
-          {/* Route map */}
-          {activity.summary_polyline && (
-            <div className="card overflow-hidden rounded-2xl" style={{ height: "14rem" }}>
-              <RouteMapExpandable polyline={activity.summary_polyline} />
+        <div
+          className={
+            hasRunPrimaryContent
+              ? "mobile-landscape-stack grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start"
+              : "grid gap-5"
+          }
+        >
+          {hasRunPrimaryContent && (
+            <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-5">
+              {/* Route map */}
+              {activity.summary_polyline && (
+                <div className="order-1 card h-56 overflow-hidden rounded-2xl xl:order-none xl:h-[22rem]">
+                  <RouteMapExpandable polyline={activity.summary_polyline} />
+                </div>
+              )}
+
+              {/* Time-series charts — only for Strava runs */}
+              {activity.strava_activity_id && (
+                <div className="order-4 xl:order-none">
+                  <div className="text-xs text-muted uppercase tracking-wider mb-3">Charts</div>
+                  <div className="card p-4">
+                    <Suspense fallback={<div className="text-sm text-muted py-4 text-center">Loading charts…</div>}>
+                      <RunStreams stravaActivityId={activity.strava_activity_id} units={units} />
+                    </Suspense>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Summary stats grid */}
-          <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3 sm:grid-cols-4">
-            <StatCard label="Distance" value={distanceKm ? formatDistance(distanceKm, units) : "—"} unit={distanceUnit(units)} />
-            <StatCard label="Duration" value={formatDuration(activity.duration)} />
-            {runLoad != null && runLoad > 0 && (
-              <StatCard label="Run Load" value={formatLoad(runLoad)} />
+          <div className={hasRunPrimaryContent ? "contents xl:flex xl:min-w-0 xl:flex-col xl:gap-5" : "contents"}>
+            {/* Summary stats grid */}
+            <div className="order-2 grid grid-cols-2 gap-2 min-[380px]:grid-cols-3 sm:grid-cols-4 xl:order-none xl:grid-cols-2">
+              <StatCard label="Distance" value={distanceKm ? formatDistance(distanceKm, units) : "—"} unit={distanceUnit(units)} />
+              <StatCard label="Duration" value={formatDuration(activity.duration)} />
+              {runLoad != null && runLoad > 0 && (
+                <StatCard label="Run Load" value={formatLoad(runLoad)} />
+              )}
+              <StatCard label="Avg Pace" value={formatPace(activity.avg_pace, units)} />
+              <StatCard label="Avg HR" value={activity.avg_heartrate ? `${Math.round(activity.avg_heartrate)}` : "—"} unit={activity.avg_heartrate ? "bpm" : undefined} />
+              {activity.max_heartrate != null && (
+                <StatCard label="Max HR" value={`${Math.round(activity.max_heartrate)}`} unit="bpm" />
+              )}
+              {activity.elevation_gain != null && (
+                <StatCard label="Elevation" value={`+${Math.round(activity.elevation_gain)}`} unit="m" />
+              )}
+              {activity.calories != null && (
+                <StatCard label="Calories" value={`${activity.calories}`} unit="kcal" />
+              )}
+              {activity.avg_cadence != null && (
+                <StatCard label="Cadence" value={`${Math.round(activity.avg_cadence * 2)}`} unit="spm" />
+              )}
+              {activity.avg_watts != null && (
+                <StatCard label="Power" value={`${Math.round(activity.avg_watts)}`} unit="W" />
+              )}
+              {medalCount > 0 && (
+                <StatCard label="Medals" value={`${medalCount}`} />
+              )}
+              {stoppedTime != null && stoppedTime > 30 && (
+                <StatCard label="Stopped" value={formatDuration(stoppedTime)} />
+              )}
+              {activity.average_temp != null && (
+                <StatCard label="Temp" value={`${Math.round(activity.average_temp)}°C`} />
+              )}
+            </div>
+
+            {/* Splits */}
+            {hasSplits(activity.splits) && (
+              <div className="order-3 xl:order-none">
+                <SplitsTable splits={activity.splits} units={units} />
+              </div>
             )}
-            <StatCard label="Avg Pace" value={formatPace(activity.avg_pace, units)} />
-            <StatCard label="Avg HR" value={activity.avg_heartrate ? `${Math.round(activity.avg_heartrate)}` : "—"} unit={activity.avg_heartrate ? "bpm" : undefined} />
-            {activity.max_heartrate != null && (
-              <StatCard label="Max HR" value={`${Math.round(activity.max_heartrate)}`} unit="bpm" />
+
+            {/* Best efforts / PRs */}
+            {bestEfforts.length > 0 && (
+              <div className="order-5 xl:order-none">
+                <RunAchievements efforts={bestEfforts} units={units} />
+              </div>
             )}
-            {activity.elevation_gain != null && (
-              <StatCard label="Elevation" value={`+${Math.round(activity.elevation_gain)}`} unit="m" />
-            )}
-            {activity.calories != null && (
-              <StatCard label="Calories" value={`${activity.calories}`} unit="kcal" />
-            )}
-            {activity.avg_cadence != null && (
-              <StatCard label="Cadence" value={`${Math.round(activity.avg_cadence * 2)}`} unit="spm" />
-            )}
-            {activity.avg_watts != null && (
-              <StatCard label="Power" value={`${Math.round(activity.avg_watts)}`} unit="W" />
-            )}
-            {medalCount > 0 && (
-              <StatCard label="Medals" value={`${medalCount}`} />
-            )}
-            {stoppedTime != null && stoppedTime > 30 && (
-              <StatCard label="Stopped" value={formatDuration(stoppedTime)} />
-            )}
-            {activity.average_temp != null && (
-              <StatCard label="Temp" value={`${Math.round(activity.average_temp)}°C`} />
+
+            {/* Notes */}
+            {activity.notes && (
+              <div className="order-6 card p-4 xl:order-none">
+                <p className="text-sm text-muted">{activity.notes}</p>
+              </div>
             )}
           </div>
-
-          {/* Splits */}
-          {hasSplits(activity.splits) && (
-            <SplitsTable splits={activity.splits} units={units} />
-          )}
-
-          {/* Time-series charts — only for Strava runs */}
-          {activity.strava_activity_id && (
-            <div>
-              <div className="text-xs text-muted uppercase tracking-wider mb-3">Charts</div>
-              <div className="card p-4">
-                <Suspense fallback={<div className="text-sm text-muted py-4 text-center">Loading charts…</div>}>
-                  <RunStreams stravaActivityId={activity.strava_activity_id} units={units} />
-                </Suspense>
-              </div>
-            </div>
-          )}
-
-          {/* Best efforts / PRs */}
-          {bestEfforts.length > 0 && (
-            <RunAchievements efforts={bestEfforts} units={units} />
-          )}
-
-          {/* Notes */}
-          {activity.notes && (
-            <div className="card p-4">
-              <p className="text-sm text-muted">{activity.notes}</p>
-            </div>
-          )}
-        </>
+        </div>
       )}
 
       {/* ── WORKOUT DETAIL ─────────────────────────────────────────────── */}
       {isWorkout && (
-        <>
-          <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3 sm:grid-cols-4">
-            <StatCard label="Duration" value={formatDuration(activity.duration)} />
-            <StatCard label="Exercises" value={`${exerciseGroups.size}`} />
-            <StatCard label="Sets" value={`${sets.length}`} />
-            {activity.avg_heartrate != null && (
-              <StatCard label="Avg HR" value={`${Math.round(activity.avg_heartrate)}`} unit="bpm" />
-            )}
-            {activity.max_heartrate != null && (
-              <StatCard label="Max HR" value={`${Math.round(activity.max_heartrate)}`} unit="bpm" />
-            )}
-            {activity.calories != null && (
-              <StatCard label="Calories" value={`${activity.calories}`} unit="kcal" />
-            )}
-            {activity.suffer_score != null && (
-              <StatCard label="Suffer" value={`${activity.suffer_score}`} />
-            )}
-          </div>
-
-          <div>
-            <h2 className="text-sm font-medium text-muted mb-3 uppercase tracking-wide">Muscle Coverage</h2>
-            <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
-              <MuscleHeatmap coverage={coverage} details={muscleDetails} tooltipContext="in this workout" size="full" />
-              <MuscleHeatmap coverage={coverage} details={muscleDetails} tooltipContext="in this workout" size="full" showBack />
+        <div className="mobile-landscape-stack grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
+          <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-5">
+            <div className="order-3 xl:order-none">
+              <WorkoutSetsEditor activityId={activity.id} initialSets={editableWorkoutSets} units={units} />
             </div>
+
+            {activity.strava_activity_id && (
+              <div className="order-4 xl:order-none">
+                <div className="text-xs text-muted uppercase tracking-wider mb-3">Heart Rate</div>
+                <div className="card p-4">
+                  <RunStreams stravaActivityId={activity.strava_activity_id} units={units} />
+                </div>
+              </div>
+            )}
           </div>
 
-          <WorkoutSetsEditor activityId={activity.id} initialSets={editableWorkoutSets} units={units} />
+          <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-5">
+            <div className="order-1 grid grid-cols-2 gap-2 min-[380px]:grid-cols-3 sm:grid-cols-4 xl:order-none xl:grid-cols-2">
+              <StatCard label="Duration" value={formatDuration(activity.duration)} />
+              <StatCard label="Exercises" value={`${exerciseGroups.size}`} />
+              <StatCard label="Sets" value={`${sets.length}`} />
+              {activity.avg_heartrate != null && (
+                <StatCard label="Avg HR" value={`${Math.round(activity.avg_heartrate)}`} unit="bpm" />
+              )}
+              {activity.max_heartrate != null && (
+                <StatCard label="Max HR" value={`${Math.round(activity.max_heartrate)}`} unit="bpm" />
+              )}
+              {activity.calories != null && (
+                <StatCard label="Calories" value={`${activity.calories}`} unit="kcal" />
+              )}
+              {activity.suffer_score != null && (
+                <StatCard label="Suffer" value={`${activity.suffer_score}`} />
+              )}
+            </div>
 
-          {activity.strava_activity_id && (
-            <div>
-              <div className="text-xs text-muted uppercase tracking-wider mb-3">Heart Rate</div>
+            <div className="order-2 xl:order-none">
+              <h2 className="text-sm font-medium text-muted mb-3 uppercase tracking-wide">Muscle Coverage</h2>
               <div className="card p-4">
-                <RunStreams stravaActivityId={activity.strava_activity_id} units={units} />
+                <div className="flex flex-wrap justify-center gap-4 sm:gap-6 xl:gap-4">
+                  <MuscleHeatmap coverage={coverage} details={muscleDetails} tooltipContext="in this workout" size="full" />
+                  <MuscleHeatmap coverage={coverage} details={muscleDetails} tooltipContext="in this workout" size="full" showBack />
+                </div>
               </div>
             </div>
-          )}
-        </>
+          </div>
+        </div>
       )}
     </div>
   );

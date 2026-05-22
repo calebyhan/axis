@@ -62,12 +62,12 @@ function Stat({
       : "text-white";
 
   return (
-    <div className="card-soft p-3.5 text-center">
-      <div className={`text-lg font-semibold tracking-normal ${valueClass}`}>
+    <div className="card-soft min-w-0 p-3.5 text-center">
+      <div className={`whitespace-nowrap text-lg font-semibold tracking-normal ${valueClass}`}>
         {value}
         {unit && <span className="text-xs font-normal text-muted ml-1">{unit}</span>}
       </div>
-      <div className="text-[11px] text-white/45 mt-1 uppercase tracking-[0.18em]">{label}</div>
+      <div className="mt-1 whitespace-nowrap text-[11px] uppercase tracking-[0.18em] text-white/45">{label}</div>
     </div>
   );
 }
