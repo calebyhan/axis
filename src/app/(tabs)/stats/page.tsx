@@ -6,6 +6,7 @@ import {
   getRunningStats,
   getBodyWeightStats,
   getWorkoutSummary,
+  getWorkoutPersonalRecords,
   getTrainingLoadHistory,
   getHistoricalPlanCalendarData,
   getPreviousStatsOverviewSnapshot,
@@ -33,6 +34,7 @@ export default async function StatsPage({
     runningData,
     bodyData,
     workoutSummary,
+    workoutPersonalRecords,
     trainingLoad,
     adherence,
     planCalendarData,
@@ -44,6 +46,7 @@ export default async function StatsPage({
     getRunningStats(timeRange),
     getBodyWeightStats(timeRange),
     getWorkoutSummary(timeRange),
+    getWorkoutPersonalRecords(timeRange),
     getTrainingLoadHistory(timeRange),
     getAdherenceHistory(timeRange),
     timeRange === "all" ? getHistoricalPlanCalendarData(timeRange) : Promise.resolve(null),
@@ -71,6 +74,7 @@ export default async function StatsPage({
         initialRunningData={runningData}
         initialBodyData={bodyData}
         workoutSummary={workoutSummary}
+        workoutPersonalRecords={workoutPersonalRecords}
         trainingLoad={trainingLoad}
         adherence={adherence}
         planCalendarData={resolvedPlanCalendarData}

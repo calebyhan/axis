@@ -14,7 +14,7 @@ import {
 import type { ReactNode } from "react";
 import { CHART_LINE_TOOLTIP_PROPS, CHART_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
 import { getStatsChartBucketDateKey, STATS_RANGE_LABELS, type TimeRange } from "@/lib/stats-ranges";
-import type { StatsOverviewSnapshot } from "@/lib/queries/stats";
+import type { StatsOverviewSnapshot, WorkoutPersonalRecord } from "@/lib/queries/stats";
 import type { StrengthBalanceSummary } from "@/lib/strength-balance";
 import type { TrainingLoadPoint } from "@/lib/training-load";
 import type { AdherenceWeek } from "@/lib/adherence";
@@ -60,6 +60,7 @@ interface Props {
   current: StatsOverviewSnapshot;
   previous: StatsOverviewSnapshot | null;
   workoutSummary: WorkoutSummary;
+  workoutPersonalRecords: WorkoutPersonalRecord[];
   volumeChartData: { period: string; volume: number }[];
   runningData: RunningActivity[];
   runChartData: { date: string; dist: number }[];
@@ -78,6 +79,13 @@ interface Signal {
   tone: SignalTone;
   label: string;
   value: string;
+  detail: string;
+}
+
+interface LatestPersonalRecord {
+  startTime: string;
+  recordedAt: string;
+  label: string;
   detail: string;
 }
 
@@ -298,6 +306,7 @@ function buildSignals({
   previous,
   plan,
   workoutSummary,
+  workoutPersonalRecords,
   personalRecords,
   latestLoad,
   trendBadge,
@@ -306,6 +315,7 @@ function buildSignals({
   previous: StatsOverviewSnapshot | null;
   plan: ReturnType<typeof summarizeAdherence>;
   workoutSummary: WorkoutSummary;
+  workoutPersonalRecords: WorkoutPersonalRecord[];
   personalRecords: RunningPersonalRecord[];
   latestLoad: TrainingLoadPoint | null;
   trendBadge: { label: string; color: string };
@@ -360,12 +370,14 @@ function buildSignals({
     });
   }
 
-  if (personalRecords.length > 0) {
+  const prCount = personalRecords.length + workoutPersonalRecords.length;
+
+  if (prCount > 0) {
     signals.push({
       tone: "good",
       label: "PRs",
-      value: String(personalRecords.length),
-      detail: `Running PR${personalRecords.length === 1 ? "" : "s"} recorded in range.`,
+      value: String(prCount),
+      detail: `PR${prCount === 1 ? "" : "s"} recorded in range.`,
     });
   }
 
@@ -488,6 +500,7 @@ export default function OverviewTab({
   current,
   previous,
   workoutSummary,
+  workoutPersonalRecords,
   volumeChartData,
   runningData,
   runChartData,
@@ -501,13 +514,30 @@ export default function OverviewTab({
 }: Props) {
   const plan = summarizeAdherence(adherence);
   const rangeLabel = STATS_RANGE_LABELS[timeRange];
-  const signals = buildSignals({ current, previous, plan, workoutSummary, personalRecords, latestLoad, trendBadge });
+  const signals = buildSignals({ current, previous, plan, workoutSummary, workoutPersonalRecords, personalRecords, latestLoad, trendBadge });
   const weekTimeline = timeRange === "week" ? buildWeekTimeline(trainingLoad, volumeChartData, runningData, adherence) : [];
   const loadTimeline = timeRange === "week" ? [] : buildGroupedLoadData(timeRange, trainingLoad);
   const topExercise = workoutSummary.topExercises[0] ?? null;
   const highestVolumePeriod = [...volumeChartData].sort((a, b) => b.volume - a.volume)[0] ?? null;
   const longestRun = [...runningData].sort((a, b) => (b.distance ?? 0) - (a.distance ?? 0))[0] ?? null;
-  const latestPr = [...personalRecords].sort((a, b) => b.startTime.localeCompare(a.startTime))[0] ?? null;
+  const latestPr = [
+    ...personalRecords.map((record): LatestPersonalRecord => ({
+      startTime: record.startTime,
+      recordedAt: record.startTime,
+      label: record.effortName,
+      detail: `${formatElapsedTime(record.elapsedTime)} on ${record.date}`,
+    })),
+    ...workoutPersonalRecords.map((record): LatestPersonalRecord => ({
+      startTime: record.startTime,
+      recordedAt: record.setCreatedAt,
+      label: record.exerciseName,
+      detail: `${formatWeight(record.e1rm, units)} ${weightUnit(units)} e1RM on ${record.date}`,
+    })),
+  ].sort((a, b) => {
+    const startCompare = b.startTime.localeCompare(a.startTime);
+    if (startCompare !== 0) return startCompare;
+    return b.recordedAt.localeCompare(a.recordedAt);
+  })[0] ?? null;
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
@@ -702,8 +732,8 @@ export default function OverviewTab({
           />
           <NotableItem
             label="Latest PR"
-            value={latestPr?.effortName ?? "--"}
-            detail={latestPr ? `${formatElapsedTime(latestPr.elapsedTime)} on ${latestPr.date}` : "No PRs in range"}
+            value={latestPr?.label ?? "--"}
+            detail={latestPr?.detail ?? "No PRs in range"}
           />
         </div>
       </section>

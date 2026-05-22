@@ -6,7 +6,7 @@ import { classifyTrend } from "@/lib/body-weight-trend";
 import { dateKeyToLocalDate } from "@/lib/time-zone";
 import { formatDistance } from "@/lib/units";
 import { useState } from "react";
-import type { HistoricalPlanCalendarData, StatsOverviewSnapshot } from "@/lib/queries/stats";
+import type { HistoricalPlanCalendarData, StatsOverviewSnapshot, WorkoutPersonalRecord } from "@/lib/queries/stats";
 import type { TimeRange } from "@/lib/stats-ranges";
 import type { StrengthBalanceSummary } from "@/lib/strength-balance";
 import type { TrainingLoadPoint } from "@/lib/training-load";
@@ -71,6 +71,7 @@ interface Props {
   }[];
   initialBodyData: { date: string; body_weight: number }[];
   workoutSummary: WorkoutSummary;
+  workoutPersonalRecords: WorkoutPersonalRecord[];
   trainingLoad: TrainingLoadPoint[];
   adherence: AdherenceWeek[];
   planCalendarData: HistoricalPlanCalendarData;
@@ -100,6 +101,7 @@ export function StatsClient({
   initialRunningData,
   initialBodyData,
   workoutSummary,
+  workoutPersonalRecords,
   trainingLoad,
   adherence,
   planCalendarData,
@@ -247,6 +249,7 @@ export function StatsClient({
             current={currentOverview}
             previous={previousOverview}
             workoutSummary={workoutSummary}
+            workoutPersonalRecords={workoutPersonalRecords}
             volumeChartData={volumeChartData}
             runningData={initialRunningData}
             runChartData={runChartData}

@@ -13,7 +13,10 @@ import {
 import { computeStrengthBalance, strengthInputsFromExerciseSets, type StrengthSetDescriptor } from "@/lib/strength-balance";
 import { addMuscleTagSets, muscleTagSummaries } from "@/lib/muscle-tags";
 import { buildDailyTrainingLoads, computeATLCTLTSB } from "@/lib/training-load";
+import { deriveWorkoutPersonalRecords, type WorkoutPersonalRecord, type WorkoutPrSetRow } from "@/lib/workout-prs";
 import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails, MuscleTag } from "@/types";
+
+export type { WorkoutPersonalRecord };
 
 export interface StatsOverviewSnapshot {
   activeDays: number;
@@ -255,6 +258,29 @@ export async function getExercisesForDropdown() {
     .order("name");
   if (error) console.error("[query] getExercisesForDropdown failed", error.message);
   return data ?? [];
+}
+
+export async function getWorkoutPersonalRecords(range: TimeRange): Promise<WorkoutPersonalRecord[]> {
+  const supabase = await createClient();
+  const timeZone = await getUserTimeZone();
+  const bounds = getStatsRangeBounds(range, timeZone);
+
+  const { data, error } = await supabase
+    .from("session_sets")
+    .select("id, exercise_id, set_number, reps, weight, created_at, activities!inner(id, start_time, type), exercises!inner(name)")
+    .eq("activities.type", "workout")
+    .lt("activities.start_time", bounds.endExclusiveInstant);
+
+  if (error) {
+    console.error("[query] getWorkoutPersonalRecords failed", error.message);
+    return [];
+  }
+
+  return deriveWorkoutPersonalRecords((data ?? []) as WorkoutPrSetRow[], {
+    startInstant: bounds.startInstant,
+    endExclusiveInstant: bounds.endExclusiveInstant,
+    timeZone,
+  });
 }
 
 export async function getWorkoutSummary(range: TimeRange) {
