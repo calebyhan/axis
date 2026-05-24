@@ -240,28 +240,38 @@ async function getActivitiesForLocalRange(
 }
 
 function unmatchedSlots(slots: ScheduledSlot[], activities: MinimalActivity[]): ScheduledSlot[] {
+  const availableById = new Map<string, Set<number>>();
+  const availableByCategory = new Map<string, Set<number>>();
+  slots.forEach((slot, index) => {
+    if (slot.effective.name === "Rest") return;
+    const idSet = availableById.get(slot.effective.id) ?? new Set<number>();
+    idSet.add(index);
+    availableById.set(slot.effective.id, idSet);
+    const catSet = availableByCategory.get(slot.effective.category) ?? new Set<number>();
+    catSet.add(index);
+    availableByCategory.set(slot.effective.category, catSet);
+  });
+
   const matchedSlotIndexes = new Set<number>();
-  const sortedActivities = [...activities].sort(
+  const sortedActivities = activities.toSorted(
     (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
   );
 
   for (const activity of sortedActivities) {
-    const slotIndex = slots.findIndex(
-      (slot, index) =>
-        !matchedSlotIndexes.has(index) &&
-        activityMatchesPlannedType(activity as Activity, slot.effective)
-    );
-    if (slotIndex >= 0) matchedSlotIndexes.add(slotIndex);
+    const available = activity.day_type_id
+      ? availableById.get(activity.day_type_id)
+      : availableByCategory.get(activity.type === "run" || activity.type === "manual_run" ? "run" : "strength");
+    if (!available?.size) continue;
+    const matchIdx = available.values().next().value as number;
+    available.delete(matchIdx);
+    matchedSlotIndexes.add(matchIdx);
   }
 
   return slots.filter((_, index) => !matchedSlotIndexes.has(index));
 }
 
 function formatSlotList(slots: ScheduledSlot[]): string {
-  return slots
-    .map((slot) => slot.effective.name)
-    .filter((name, index, names) => names.indexOf(name) === index)
-    .join(" + ");
+  return [...new Set(slots.map((slot) => slot.effective.name))].join(" + ");
 }
 
 async function buildTodayPlanNotification(
@@ -332,14 +342,17 @@ async function buildWeeklyReviewNotification(
   const endDate = addDays(localDate, -1);
   const startDate = addDays(endDate, -6);
   const dates = datesBetween(startDate, endDate);
-  const activities = await getActivitiesForLocalRange(userId, startDate, endDate, timeZone);
-  const units = await getUserUnits(userId);
+  const [activities, units] = await Promise.all([
+    getActivitiesForLocalRange(userId, startDate, endDate, timeZone),
+    getUserUnits(userId),
+  ]);
 
   let planned = 0;
   let done = 0;
 
-  for (const date of dates) {
-    const slots = await getSlotsForDate(userId, date);
+  const slotsPerDate = await Promise.all(dates.map((date) => getSlotsForDate(userId, date)));
+  for (const [i, date] of dates.entries()) {
+    const slots = slotsPerDate[i];
     const dateActivities = activities.filter((activity) => activityLocalDate(activity, timeZone) === date);
     planned += slots.length;
     done += slots.length - unmatchedSlots(slots, dateActivities).length;
@@ -414,15 +427,11 @@ export async function runScheduledNotifications(now = new Date()) {
       if (notification) dueNotifications.push(notification);
     }
 
-    for (const notification of dueNotifications) {
-      const result = await sendNotificationToUser(preference.user_id, notification);
+    const notifResults = await Promise.all(dueNotifications.map((n) => sendNotificationToUser(preference.user_id, n)));
+    for (const [i, result] of notifResults.entries()) {
       sent += result.sent;
       if (result.sent === 0) skipped += 1;
-      results.push({
-        kind: notification.kind,
-        sent: result.sent,
-        skipped: result.skipped,
-      });
+      results.push({ kind: dueNotifications[i].kind, sent: result.sent, skipped: result.skipped });
     }
   }
 

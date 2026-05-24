@@ -78,8 +78,7 @@ const fetchDayPlans = cache(async function fetchDayPlans(): Promise<Map<number, 
 });
 
 export async function getWeeklyStats() {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const todayKey = zonedDateKey(new Date(), timeZone);
   const weekStartDate = startOfWeekDateKey(todayKey);
   const weekStart = zonedDateTimeToUtc(weekStartDate, timeZone).toISOString();
@@ -152,8 +151,7 @@ export async function getWeeklyMuscleCoverageSummary(): Promise<{
   totalSets: number;
   strengthBalance: StrengthBalanceSummary;
 }> {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const weekStartKey = startOfWeekDateKey(zonedDateKey(new Date(), timeZone));
   const weekStart = zonedDateTimeToUtc(weekStartKey, timeZone).toISOString();
 
@@ -226,13 +224,12 @@ export async function getWeeklyMuscleCoverageSummary(): Promise<{
   };
 }
 
-export async function getWeeklyMuscleCoverage(): Promise<Partial<Record<MuscleGroup, number>>> {
+async function getWeeklyMuscleCoverage(): Promise<Partial<Record<MuscleGroup, number>>> {
   return (await getWeeklyMuscleCoverageSummary()).coverage;
 }
 
 export async function getBodyWeightHistory(days = 30) {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const sinceKey = addDateKeyDays(zonedDateKey(new Date(), timeZone), -days);
 
   const { data, error } = await supabase
@@ -246,8 +243,7 @@ export async function getBodyWeightHistory(days = 30) {
 }
 
 export async function getActivityStreak() {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const todayKey = zonedDateKey(new Date(), timeZone);
   const streakStartKey = addDateKeyDays(todayKey, -119);
   const activityRange = dateKeyRangeUtc(streakStartKey, addDateKeyDays(todayKey, 1), timeZone);
@@ -298,8 +294,7 @@ export async function getMonthActiveDays(): Promise<{
   skipOverrides: SkipOverride[];
   todayKey: string;
 }> {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const todayStr = zonedDateKey(new Date(), timeZone);
   const monthStartStr = monthStartDateKey(todayStr);
   const monthStart = zonedDateTimeToUtc(monthStartStr, timeZone);
@@ -335,8 +330,7 @@ export async function getMonthActiveDays(): Promise<{
 }
 
 export async function getWeekChecklistData() {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const todayKey = zonedDateKey(new Date(), timeZone);
   const weekStartStr = startOfWeekDateKey(todayKey);
   const weekStart = dateKeyToLocalDate(weekStartStr);

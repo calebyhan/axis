@@ -68,8 +68,7 @@ function emptyVolumeBuckets(range: TimeRange, startDateKey: string | null, endDa
 }
 
 export async function getVolumeOverTime(range: TimeRange) {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const bounds = getStatsRangeBounds(range, timeZone);
 
   let query = supabase
@@ -186,8 +185,7 @@ export async function getPreviousStatsOverviewSnapshot(range: TimeRange): Promis
 }
 
 export async function getRunningStats(range: TimeRange) {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const bounds = getStatsRangeBounds(range, timeZone);
 
   let query = supabase
@@ -208,8 +206,7 @@ export async function getRunningStats(range: TimeRange) {
 }
 
 export async function getBodyWeightStats(range: TimeRange) {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const bounds = getStatsRangeBounds(range, timeZone);
 
   let query = supabase
@@ -225,9 +222,8 @@ export async function getBodyWeightStats(range: TimeRange) {
   return data ?? [];
 }
 
-export async function getE1RMHistory(exerciseId: string, range: TimeRange) {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+async function getE1RMHistory(exerciseId: string, range: TimeRange) {
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const bounds = getStatsRangeBounds(range, timeZone);
 
   let query = supabase
@@ -257,7 +253,7 @@ export async function getE1RMHistory(exerciseId: string, range: TimeRange) {
     .map(([date, e1rm]) => ({ date, e1rm: Math.round(e1rm * 10) / 10 }));
 }
 
-export async function getExercisesForDropdown() {
+async function getExercisesForDropdown() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("exercises")
@@ -268,8 +264,7 @@ export async function getExercisesForDropdown() {
 }
 
 export async function getWorkoutPersonalRecords(range: TimeRange): Promise<WorkoutPersonalRecord[]> {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const bounds = getStatsRangeBounds(range, timeZone);
 
   const { data, error } = await supabase
@@ -291,8 +286,7 @@ export async function getWorkoutPersonalRecords(range: TimeRange): Promise<Worko
 }
 
 export async function getWorkoutSummary(range: TimeRange) {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const bounds = getStatsRangeBounds(range, timeZone);
 
   const [sessionRes, setsRes] = await Promise.all([
@@ -398,10 +392,7 @@ export async function getWorkoutSummary(range: TimeRange) {
 
 export async function getTrainingLoadHistory(range: TimeRange = "month") {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const timeZone = await getUserTimeZone();
+  const [{ data: { user } }, timeZone] = await Promise.all([supabase.auth.getUser(), getUserTimeZone()]);
   const bounds = getStatsRangeBounds(range, timeZone);
 
   const [activitiesRes, setsRes, profileRes] = await Promise.all([
@@ -480,8 +471,7 @@ export interface HistoricalPlanCalendarData {
 }
 
 export async function getHistoricalPlanCalendarData(range: TimeRange): Promise<HistoricalPlanCalendarData> {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const bounds = getStatsRangeBounds(range, timeZone);
 
   let activitiesQuery = supabase

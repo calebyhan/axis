@@ -39,7 +39,7 @@ export async function getActivityWithSets(activityId: string) {
   return { activity, sets: sets ?? [] };
 }
 
-export async function getWorkoutMuscleCoverage(activityId: string): Promise<Partial<Record<MuscleGroup, number>>> {
+async function getWorkoutMuscleCoverage(activityId: string): Promise<Partial<Record<MuscleGroup, number>>> {
   const supabase = await createClient();
   const { data: sets, error } = await supabase
     .from("session_sets")
@@ -102,7 +102,7 @@ export async function getWorkoutsBulkData(activityIds: string[]): Promise<
   return result;
 }
 
-export async function getWorkoutCoverageAndStats(activityId: string): Promise<{
+async function getWorkoutCoverageAndStats(activityId: string): Promise<{
   coverage: Partial<Record<MuscleGroup, number>>;
   exerciseCount: number;
   totalVolume: number;

@@ -57,34 +57,28 @@ async function loadStreamPaceEfforts(userId: string, activities: ActivityRow[]):
     .sort((a, b) => (a.avg_pace ?? Number.POSITIVE_INFINITY) - (b.avg_pace ?? Number.POSITIVE_INFINITY))
     .slice(0, MAX_STREAM_ACTIVITIES);
 
-  const efforts: StreamPaceEffort[] = [];
-  for (const activity of candidates) {
+  const effortArrays = await Promise.all(candidates.map(async (activity) => {
     const stravaActivityId = activity.strava_activity_id;
-    if (typeof stravaActivityId !== "number") continue;
+    if (typeof stravaActivityId !== "number") return [];
 
     try {
       const raw = await getStreams(userId, stravaActivityId, STREAM_KEYS);
       const time = raw.time?.data;
       const distance = raw.distance?.data;
-      if (!Array.isArray(time) || !Array.isArray(distance)) continue;
+      if (!Array.isArray(time) || !Array.isArray(distance)) return [];
 
-      for (const windowSeconds of [20 * 60, 30 * 60]) {
-        if ((activity.duration ?? 0) < windowSeconds) continue;
+      return [20 * 60, 30 * 60].flatMap((windowSeconds) => {
+        if ((activity.duration ?? 0) < windowSeconds) return [];
         const rollingDistance = bestRollingDistance(time, distance, windowSeconds);
-        if (rollingDistance) {
-          efforts.push({
-            activityId: stravaActivityId,
-            windowSeconds,
-            distanceMeters: rollingDistance,
-          });
-        }
-      }
+        return rollingDistance ? [{ activityId: stravaActivityId, windowSeconds, distanceMeters: rollingDistance }] : [];
+      });
     } catch {
       // Best-effort only; stored Strava best efforts still drive suggestions when streams fail.
+      return [];
     }
-  }
+  }));
 
-  return efforts;
+  return effortArrays.flat();
 }
 
 export async function GET() {

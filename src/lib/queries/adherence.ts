@@ -136,7 +136,10 @@ async function ensurePlannedSlotSnapshots(range: TimeRange, timeZone: string): P
   weekStarts: Date[];
 }> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const [{ data: { user } }, { schedule, dayTypeMap }] = await Promise.all([
+    supabase.auth.getUser(),
+    getBasePlannerData(),
+  ]);
   if (!user) {
     return {
       snapshots: [],
@@ -155,7 +158,6 @@ async function ensurePlannedSlotSnapshots(range: TimeRange, timeZone: string): P
   const weekStarts = weekStartsBetween(start, end);
   const weekStartStrings = weekStarts.map(localDateStr);
   const visibleStartStr = localDateStr(visibleStart);
-  const { schedule, dayTypeMap } = await getBasePlannerData();
 
   const { data: existing, error: existingError } = await supabase
     .from("planned_slots")
@@ -198,8 +200,7 @@ async function ensurePlannedSlotSnapshots(range: TimeRange, timeZone: string): P
         weekStart,
         dayTypeMap
       )
-        .filter((slot) => slot.date >= visibleStartStr)
-        .map((slot) => plannedSlotToSnapshotInsert(slot, user.id, weekStartStr));
+        .flatMap((slot) => slot.date >= visibleStartStr ? [plannedSlotToSnapshotInsert(slot, user.id, weekStartStr)] : []);
     });
 
     if (inserts.length > 0) {
@@ -228,8 +229,7 @@ async function ensurePlannedSlotSnapshots(range: TimeRange, timeZone: string): P
 }
 
 export async function getAdherenceHistory(range: TimeRange): Promise<AdherenceWeek[]> {
-  const supabase = await createClient();
-  const timeZone = await getUserTimeZone();
+  const [supabase, timeZone] = await Promise.all([createClient(), getUserTimeZone()]);
   const now = new Date();
   const todayKey = zonedDateKey(now, timeZone);
   const end = dateKeyToLocalDate(startOfWeekDateKey(todayKey));
@@ -271,8 +271,7 @@ export async function getAdherenceHistory(range: TimeRange): Promise<AdherenceWe
 }
 
 export async function getCurrentWeekAdherence(): Promise<AdherenceWeek> {
-  const history = await getAdherenceHistory("week");
-  const timeZone = await getUserTimeZone();
+  const [history, timeZone] = await Promise.all([getAdherenceHistory("week"), getUserTimeZone()]);
   return history[history.length - 1] ?? {
     weekStart: startOfWeekDateKey(zonedDateKey(new Date(), timeZone)),
     slots: [],
