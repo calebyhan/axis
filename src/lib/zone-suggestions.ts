@@ -71,8 +71,8 @@ function finitePositive(value: unknown): value is number {
 }
 
 export function zonesEqual<T extends { min: number; max: number }>(a: T[] | null | undefined, b: T[] | null | undefined): boolean {
-  if (!a || !b || a.length !== b.length) return false;
-  return a.every((zone, index) => zone.min === b[index].min && zone.max === b[index].max);
+  if (!a || !b) return false;
+  return a.length === b.length && a.every((zone, index) => zone.min === b[index].min && zone.max === b[index].max);
 }
 
 export function zoneHash(kind: "hr" | "pace", zones: HRZone[] | PaceZone[], basis?: unknown): string {
@@ -87,11 +87,12 @@ export function suggestHRZones(
   currentMaxHeartRate: number = DEFAULT_MAX_HEART_RATE
 ): HRZoneSuggestion | null {
   const maxHeartRate = normalizeMaxHeartRate(currentMaxHeartRate) ?? DEFAULT_MAX_HEART_RATE;
-  const observedMaxValues = activities
-    .map((activity) => activity.max_heartrate)
-    .filter(finitePositive)
-    .map((value) => Math.round(value))
-    .filter((value) => normalizeMaxHeartRate(value) != null);
+  const observedMaxValues = activities.flatMap((activity) => {
+    const hr = activity.max_heartrate;
+    if (!finitePositive(hr)) return [];
+    const rounded = Math.round(hr);
+    return normalizeMaxHeartRate(rounded) != null ? [rounded] : [];
+  });
 
   if (observedMaxValues.length < 2) return null;
 

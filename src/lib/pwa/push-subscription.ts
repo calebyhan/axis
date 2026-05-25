@@ -8,7 +8,7 @@ export function pushSupported(publicKey: string): boolean {
   );
 }
 
-export function urlBase64ToArrayBuffer(base64String: string): ArrayBuffer {
+function urlBase64ToArrayBuffer(base64String: string): ArrayBuffer {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = `${base64String}${padding}`.replace(/-/g, "+").replace(/_/g, "/");
   const rawData = window.atob(base64);
@@ -22,7 +22,7 @@ export function urlBase64ToArrayBuffer(base64String: string): ArrayBuffer {
   return buffer;
 }
 
-export async function ensurePushRegistration(): Promise<ServiceWorkerRegistration> {
+async function ensurePushRegistration(): Promise<ServiceWorkerRegistration> {
   const existing = await navigator.serviceWorker.getRegistration("/");
   if (existing) return existing;
   return navigator.serviceWorker.register("/sw.js", {

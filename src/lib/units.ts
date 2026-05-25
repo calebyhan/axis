@@ -1,6 +1,6 @@
 import type { Units } from "@/types";
 
-export const POUNDS_PER_KG = 2.20462;
+const POUNDS_PER_KG = 2.20462;
 
 export function weightUnit(units: Units): string {
   return units === "imperial" ? "lbs" : "kg";

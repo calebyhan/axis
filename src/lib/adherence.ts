@@ -72,7 +72,7 @@ export function deriveAdherence(
   today = new Date(),
   timeZone = DEFAULT_TIME_ZONE
 ): AdherenceWeek {
-  const sortedActivities = [...activities].sort(
+  const sortedActivities = activities.toSorted(
     (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
   );
   const actionableSlots = slots.filter((slot) => !isRestSlot(slot));

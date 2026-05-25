@@ -67,7 +67,7 @@ export function deriveWorkoutPersonalRecords(
   const bestByExercise = new Map<string, number>();
   const recordsByExerciseActivity = new Map<string, WorkoutPersonalRecord>();
 
-  for (const row of [...rows].sort(compareRows)) {
+  for (const row of rows.toSorted(compareRows)) {
     const activity = firstRelation(row.activities);
     const exercise = firstRelation(row.exercises);
     if (!activity || !exercise) continue;

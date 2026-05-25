@@ -69,7 +69,7 @@ export function dateKeyToLocalDate(dateKey: string): Date {
   return new Date(year, month - 1, day);
 }
 
-export function jsDayFromDateKey(dateKey: string): number {
+function jsDayFromDateKey(dateKey: string): number {
   const { year, month, day } = dateKeyParts(dateKey);
   return new Date(Date.UTC(year, month - 1, day, 12)).getUTCDay();
 }

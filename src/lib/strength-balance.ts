@@ -553,8 +553,7 @@ export function computeStrengthBalance(
 
 export function sessionToStrengthInputs(session: SessionState): StrengthBalanceInput[] {
   return session.exercises
-    .filter((exercise) => exercise.sets.length > 0)
-    .map((exercise) => ({
+    .flatMap((exercise) => exercise.sets.length > 0 ? [{
       exerciseId: exercise.exerciseId,
       name: exercise.name,
       movementPattern: exercise.movementPattern ?? "other",
@@ -562,7 +561,7 @@ export function sessionToStrengthInputs(session: SessionState): StrengthBalanceI
       secondaryMuscles: exercise.secondaryMuscles,
       muscleTags: exercise.muscleTags ?? [],
       sets: exercise.sets.length,
-    }));
+    }] : []);
 }
 
 export function mergeStrengthInputs(inputs: StrengthBalanceInput[]): StrengthBalanceInput[] {

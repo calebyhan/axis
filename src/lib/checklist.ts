@@ -28,7 +28,7 @@ export function matchChecklist(
   timeZone = DEFAULT_TIME_ZONE
 ): ChecklistDay[] {
   const active = schedule.filter((s) => s.active);
-  const sortedActivities = [...activities].sort(
+  const sortedActivities = activities.toSorted(
     (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
   );
 
@@ -69,5 +69,5 @@ export function matchChecklist(
     };
   }
 
-  return [...dayMap.values()].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+  return Array.from(dayMap.values()).toSorted((a, b) => a.dayOfWeek - b.dayOfWeek);
 }

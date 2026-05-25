@@ -1,6 +1,6 @@
 import type { MuscleGroup, MuscleTag, MuscleHeatmapDetailTag } from "@/types";
 
-export const MUSCLE_TAG_LABELS: Record<MuscleTag, string> = {
+const MUSCLE_TAG_LABELS: Record<MuscleTag, string> = {
   biceps_long_head: "Long-head bias",
   biceps_short_head: "Short-head bias",
   brachialis: "Brachialis",

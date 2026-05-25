@@ -49,7 +49,7 @@ function normalizeSearchText(value: string): string {
 }
 
 function uniqueTerms(terms: string[]): string[] {
-  return Array.from(new Set(terms.map(normalizeSearchText).filter(Boolean)));
+  return Array.from(new Set(terms.flatMap((t) => { const r = normalizeSearchText(t); return r ? [r] : []; })));
 }
 
 function movementPatternTerms(pattern: Exercise["movement_pattern"]): string[] {

@@ -73,6 +73,6 @@ export async function getAthleteZones(userId: string) {
   return stravaFetch(userId, "/athlete/zones");
 }
 
-export async function getAthleteStats(userId: string, athleteId: number) {
+async function getAthleteStats(userId: string, athleteId: number) {
   return stravaFetch(userId, `/athletes/${athleteId}/stats`);
 }

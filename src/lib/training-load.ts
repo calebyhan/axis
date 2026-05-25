@@ -143,9 +143,7 @@ export function computeATLCTLTSB(
   startATL = 0,
   startCTL = 0
 ): TrainingLoadPoint[] {
-  const sorted = [...loads].sort(
-    (a, b) => a.date.localeCompare(b.date)
-  );
+  const sorted = loads.toSorted((a, b) => a.date.localeCompare(b.date));
 
   let atl = startATL;
   let ctl = startCTL;

@@ -1,4 +1,4 @@
-export const PORTABLE_SCHEMA_VERSION = 2;
+const PORTABLE_SCHEMA_VERSION = 2;
 
 export const PORTABLE_TABLES = [
   "profile",
@@ -218,7 +218,7 @@ function pickRow(row: PortableRow | null, columns: readonly string[]): PortableR
 }
 
 function pickRows(rows: PortableRow[], columns: readonly string[]): PortableRow[] {
-  return rows.map((row) => pickRow(row, columns)).filter(isRecord);
+  return rows.flatMap((row) => { const r = pickRow(row, columns); return isRecord(r) ? [r as PortableRow] : []; });
 }
 
 function withUserId(rows: PortableRow[], userId: string): PortableRow[] {
