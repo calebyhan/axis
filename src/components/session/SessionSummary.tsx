@@ -7,6 +7,8 @@ import { formatSessionDuration, getSessionElapsedSeconds } from "@/lib/session-t
 import { formatWeight, weightUnit } from "@/lib/units";
 import type { SessionState, Units } from "@/types";
 
+const EMPTY_STRENGTH_INPUTS: StrengthBalanceInput[] = [];
+
 interface Props {
   session: SessionState;
   onClose: () => void;
@@ -18,7 +20,7 @@ function getDuration(session: SessionState): string {
   return formatSessionDuration(getSessionElapsedSeconds(session));
 }
 
-export function SessionSummary({ session, onClose, units, weeklyStrengthInputs = [] }: Props) {
+export function SessionSummary({ session, onClose, units, weeklyStrengthInputs = EMPTY_STRENGTH_INPUTS }: Props) {
   const loggedExercises = session.exercises.filter((ex) => ex.sets.length > 0);
   const totalSets = loggedExercises.reduce((sum, ex) => sum + ex.sets.length, 0);
   const totalVolume = loggedExercises.reduce(

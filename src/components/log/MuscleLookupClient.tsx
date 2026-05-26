@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
 import { computeE1RM } from "@/lib/e1rm";
 import { ACCENT_COLORS } from "@/lib/accent-colors";
@@ -371,7 +371,7 @@ function HistoryPanel({
         )}
       </div>
 
-      {loading && <div className="mt-5 text-sm text-muted">Loading history...</div>}
+      {loading && <div className="mt-5 text-sm text-muted">Loading history…</div>}
 
       {!loading && selectedExercise && sessions.length === 0 && (
         <div className="mt-5 text-sm text-muted">No logged sets for this exercise yet.</div>
@@ -443,7 +443,7 @@ export function MuscleLookupClient() {
   const [historyRows, setHistoryRows] = useState<HistoryRow[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
+  const userIdRef = useRef<string | null>(null);
   const [authResolved, setAuthResolved] = useState(false);
 
   useEffect(() => {
@@ -472,7 +472,7 @@ export function MuscleLookupClient() {
       setSelectedExerciseId((current) => current ?? nextExercises[0]?.id ?? null);
 
       const user = authRes.data.user;
-      setUserId(user?.id ?? null);
+      userIdRef.current = user?.id ?? null;
       setAuthResolved(true);
 
       if (user) {
@@ -501,7 +501,7 @@ export function MuscleLookupClient() {
     const supabase = createClient();
 
     async function loadLoggedExercises() {
-      if (!authResolved || !userId) {
+      if (!authResolved || !userIdRef.current) {
         setLoggedExerciseIds(new Set());
         setHistoryFilterError(null);
         return;
@@ -518,7 +518,7 @@ export function MuscleLookupClient() {
           .from("session_sets")
           .select("exercise_id, created_at, activities!inner(type, user_id)")
           .eq("activities.type", "workout")
-          .eq("activities.user_id", userId)
+          .eq("activities.user_id", userIdRef.current)
           .order("created_at", { ascending: false })
           .range(from, from + pageSize - 1);
 
@@ -546,7 +546,7 @@ export function MuscleLookupClient() {
     return () => {
       cancelled = true;
     };
-  }, [authResolved, userId]);
+  }, [authResolved]);
 
   const selectedExercise = useMemo(
     () => exercises.find((exercise) => exercise.id === selectedExerciseId) ?? null,
@@ -558,7 +558,7 @@ export function MuscleLookupClient() {
     const supabase = createClient();
 
     async function loadHistory() {
-      if (!selectedExerciseId || !authResolved || !userId) {
+      if (!selectedExerciseId || !authResolved || !userIdRef.current) {
         setHistoryRows([]);
         setLoadingHistory(false);
         return;
@@ -572,7 +572,7 @@ export function MuscleLookupClient() {
         .select("id, activity_id, set_number, reps, weight, rpe, created_at, activities!inner(id, start_time, type, user_id)")
         .eq("exercise_id", selectedExerciseId)
         .eq("activities.type", "workout")
-        .eq("activities.user_id", userId)
+        .eq("activities.user_id", userIdRef.current)
         .order("created_at", { ascending: false })
         .limit(80);
 
@@ -593,7 +593,9 @@ export function MuscleLookupClient() {
     return () => {
       cancelled = true;
     };
-  }, [selectedExerciseId, userId, authResolved]);
+  }, [selectedExerciseId, authResolved]);
+
+  const canShowHistory = authResolved && !!userIdRef.current;
 
   const visibleExercises = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -665,7 +667,7 @@ export function MuscleLookupClient() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search exercises, muscles, or equipment..."
-          className="w-full rounded-xl border border-border bg-background px-3 py-3 text-sm text-white placeholder:text-white/28 focus:border-[var(--accent)] focus:outline-none"
+          className="w-full rounded-xl border border-border bg-background p-3 text-sm text-white placeholder:text-white/28 focus:border-[var(--accent)] focus:outline-none"
         />
 
         <div className="mt-4">
@@ -739,7 +741,7 @@ export function MuscleLookupClient() {
 
           {exerciseError && <div className="p-4 text-sm text-red-300">{exerciseError}</div>}
 
-          {!exerciseError && loadingExercises && <div className="p-4 text-sm text-muted">Loading exercises...</div>}
+          {!exerciseError && loadingExercises && <div className="p-4 text-sm text-muted">Loading exercises…</div>}
 
           {!exerciseError && !loadingExercises && visibleExercises.length === 0 && (
             <div className="p-4 text-sm text-muted">No exercises found.</div>
@@ -769,7 +771,7 @@ export function MuscleLookupClient() {
           )}
           <HistoryPanel
             selectedExercise={selectedExercise}
-            sessions={historySessions}
+            sessions={canShowHistory ? historySessions : []}
             loading={loadingHistory}
             units={units}
           />

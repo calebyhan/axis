@@ -96,6 +96,7 @@ function LoggedSetRow({
             <label htmlFor={`${rowId}-weight`} className="text-[11px] text-muted">Weight ({unit})</label>
             <input
               id={`${rowId}-weight`}
+              aria-label={`Weight in ${unit}`}
               type="number"
               inputMode="decimal"
               step={weightIncrement}
@@ -109,6 +110,7 @@ function LoggedSetRow({
             <label htmlFor={`${rowId}-reps`} className="text-[11px] text-muted">Reps</label>
             <input
               id={`${rowId}-reps`}
+              aria-label="Reps"
               type="number"
               inputMode="numeric"
               value={repsStr}
@@ -121,6 +123,7 @@ function LoggedSetRow({
             <label htmlFor={`${rowId}-rpe`} className="text-[11px] text-muted">RPE</label>
             <input
               id={`${rowId}-rpe`}
+              aria-label="RPE"
               type="number"
               inputMode="decimal"
               step="0.5"
@@ -210,7 +213,7 @@ export function SetLogger({ exerciseName, sets, suggestedSet, weightIncrement, u
         <div className="flex flex-col gap-1.5">
           {sets.map((s, setIdx) => (
             <LoggedSetRow
-              key={`set-log-${setIdx}`}
+              key={`set-${setIdx}-${s.weight}-${s.reps}`}
               set={s}
               setIdx={setIdx}
               weightIncrement={weightIncrement}

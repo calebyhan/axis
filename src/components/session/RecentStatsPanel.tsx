@@ -88,20 +88,14 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
   }
 
   return (
-    <div
-      className="fixed inset-0 bg-background/80 z-50 flex items-end"
-      onClick={onDismiss}
-      onKeyDown={(e) => e.key === "Escape" && onDismiss()}
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      open
       aria-labelledby="recent-stats-title"
-      tabIndex={-1}
+      className="fixed inset-0 m-0 p-0 border-0 max-w-none max-h-none w-full h-full bg-background/80 z-50 flex items-end"
     >
+      <div className="absolute inset-0" aria-hidden="true" onClick={onDismiss} onKeyDown={(e) => e.key === "Escape" && onDismiss()} />
       <div
-        className="w-full card rounded-b-none p-5 pb-nav max-h-[75vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-        role="document"
+        className="relative z-10 w-full card rounded-b-none p-5 pb-nav max-h-[75vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between mb-4">
           <h3 id="recent-stats-title" className="font-medium">{exercise.name}</h3>
@@ -117,7 +111,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
               <p className="text-xs text-muted mb-2 uppercase tracking-wide">Last Session</p>
               <div className="flex flex-col gap-1">
                 {lastSession.map((s, lastSetIdx) => (
-                  <div key={`last-set-${lastSetIdx}`} className="grid grid-cols-[3.25rem_minmax(0,1fr)_3.75rem] gap-2 text-sm">
+                  <div key={`set-${s.set_number}`} className="grid grid-cols-[3.25rem_minmax(0,1fr)_3.75rem] gap-2 text-sm">
                     <span className="text-muted">Set {s.set_number}</span>
                     <span className="min-w-0 truncate">{d(s.weight)} {unit} × {s.reps} @ RPE {s.rpe}</span>
                     <span className="text-right text-muted">{d(s.e1rm).toFixed(1)}</span>
@@ -143,7 +137,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
                 <p className="text-xs text-muted mb-1 uppercase tracking-wide">e1RM Trend (last {last5E1RMs.length})</p>
                 <div className="flex gap-2">
                   {[...last5E1RMs].reverse().map((v, e1rmIdx) => (
-                    <span key={`e1rm-${e1rmIdx}`} className="text-sm text-white">
+                    <span key={`e1rm-${v.toFixed(1)}-${e1rmIdx}`} className="text-sm text-white">
                       {d(v).toFixed(0)}
                       {e1rmIdx < last5E1RMs.length - 1 && <span className="text-muted"> &rarr;</span>}
                     </span>
@@ -165,7 +159,7 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
           </div>
         )}
       </div>
-    </div>
+    </dialog>
   );
 }
 

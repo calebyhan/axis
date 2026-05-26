@@ -39,8 +39,8 @@ export function CalendarMonth({ year, month, activeDays, badge, today = new Date
       </div>
 
       <div className="grid grid-cols-7 gap-1.5 mb-1.5">
-        {DAY_LABELS.map((l, labelIdx) => (
-          <div key={`day-label-${labelIdx}`} className="text-center text-[10px] text-white/35">
+        {DAY_LABELS.map((l) => (
+          <div key={l} className="text-center text-[10px] text-white/35">
             {l}
           </div>
         ))}
@@ -48,7 +48,7 @@ export function CalendarMonth({ year, month, activeDays, badge, today = new Date
 
       <div className="grid grid-cols-7 gap-1.5">
         {cells.map((day, cellIdx) => {
-          if (day === null) return <div key={`cell-empty-${cellIdx}`} />;
+          if (day === null) return <div key={`empty-${year}-${month}-${cellIdx}`} />;
           const key = dateKey(year, month, day);
           const isToday = year === today.getFullYear() && month === today.getMonth() && day === today.getDate();
           const count = activeDays.get(key) ?? 0;
@@ -85,7 +85,7 @@ export function CalendarMonth({ year, month, activeDays, badge, today = new Date
 
           return (
             <div
-              key={`cell-${cellIdx}`}
+              key={key}
               style={cellStyle}
               className={`aspect-square flex items-center justify-center rounded-xl text-[10px] font-medium transition-colors ${cellClass}`}
             >

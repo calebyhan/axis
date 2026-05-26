@@ -15,7 +15,7 @@ function currentCookieValue(name: string): string | null {
 }
 
 export function TimeZoneSync() {
-  const router = useRouter();
+  const { refresh } = useRouter();
 
   useEffect(() => {
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -31,9 +31,9 @@ export function TimeZoneSync() {
     ].join("; ");
 
     if (existing !== encoded) {
-      router.refresh();
+      refresh();
     }
-  }, [router]);
+  }, [refresh]);
 
   return null;
 }
