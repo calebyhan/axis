@@ -108,7 +108,7 @@ export function StatsClient({
   previousOverview,
   units,
 }: Props) {
-  const router = useRouter();
+  const { push, refresh } = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [editingBodyDate, setEditingBodyDate] = useState<string | null>(null);
 
@@ -136,20 +136,17 @@ export function StatsClient({
     .filter((r) => r.suffer_score != null)
     .map((r) => ({ date: r.date, suffer: r.suffer_score }));
   const hrChartData = initialRunningData
-    .filter((r) => r.avg_heartrate != null)
-    .map((r) => ({ date: r.date, hr: r.avg_heartrate ?? null }));
+    .flatMap((r) => r.avg_heartrate != null ? [{ date: r.date, hr: r.avg_heartrate as number | null }] : []);
   const personalRecords = initialRunningData.flatMap((r) =>
-    (r.best_efforts ?? [])
-      .filter((effort) => effort.pr_rank === 1)
-      .map((effort) => ({
-        activityId: r.id,
-        activityName: r.name,
-        startTime: r.start_time,
-        date: r.date,
-        effortName: effort.name,
-        elapsedTime: effort.elapsed_time,
-        distance: effort.distance,
-      }))
+    (r.best_efforts ?? []).flatMap((effort) => effort.pr_rank === 1 ? [{
+      activityId: r.id,
+      activityName: r.name,
+      startTime: r.start_time,
+      date: r.date,
+      effortName: effort.name,
+      elapsedTime: effort.elapsed_time,
+      distance: effort.distance,
+    }] : [])
   );
 
   // ── Body ──────────────────────────────────────────────────────────────────
@@ -198,7 +195,7 @@ export function StatsClient({
           <button
             key={r.value}
             type="button"
-            onClick={() => router.push(`/stats?range=${r.value}`)}
+            onClick={() => push(`/stats?range=${r.value}`)}
             aria-pressed={timeRange === r.value}
             className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
               timeRange === r.value ? "bg-border text-white" : "text-muted"
@@ -302,7 +299,7 @@ export function StatsClient({
       </div>
 
       {editingBodyDate && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background lg:bg-black/60 lg:items-center lg:justify-center lg:p-6" role="dialog" aria-modal="true" aria-labelledby="edit-weight-title">
+        <dialog open aria-labelledby="edit-weight-title" className="fixed inset-0 z-50 m-0 p-0 border-0 max-w-none max-h-none w-full h-full flex flex-col bg-background lg:bg-black/60 lg:items-center lg:justify-center lg:p-6">
           <div className="flex flex-col w-full h-full lg:h-auto lg:max-h-[85vh] lg:w-full lg:max-w-lg lg:rounded-3xl lg:bg-[#0A0A0A] lg:border lg:border-[#1F1F1F] lg:overflow-hidden">
             <div className="flex items-center gap-3 px-4 pb-4 border-b border-border" style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))" }}>
               <button
@@ -321,14 +318,14 @@ export function StatsClient({
               <LogWeightForm
                 onSave={() => {
                   setEditingBodyDate(null);
-                  router.refresh();
+                  refresh();
                 }}
                 units={units}
                 initialDate={editingBodyDate}
               />
             </div>
           </div>
-        </div>
+        </dialog>
       )}
     </div>
   );

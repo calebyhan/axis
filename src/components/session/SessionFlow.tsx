@@ -238,7 +238,7 @@ function StrengthGuidance({ balance, projectedSessionCount }: { balance: Strengt
   if (balance.nudges.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-yellow-300/20 bg-yellow-300/[0.06] px-3 py-3">
+    <div className="rounded-xl border border-yellow-300/20 bg-yellow-300/[0.06] p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] uppercase tracking-[0.2em] text-yellow-100/65">
@@ -514,7 +514,7 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
 
   if (finalSession) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-background lg:bg-black/60 lg:items-center lg:justify-center lg:p-6" role="dialog" aria-modal="true" aria-labelledby="session-complete-title">
+      <dialog open aria-labelledby="session-complete-title" className="fixed inset-0 z-50 m-0 p-0 border-0 max-w-none max-h-none w-full h-full flex flex-col bg-background lg:bg-black/60 lg:items-center lg:justify-center lg:p-6">
         <div className="flex flex-col w-full h-full lg:h-auto lg:max-h-[90vh] lg:w-full lg:max-w-2xl lg:rounded-3xl lg:bg-[#0A0A0A] lg:border lg:border-[#1F1F1F] lg:overflow-hidden">
           <div className="flex items-center gap-3 px-4 pb-4 border-b border-border" style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))" }}>
             <div className="size-9 shrink-0" />
@@ -526,12 +526,12 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
             <SessionSummary session={finalSession} onClose={onComplete} units={units} weeklyStrengthInputs={weeklyStrengthInputs} />
           </div>
         </div>
-      </div>
+      </dialog>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background lg:bg-black/60 lg:items-center lg:justify-center lg:p-6" role="dialog" aria-modal="true" aria-labelledby="workout-session-title">
+    <dialog open aria-labelledby="workout-session-title" className="fixed inset-0 z-50 m-0 p-0 border-0 max-w-none max-h-none w-full h-full flex flex-col bg-background lg:bg-black/60 lg:items-center lg:justify-center lg:p-6">
     <div className="flex flex-col w-full h-full lg:h-auto lg:max-h-[90vh] lg:w-full lg:max-w-2xl lg:rounded-3xl lg:bg-[#0A0A0A] lg:border lg:border-[#1F1F1F] lg:overflow-hidden">
       <SessionHeader session={session} saving={saving} draftSaveStatus={draftSaveStatus} hasLoggedSets={hasLoggedSets} onCancel={handleCancelRequest} onEnd={handleEndSession} />
 
@@ -617,6 +617,6 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
         />
       )}
     </div>
-    </div>
+    </dialog>
   );
 }

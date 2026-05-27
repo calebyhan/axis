@@ -127,14 +127,11 @@ function OverrideModal({ slot, dayName, dayTypes, isPending, error, onClose, onS
   const isSkipSelected = slot.isOverridden && slot.effective === null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} role="dialog" aria-modal="true" aria-labelledby="schedule-override-title" tabIndex={-1}>
-      <div className="absolute inset-0 bg-black/60" />
+    <dialog open aria-labelledby="schedule-override-title" className="fixed inset-0 z-50 m-0 p-0 border-0 max-w-none max-h-none w-full h-full flex items-end lg:items-center justify-center bg-black/60">
+      <div className="absolute inset-0" aria-hidden="true" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} />
       <div
-        className="relative w-full lg:max-w-sm rounded-t-2xl lg:rounded-2xl bg-[#141414] border border-white/10 p-5 lg:pb-5"
+        className="relative z-10 w-full lg:max-w-sm rounded-t-2xl lg:rounded-2xl bg-[#141414] border border-white/10 p-5 lg:pb-5"
         style={{ paddingBottom: "max(2rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))" }}
-        role="document"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -149,7 +146,7 @@ function OverrideModal({ slot, dayName, dayTypes, isPending, error, onClose, onS
             aria-label="Close schedule override"
             className="flex size-10 items-center justify-center rounded-full bg-white/5 text-white/65 hover:text-white transition-colors"
           >
-            <svg aria-hidden="true" viewBox="0 0 10 10" fill="none" className="w-3 h-3">
+            <svg aria-hidden="true" viewBox="0 0 10 10" fill="none" className="size-3">
               <path d="M1 9L9 1M1 1l8 8" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
             </svg>
           </button>
@@ -209,12 +206,12 @@ function OverrideModal({ slot, dayName, dayTypes, isPending, error, onClose, onS
         )}
         {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
       </div>
-    </div>
+    </dialog>
   );
 }
 
 export function WeekChecklist({ items, dayTypes, todayKey }: Props) {
-  const router = useRouter();
+  const { refresh } = useRouter();
   const [modalSlot, setModalSlot] = useState<{ slot: ChecklistSlot; dayName: string } | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -234,7 +231,7 @@ export function WeekChecklist({ items, dayTypes, todayKey }: Props) {
   }
 
   // Sun-first display: (dayOfWeek+1)%7 maps Sun(6)→0, Mon(0)→1, …, Sat(5)→6
-  const ordered = [...items].sort((a, b) => (a.dayOfWeek + 1) % 7 - (b.dayOfWeek + 1) % 7);
+  const ordered = items.toSorted((a, b) => (a.dayOfWeek + 1) % 7 - (b.dayOfWeek + 1) % 7);
 
   function handleSelect(dayTypeId: string | null) {
     if (!modalSlot) return;
@@ -251,7 +248,7 @@ export function WeekChecklist({ items, dayTypes, todayKey }: Props) {
           }
           setModalError(null);
           setModalSlot(null);
-          router.refresh();
+          refresh();
         });
       } else {
         setModalError(null);
@@ -268,7 +265,7 @@ export function WeekChecklist({ items, dayTypes, todayKey }: Props) {
       }
       setModalError(null);
       setModalSlot(null);
-      router.refresh();
+      refresh();
     });
   }
 
@@ -283,7 +280,7 @@ export function WeekChecklist({ items, dayTypes, todayKey }: Props) {
       }
       setModalError(null);
       setModalSlot(null);
-      router.refresh();
+      refresh();
     });
   }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { saveNotificationPreferences, saveProfile, saveWeeklyScheduleDay } from "@/app/(tabs)/settings/actions";
@@ -497,7 +498,7 @@ function ZoneBoundaryBar({
           const isDragging = dragIndex === index;
 
           return (
-            <div key={`${ariaLabel}-boundary-${index}`}>
+            <div key={`${ariaLabel}-${segments[index].label}`}>
               <span
                 aria-hidden="true"
                 style={{
@@ -737,7 +738,7 @@ function HRZonesSettings({
   suggestion: HRZoneSuggestion | null;
   onSuggestionHandled: () => void;
 }) {
-  const router = useRouter();
+  const { refresh } = useRouter();
   const initialCustomZones = normalizeHRZones(initialZones);
   const resolvedInitialMethod = normalizeHRZoneMethod(initialMethod) ?? (initialCustomZones ? "custom" : stravaConnected ? "strava" : "max_hr");
   const initialMax = normalizeMaxHeartRate(initialMaxHeartRate) ?? DEFAULT_MAX_HEART_RATE;
@@ -937,7 +938,7 @@ function HRZonesSettings({
 
     setMessage("Heart-rate settings saved.");
     setTimeout(() => setMessage(null), 2000);
-    router.refresh();
+    refresh();
   }
 
   async function acceptSuggestion() {
@@ -965,7 +966,7 @@ function HRZonesSettings({
     setMessage("Suggested max heart rate saved.");
     onSuggestionHandled();
     setTimeout(() => setMessage(null), 2000);
-    router.refresh();
+    refresh();
   }
 
   async function ignoreSuggestion() {
@@ -984,7 +985,7 @@ function HRZonesSettings({
     setMessage("Heart-rate suggestion ignored.");
     onSuggestionHandled();
     setTimeout(() => setMessage(null), 2000);
-    router.refresh();
+    refresh();
   }
 
   return (
@@ -1140,7 +1141,7 @@ function PaceZonesSettings({
   suggestion: PaceZoneSuggestion | null;
   onSuggestionHandled: () => void;
 }) {
-  const router = useRouter();
+  const { refresh } = useRouter();
   const initialCustomZones = normalizePaceZones(initialZones);
   const initialMode: PaceZoneMode = initialCustomZones ? "custom" : "default";
   const [boundaries, setBoundaries] = useState<number[]>(() => paceUnitBoundariesFromZones(initialCustomZones ?? DEFAULT_PACE_ZONES, units));
@@ -1254,7 +1255,7 @@ function PaceZonesSettings({
 
     setMessage("Pace settings saved.");
     setTimeout(() => setMessage(null), 2000);
-    router.refresh();
+    refresh();
   }
 
   async function acceptSuggestion() {
@@ -1282,7 +1283,7 @@ function PaceZonesSettings({
     setMessage("Suggested pace zones saved.");
     onSuggestionHandled();
     setTimeout(() => setMessage(null), 2000);
-    router.refresh();
+    refresh();
   }
 
   async function ignoreSuggestion() {
@@ -1301,7 +1302,7 @@ function PaceZonesSettings({
     setMessage("Pace suggestion ignored.");
     onSuggestionHandled();
     setTimeout(() => setMessage(null), 2000);
-    router.refresh();
+    refresh();
   }
 
   return (
@@ -1415,7 +1416,7 @@ function isRestDayType(dayType: DayType | undefined): boolean {
 }
 
 function sortScheduleDayTypes(types: DayType[]): DayType[] {
-  return [...types].sort((a, b) => {
+  return types.toSorted((a, b) => {
     const aRest = isRestName(a.name);
     const bRest = isRestName(b.name);
     if (aRest !== bRest) return aRest ? -1 : 1;
@@ -1471,7 +1472,7 @@ export function SettingsClient({
   stravaStatus,
 }: Props) {
   const supabase = createClient();
-  const router = useRouter();
+  const { refresh, push } = useRouter();
   const jsonImportInputRef = useRef<HTMLInputElement>(null);
   const csvImportInputRef = useRef<HTMLInputElement>(null);
   const workoutRestTypeId = findRestTypeId(dayTypes, "strength");
@@ -1576,7 +1577,7 @@ export function SettingsClient({
 
     setSaveStatus({ saving: false, saved: true, error: null });
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, saved: false })), 2000);
-    router.refresh();
+    refresh();
     document.documentElement.style.setProperty("--accent", ACCENT_COLORS.find((c) => c.value === nextAccent)?.hex ?? "#3B82F6");
     return true;
   }
@@ -1598,7 +1599,7 @@ export function SettingsClient({
     setDisplayNameDraft(normalized);
     setSaveStatus({ saving: false, saved: true, error: null });
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, saved: false })), 2000);
-    router.refresh();
+    refresh();
   }
 
   async function handleUnitsChange(nextUnits: Units) {
@@ -1641,7 +1642,7 @@ export function SettingsClient({
       setSaveStatus((prev) => ({ ...prev, error: "Failed to save schedule. Please try again." }));
       return false;
     }
-    router.refresh();
+    refresh();
     return true;
   }
 
@@ -1777,17 +1778,15 @@ export function SettingsClient({
   }
 
   async function upsertPortableRows(table: string, rows: PortableRow[], onConflict: string) {
-    for (const chunk of chunkRows(rows)) {
-      const { error } = await supabase.from(table).upsert(chunk, { onConflict });
-      if (error) throw new Error(`${table}: ${error.message}`);
-    }
+    const results = await Promise.all(chunkRows(rows).map((chunk) => supabase.from(table).upsert(chunk, { onConflict })));
+    const failed = results.find((r) => r.error);
+    if (failed?.error) throw new Error(`${table}: ${failed.error.message}`);
   }
 
   async function insertPortableRows(table: string, rows: PortableRow[]) {
-    for (const chunk of chunkRows(rows)) {
-      const { error } = await supabase.from(table).insert(chunk);
-      if (error) throw new Error(`${table}: ${error.message}`);
-    }
+    const results = await Promise.all(chunkRows(rows).map((chunk) => supabase.from(table).insert(chunk)));
+    const failed = results.find((r) => r.error);
+    if (failed?.error) throw new Error(`${table}: ${failed.error.message}`);
   }
 
   async function insertMissingDayTypes(rows: PortableRow[]) {
@@ -1807,25 +1806,26 @@ export function SettingsClient({
   }
 
   async function applyPortableImport(data: PreparedPortableImport) {
-    if (data.profile) await upsertPortableRows("profiles", [data.profile], "id");
-    if (data.notification_preferences) {
-      await upsertPortableRows("notification_preferences", [data.notification_preferences], "user_id");
-    }
-    await insertMissingDayTypes(data.day_types);
-    await upsertPortableRows("weekly_schedule", data.weekly_schedule, "user_id,day_of_week");
-    await upsertPortableRows("schedule_overrides", data.schedule_overrides, "user_id,date,slot");
-    await upsertPortableRows("planned_slots", data.planned_slots, "user_id,date,slot");
-    await upsertPortableRows("activities", data.activities, "id");
-    await upsertPortableRows("daily_checkins", data.daily_checkins, "user_id,date");
+    await Promise.all([
+      data.profile ? upsertPortableRows("profiles", [data.profile], "id") : Promise.resolve(),
+      data.notification_preferences ? upsertPortableRows("notification_preferences", [data.notification_preferences], "user_id") : Promise.resolve(),
+      insertMissingDayTypes(data.day_types),
+      upsertPortableRows("activities", data.activities, "id"),
+      upsertPortableRows("daily_checkins", data.daily_checkins, "user_id,date"),
+    ]);
+    await Promise.all([
+      upsertPortableRows("weekly_schedule", data.weekly_schedule, "user_id,day_of_week"),
+      upsertPortableRows("schedule_overrides", data.schedule_overrides, "user_id,date,slot"),
+      upsertPortableRows("planned_slots", data.planned_slots, "user_id,date,slot"),
+    ]);
 
     if (data.session_sets.length > 0) {
       const activityIds = Array.from(
         new Set(data.session_sets.map((row) => row.activity_id).filter((id): id is string => typeof id === "string"))
       );
-      for (const chunk of chunkRows(activityIds)) {
-        const { error } = await supabase.from("session_sets").delete().in("activity_id", chunk);
-        if (error) throw new Error(`session_sets: ${error.message}`);
-      }
+      const deleteResults = await Promise.all(chunkRows(activityIds).map((chunk) => supabase.from("session_sets").delete().in("activity_id", chunk)));
+      const deleteFailed = deleteResults.find((r) => r.error);
+      if (deleteFailed?.error) throw new Error(`session_sets: ${deleteFailed.error.message}`);
       await insertPortableRows("session_sets", data.session_sets);
     }
   }
@@ -1856,7 +1856,7 @@ export function SettingsClient({
         message: `Imported ${recordCount} records.`,
         error: null,
       });
-      router.refresh();
+      refresh();
     } catch (err) {
       console.error("[settings] import failed", err);
       setPortableStatus({
@@ -1930,7 +1930,7 @@ export function SettingsClient({
         message: "Notifications enabled.",
         error: null,
       });
-      router.refresh();
+      refresh();
     } catch (err) {
       setNotificationStatus((prev) => ({
         ...prev,
@@ -1967,7 +1967,7 @@ export function SettingsClient({
         message: "Notifications disabled.",
         error: null,
       }));
-      router.refresh();
+      refresh();
     } catch (err) {
       setNotificationStatus((prev) => ({
         ...prev,
@@ -2049,8 +2049,7 @@ export function SettingsClient({
     }
   );
   const focusedMuscles = MUSCLE_GROUPS
-    .map((muscle) => ({ muscle, count: weeklyPlan.muscleCoverage[muscle] ?? 0 }))
-    .filter((item) => item.count > 0)
+    .flatMap((muscle) => { const count = weeklyPlan.muscleCoverage[muscle] ?? 0; return count > 0 ? [{ muscle, count }] : []; })
     .sort((a, b) => b.count - a.count || muscleLabel(a.muscle).localeCompare(muscleLabel(b.muscle)))
     .slice(0, 6);
 
@@ -2201,6 +2200,7 @@ export function SettingsClient({
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     id="display-name"
+                    aria-label="Display name"
                     type="text"
                     value={displayNameDraft}
                     onChange={(e) => setDisplayNameDraft(e.target.value)}
@@ -2322,6 +2322,7 @@ export function SettingsClient({
                     onChange={(checked) => void persistNotificationPatch({ today_plan_enabled: checked })}
                   >
                     <input
+                      aria-label="Today's plan notification time"
                       type="time"
                       value={notificationPrefs.today_plan_time}
                       disabled={!notificationPrefs.enabled || !notificationPrefs.today_plan_enabled || notificationStatus.saving}
@@ -2344,6 +2345,7 @@ export function SettingsClient({
                     onChange={(checked) => void persistNotificationPatch({ plan_nudge_enabled: checked })}
                   >
                     <input
+                      aria-label="Plan nudge notification time"
                       type="time"
                       value={notificationPrefs.plan_nudge_time}
                       disabled={!notificationPrefs.enabled || !notificationPrefs.plan_nudge_enabled || notificationStatus.saving}
@@ -2370,6 +2372,7 @@ export function SettingsClient({
                         ))}
                       </select>
                       <input
+                        aria-label="Weekly review notification time"
                         type="time"
                         value={notificationPrefs.weekly_review_time}
                         disabled={!notificationPrefs.enabled || !notificationPrefs.weekly_review_enabled || notificationStatus.saving}
@@ -2406,12 +2409,12 @@ export function SettingsClient({
                     {disconnecting ? "Disconnecting…" : "Disconnect"}
                   </button>
                 ) : (
-                  <a
+                  <Link
                     href="/api/strava/connect"
                     className="text-center text-xs bg-[#FC4C02] text-white rounded-lg px-3 py-2 font-medium"
                   >
                     Connect Strava
-                  </a>
+                  </Link>
                 )}
               </div>
             </Section>
@@ -2478,6 +2481,8 @@ export function SettingsClient({
                 </div>
                 <input
                   ref={jsonImportInputRef}
+                  aria-hidden="true"
+                  tabIndex={-1}
                   type="file"
                   accept="application/json,.json"
                   className="hidden"
@@ -2488,6 +2493,8 @@ export function SettingsClient({
                 />
                 <input
                   ref={csvImportInputRef}
+                  aria-hidden="true"
+                  tabIndex={-1}
                   type="file"
                   accept="text/csv,.csv"
                   className="hidden"
@@ -2529,7 +2536,7 @@ export function SettingsClient({
                 onClick={async () => {
                   await deleteAxisCaches();
                   await supabase.auth.signOut();
-                  router.push("/login");
+                  push("/login");
                 }}
                 className="w-full border border-red-400/30 py-3 rounded-lg text-sm text-red-400 hover:border-red-400/60 transition-colors"
               >
