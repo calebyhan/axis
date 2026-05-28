@@ -254,7 +254,7 @@ async function processWebhookEvent(payload: StravaWebhookPayload) {
 
   const activityRes = await fetch(
     `https://www.strava.com/api/v3/activities/${payload.object_id}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
+    { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" }
   );
   if (!activityRes.ok) {
     if (activityRes.status === 403 || activityRes.status === 404) {

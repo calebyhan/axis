@@ -21,7 +21,7 @@ export default async function ActivityPage() {
     (dayTypesRaw ?? []).map((d) => [d.id, d.name])
   );
 
-  const workoutIds = activities.filter((a) => a.type === "workout").map((a) => a.id);
+  const workoutIds = activities.flatMap((a) => a.type === "workout" ? [a.id] : []);
   const workoutDataMap = await getWorkoutsBulkData(workoutIds);
 
   // Resolve candidate activity details for pending links

@@ -128,7 +128,7 @@ export function ExerciseSearch({
               <button
                 type="button"
                 onClick={() => onSelect(ex)}
-                className="w-full text-left px-3 py-3 rounded-lg hover:bg-surface border border-transparent hover:border-border transition-all"
+                className="w-full text-left p-3 rounded-lg hover:bg-surface border border-transparent hover:border-border transition-all"
               >
                 <div className="text-sm font-medium">{ex.name}</div>
                 <div className="text-xs text-muted mt-0.5 capitalize">

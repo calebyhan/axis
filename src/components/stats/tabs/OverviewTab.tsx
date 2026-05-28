@@ -518,9 +518,13 @@ export default function OverviewTab({
   const weekTimeline = timeRange === "week" ? buildWeekTimeline(trainingLoad, volumeChartData, runningData, adherence) : [];
   const loadTimeline = timeRange === "week" ? [] : buildGroupedLoadData(timeRange, trainingLoad);
   const topExercise = workoutSummary.topExercises[0] ?? null;
-  const highestVolumePeriod = [...volumeChartData].sort((a, b) => b.volume - a.volume)[0] ?? null;
-  const longestRun = [...runningData].sort((a, b) => (b.distance ?? 0) - (a.distance ?? 0))[0] ?? null;
-  const latestPr = [
+  const highestVolumePeriod = volumeChartData.reduce<typeof volumeChartData[0] | null>(
+    (max, item) => !max || item.volume > max.volume ? item : max, null
+  );
+  const longestRun = runningData.reduce<typeof runningData[0] | null>(
+    (max, item) => !max || (item.distance ?? 0) > (max.distance ?? 0) ? item : max, null
+  );
+  const allPrs: LatestPersonalRecord[] = [
     ...personalRecords.map((record): LatestPersonalRecord => ({
       startTime: record.startTime,
       recordedAt: record.startTime,
@@ -533,11 +537,13 @@ export default function OverviewTab({
       label: record.exerciseName,
       detail: `${formatWeight(record.e1rm, units)} ${weightUnit(units)} e1RM on ${record.date}`,
     })),
-  ].sort((a, b) => {
-    const startCompare = b.startTime.localeCompare(a.startTime);
-    if (startCompare !== 0) return startCompare;
-    return b.recordedAt.localeCompare(a.recordedAt);
-  })[0] ?? null;
+  ];
+  const latestPr = allPrs.reduce<LatestPersonalRecord | null>((latest, record) => {
+    if (!latest) return record;
+    const startCompare = record.startTime.localeCompare(latest.startTime);
+    if (startCompare !== 0) return startCompare > 0 ? record : latest;
+    return record.recordedAt.localeCompare(latest.recordedAt) > 0 ? record : latest;
+  }, null);
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">

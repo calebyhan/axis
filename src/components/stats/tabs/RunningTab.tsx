@@ -99,7 +99,7 @@ export default function RunningTab({
       ? personalRecords
       : personalRecords.filter((record) => record.effortName === activePrFilter);
 
-    return [...records].sort((a, b) => {
+    return records.toSorted((a, b) => {
       const effortDelta = effortSortValue(a.effortName) - effortSortValue(b.effortName);
       if (effortDelta !== 0) return effortDelta;
       return a.startTime.localeCompare(b.startTime);

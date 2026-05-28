@@ -414,9 +414,9 @@ function PaceChart({
           <XAxis dataKey="t" hide />
           <CartesianGrid stroke="#1f1f1f" vertical={false} />
           <YAxis tick={{ fill: "#777", fontSize: 10 }} tickLine={false} axisLine={false} reversed tickFormatter={formatPaceLabel} domain={["dataMin - 0.3", "dataMax + 0.3"]} />
-          {zoneAreas?.filter((zone) => zone.y2 > zone.y1).map((zone) => (
+          {zoneAreas?.flatMap((zone) => zone.y2 > zone.y1 ? [
             <ReferenceArea key={`pace-zone-area-${zone.label}`} y1={zone.y1} y2={zone.y2} fill={zone.color} fillOpacity={0.14} strokeOpacity={0} />
-          ))}
+          ] : [])}
           {zoneAreas?.map((zone) => (
             zone.min > 0 && zone.min >= zone.y1 && zone.min <= zone.y2
               ? <ReferenceLine key={`pace-zone-line-${zone.label}`} y={zone.min} stroke={zone.color} strokeOpacity={0.5} strokeDasharray="3 3" />

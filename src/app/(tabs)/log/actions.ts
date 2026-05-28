@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/supabase/server";
 import { normalizeTimeZone } from "@/lib/time-zone";
@@ -52,7 +53,7 @@ async function rememberTimeZone(
   );
 
   if (error) {
-    console.warn("[action] timezone preference update failed", error.message);
+    after(() => console.warn("[action] timezone preference update failed", error.message));
   }
 }
 

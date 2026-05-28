@@ -38,7 +38,7 @@ export function WeeklyAdherence({ adherence }: Props) {
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-2 text-center">
+    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-center">
       <div className="text-base font-semibold text-white">{value}</div>
       <div className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-white/40">{label}</div>
     </div>

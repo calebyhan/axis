@@ -27,9 +27,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(
-        keys
-          .filter((key) => !key.startsWith(CACHE_VERSION))
-          .map((key) => caches.delete(key))
+        keys.flatMap((key) => !key.startsWith(CACHE_VERSION) ? [caches.delete(key)] : [])
       ))
       .then(() => self.clients.claim())
   );
@@ -201,9 +199,5 @@ function isCacheable(response) {
 
 async function deleteAxisCaches() {
   const keys = await caches.keys();
-  await Promise.all(
-    keys
-      .filter((key) => key.startsWith("axis-pwa-"))
-      .map((key) => caches.delete(key))
-  );
+  await Promise.all(keys.flatMap((key) => key.startsWith("axis-pwa-") ? [caches.delete(key)] : []));
 }

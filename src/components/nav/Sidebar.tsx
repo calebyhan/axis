@@ -17,7 +17,7 @@ export function Sidebar() {
   return (
     <aside className="app-sidebar fixed top-4 left-4 bottom-4 w-60 z-50">
       <div className="card h-full flex flex-col px-4 py-5">
-        <div className="px-3 py-3">
+        <div className="p-3">
           <div className="text-[11px] uppercase tracking-[0.28em] text-white/40 mb-2">Axis</div>
           <div className="text-2xl font-semibold tracking-normal">Training OS</div>
         </div>
