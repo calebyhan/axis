@@ -48,6 +48,10 @@ button, a, [role="button"] {
   touch-action: manipulation;
 }
 
+dialog {
+  color: inherit;
+}
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
