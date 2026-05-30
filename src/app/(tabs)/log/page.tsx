@@ -227,10 +227,18 @@ function ResumeDraftCard({
   );
 }
 
+function isToday(value: string | Date): boolean {
+  const d = new Date(value);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}
+
 function TodayPlanCard({
   loading,
   dateLabel,
   slots,
+  recentWorkout,
+  recentRun,
   onStartWorkout,
   onLogRun,
   className = "",
@@ -238,14 +246,18 @@ function TodayPlanCard({
   loading: boolean;
   dateLabel: string;
   slots: PlannedSlot[];
+  recentWorkout: RecentActivity | null;
+  recentRun: RecentActivity | null;
   onStartWorkout: () => void;
   onLogRun: () => void;
   className?: string;
 }) {
   const workoutSlot = slots.find((slot) => slot.kind === "workout");
   const cardioSlot = slots.find((slot) => slot.kind === "cardio");
-  const canStartWorkout = workoutSlot?.effective && !isRestPlan(workoutSlot.effective);
-  const canLogRun = cardioSlot?.effective && !isRestPlan(cardioSlot.effective);
+  const doneWorkoutToday = recentWorkout !== null && isToday(recentWorkout.start_time);
+  const doneRunToday = recentRun !== null && isToday(recentRun.start_time);
+  const canStartWorkout = workoutSlot?.effective && !isRestPlan(workoutSlot.effective) && !doneWorkoutToday;
+  const canLogRun = cardioSlot?.effective && !isRestPlan(cardioSlot.effective) && !doneRunToday;
 
   return (
     <div className={`card p-4 flex flex-col gap-4 ${className}`}>
@@ -643,6 +655,8 @@ export default function LogPage() {
               loading={overview.loading}
               dateLabel={overview.dateLabel}
               slots={overview.todaySlots}
+              recentWorkout={overview.recentWorkout}
+              recentRun={overview.recentRun}
               onStartWorkout={() => setPanel("session")}
               onLogRun={() => setPanel("run")}
               className="min-w-0 xl:col-span-2 xl:h-full"
