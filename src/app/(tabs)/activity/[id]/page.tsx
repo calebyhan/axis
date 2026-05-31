@@ -1,14 +1,14 @@
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Activity — Axis", description: "Activity detail" };
 
-import { getActivityWithSets } from "@/lib/queries/activity";
+import { getActivityWithSets, getPreviousWorkoutByType } from "@/lib/queries/activity";
 import { getUserTimeZone, getUserUnits } from "@/lib/queries/profile";
 import { addMuscleTagSets, muscleTagSummaries } from "@/lib/muscle-tags";
 import { hasSplits } from "@/lib/splits";
 import { computeRunTrainingLoad } from "@/lib/training-load";
 import { formatZonedDate } from "@/lib/time-zone";
 import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
-import { formatDistance, formatPace, distanceUnit } from "@/lib/units";
+import { formatDistance, formatPace, distanceUnit, formatWeight, weightUnit } from "@/lib/units";
 import { RunStreams } from "@/components/activity/RunStreams";
 import { SplitsTable } from "@/components/activity/SplitsTable";
 import type { MuscleGroup, MuscleHeatmapDetails, BestEffort, Units, MuscleTag } from "@/types";
@@ -153,6 +153,42 @@ export default async function ActivityDetailPage({
 
   const isRun = activity.type === "run" || activity.type === "manual_run";
   const isWorkout = activity.type === "workout";
+
+  // ── Previous same-name workout for comparison ───────────────────────────
+  const prevWorkoutOpts = isWorkout
+    ? activity.day_type_id
+      ? { dayTypeId: activity.day_type_id }
+      : activity.name
+      ? { name: activity.name }
+      : null
+    : null;
+  const prevWorkout = prevWorkoutOpts
+    ? await getPreviousWorkoutByType(prevWorkoutOpts, activity.start_time, activity.id)
+    : null;
+
+  type PrevSetRow = { exercise_id: string; reps: number; weight: number; exercise?: unknown };
+  type PrevExercise = { name: string };
+  function normalizePrevExercise(raw: unknown): PrevExercise | null {
+    if (!raw) return null;
+    return (Array.isArray(raw) ? raw[0] : raw) as PrevExercise ?? null;
+  }
+
+  type ExerciseSummary = { name: string; volume: number; sets: number; bestE1rm: number };
+  function summarizeSets(rows: PrevSetRow[]): Map<string, ExerciseSummary> {
+    const map = new Map<string, ExerciseSummary>();
+    for (const s of rows) {
+      const exName = normalizePrevExercise(s.exercise)?.name ?? "Unknown";
+      const entry = map.get(s.exercise_id) ?? { name: exName, volume: 0, sets: 0, bestE1rm: 0 };
+      entry.volume += (s.weight ?? 0) * (s.reps ?? 0);
+      entry.sets += 1;
+      const e1rm = (s.reps ?? 0) === 1 ? (s.weight ?? 0) : (s.weight ?? 0) * (1 + (s.reps ?? 0) / 30);
+      if (e1rm > entry.bestE1rm) entry.bestE1rm = e1rm;
+      map.set(s.exercise_id, entry);
+    }
+    return map;
+  }
+
+  const prevByExercise = prevWorkout ? summarizeSets(prevWorkout.sets as PrevSetRow[]) : new Map<string, ExerciseSummary>();
 
   // ── Workout: muscle coverage + exercise groups ──────────────────────────
   type ExerciseJoin = { name: string; primary_muscles: MuscleGroup[]; secondary_muscles?: MuscleGroup[]; muscle_tags?: string[] };
@@ -366,8 +402,20 @@ export default async function ActivityDetailPage({
               <WorkoutSetsEditor activityId={activity.id} initialSets={editableWorkoutSets} units={units} />
             </div>
 
-            {activity.strava_activity_id && (
+            {prevWorkout && (
               <div className="order-4 xl:order-none">
+                <WorkoutComparison
+                  prevDate={prevWorkout.activity.start_time}
+                  timeZone={timeZone}
+                  currentSets={workoutSets}
+                  prevByExercise={prevByExercise}
+                  units={units}
+                />
+              </div>
+            )}
+
+            {activity.strava_activity_id && (
+              <div className="order-5 xl:order-none">
                 <div className="text-xs text-muted uppercase tracking-wider mb-3">Heart Rate</div>
                 <div className="card p-4">
                   <RunStreams stravaActivityId={activity.strava_activity_id} units={units} />
@@ -407,6 +455,107 @@ export default async function ActivityDetailPage({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+type ExerciseSummaryForComp = { name: string; volume: number; sets: number; bestE1rm: number };
+
+function WorkoutComparison({
+  prevDate,
+  timeZone,
+  currentSets,
+  prevByExercise,
+  units,
+}: {
+  prevDate: string;
+  timeZone: string;
+  currentSets: { exercise_id: string; reps: number; weight: number; exercise?: unknown }[];
+  prevByExercise: Map<string, ExerciseSummaryForComp>;
+  units: import("@/types").Units;
+}) {
+  type ExJoin = { name: string };
+  function exName(raw: unknown): string {
+    if (!raw) return "Unknown";
+    const ex = (Array.isArray(raw) ? raw[0] : raw) as ExJoin | null;
+    return ex?.name ?? "Unknown";
+  }
+
+  // Summarize current sets per exercise
+  const curr = new Map<string, ExerciseSummaryForComp>();
+  for (const s of currentSets) {
+    const entry = curr.get(s.exercise_id) ?? { name: exName(s.exercise), volume: 0, sets: 0, bestE1rm: 0 };
+    entry.volume += (s.weight ?? 0) * (s.reps ?? 0);
+    entry.sets += 1;
+    const e1rm = (s.reps ?? 0) === 1 ? (s.weight ?? 0) : (s.weight ?? 0) * (1 + (s.reps ?? 0) / 30);
+    if (e1rm > entry.bestE1rm) entry.bestE1rm = e1rm;
+    curr.set(s.exercise_id, entry);
+  }
+
+  const rows = Array.from(curr.entries()).map(([exId, c]) => {
+    const p = prevByExercise.get(exId);
+    return { exId, name: c.name, curr: c, prev: p ?? null };
+  });
+
+  const unit = weightUnit(units);
+
+  function Delta({ curr: c, prev: p }: { curr: number; prev: number | null }) {
+    if (p === null) return <span className="text-xs text-muted">new</span>;
+    const diff = c - p;
+    const pct = p > 0 ? (diff / p) * 100 : 0;
+    const color = diff > 0 ? "text-green-400" : diff < 0 ? "text-red-400" : "text-muted";
+    const displayDiff = diff >= 0
+      ? `+${formatWeight(diff, units)}`
+      : `−${formatWeight(Math.abs(diff), units)}`;
+    const displayPct = `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
+    return (
+      <span className={`text-xs font-medium ${color}`}>
+        {displayDiff} <span className="font-normal opacity-70">({displayPct})</span>
+      </span>
+    );
+  }
+
+  const prevLabel = formatZonedDate(prevDate, timeZone, { month: "short", day: "numeric" });
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="text-xs text-muted uppercase tracking-wider">vs {prevLabel}</div>
+      </div>
+      <div className="card overflow-hidden">
+        <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_7rem_7rem_7rem] px-3 py-2 text-[10px] text-muted uppercase tracking-wider border-b border-border">
+          <span>Exercise</span>
+          <span className="text-right">Volume ({unit})</span>
+          <span className="text-right">Sets</span>
+          <span className="text-right">Best e1RM ({unit})</span>
+        </div>
+        {rows.map(({ exId, name, curr: c, prev: p }) => (
+          <div
+            key={exId}
+            className="grid gap-1 px-3 py-3 border-b border-border/50 last:border-0 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_7rem] sm:items-center sm:gap-3"
+          >
+            <div className="text-sm font-medium truncate">{name}</div>
+            <div className="flex items-center justify-between sm:block sm:text-right gap-3">
+              <span className="text-[10px] text-muted uppercase tracking-wider sm:hidden">Volume</span>
+              <Delta curr={c.volume} prev={p?.volume ?? null}  />
+            </div>
+            <div className="flex items-center justify-between sm:block sm:text-right gap-3">
+              <span className="text-[10px] text-muted uppercase tracking-wider sm:hidden">Sets</span>
+              {p === null ? (
+                <span className="text-xs text-muted">new</span>
+              ) : (
+                <span className={`text-xs font-medium ${c.sets > p.sets ? "text-green-400" : c.sets < p.sets ? "text-red-400" : "text-muted"}`}>
+                  {c.sets > p.sets ? `+${c.sets - p.sets}` : c.sets < p.sets ? `−${p.sets - c.sets}` : "—"}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center justify-between sm:block sm:text-right gap-3">
+              <span className="text-[10px] text-muted uppercase tracking-wider sm:hidden">Best e1RM</span>
+              <Delta curr={c.bestE1rm} prev={p?.bestE1rm ?? null}  />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

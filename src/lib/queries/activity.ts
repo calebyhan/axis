@@ -39,6 +39,42 @@ export async function getActivityWithSets(activityId: string) {
   return { activity, sets: sets ?? [] };
 }
 
+export async function getPreviousWorkoutByType(
+  opts: { dayTypeId: string } | { name: string },
+  beforeTime: string,
+  currentId: string
+) {
+  const supabase = await createClient();
+
+  let q = supabase
+    .from("activities")
+    .select("id, start_time, name, day_type_id")
+    .eq("type", "workout")
+    .neq("id", currentId)
+    .lt("start_time", beforeTime)
+    .order("start_time", { ascending: false })
+    .limit(1);
+
+  if ("dayTypeId" in opts) {
+    q = q.eq("day_type_id", opts.dayTypeId);
+  } else {
+    q = q.eq("name", opts.name);
+  }
+
+  const { data: prev, error: prevError } = await q.single();
+
+  if (prevError) return null;
+
+  const { data: sets, error: setsError } = await supabase
+    .from("session_sets")
+    .select("exercise_id, reps, weight, exercise:exercises(name)")
+    .eq("activity_id", prev.id);
+
+  if (setsError) console.error("[query] getPreviousWorkoutByName sets failed", setsError.message);
+
+  return { activity: prev, sets: sets ?? [] };
+}
+
 async function getWorkoutMuscleCoverage(activityId: string): Promise<Partial<Record<MuscleGroup, number>>> {
   const supabase = await createClient();
   const { data: sets, error } = await supabase
