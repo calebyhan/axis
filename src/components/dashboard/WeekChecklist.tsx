@@ -265,6 +265,12 @@ export function WeekChecklist({ items, dayTypes, todayKey }: Props) {
       }
       setModalError(null);
       setModalSlot(null);
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.controller?.postMessage({
+          type: "CLOSE_PLAN_NOTIFICATIONS",
+          date: slot.date,
+        });
+      }
       refresh();
     });
   }

@@ -57,13 +57,29 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data?.type !== "CLEAR_AXIS_CACHE") return;
+  if (event.data?.type === "CLEAR_AXIS_CACHE") {
+    event.waitUntil(
+      deleteAxisCaches().then(() => {
+        event.source?.postMessage({ type: "AXIS_CACHE_CLEARED" });
+      })
+    );
+    return;
+  }
 
-  event.waitUntil(
-    deleteAxisCaches().then(() => {
-      event.source?.postMessage({ type: "AXIS_CACHE_CLEARED" });
-    })
-  );
+  if (event.data?.type === "CLOSE_PLAN_NOTIFICATIONS") {
+    const { date } = event.data;
+    if (!date) return;
+    event.waitUntil(
+      self.registration.getNotifications().then((notifications) => {
+        for (const notification of notifications) {
+          const tag = notification.tag;
+          if (tag?.endsWith(`:${date}`)) {
+            notification.close();
+          }
+        }
+      }).catch(() => {})
+    );
+  }
 });
 
 self.addEventListener("push", (event) => {
