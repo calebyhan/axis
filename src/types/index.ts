@@ -144,6 +144,21 @@ export interface BestEffort {
   pr_rank: number | null;
 }
 
+export interface Lap {
+  lap_index: number;
+  name: string;
+  distance: number;
+  moving_time: number;
+  elapsed_time: number;
+  average_speed: number;
+  average_heartrate: number | null;
+  max_heartrate: number | null;
+  total_elevation_gain: number | null;
+  average_cadence: number | null;
+  average_watts: number | null;
+  pace_zone: number | null;
+}
+
 export interface Activity {
   id: string;
   user_id: string;
@@ -166,6 +181,7 @@ export interface Activity {
   name: string | null;
   summary_polyline: string | null;
   splits: ActivitySplits | null;
+  laps: Lap[] | null;
   best_efforts: BestEffort[] | null;
   avg_cadence: number | null;
   avg_watts: number | null;

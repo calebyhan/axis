@@ -16,8 +16,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { DeleteActivityButton } from "@/components/activity/DeleteActivityButton";
+import { RefreshStravaButton } from "@/components/activity/RefreshStravaButton";
 import { RouteMapExpandable } from "@/components/activity/RouteMapExpandable";
 import { WorkoutSetsEditor } from "@/components/activity/WorkoutSetsEditor";
+import { LapsTable } from "@/components/activity/LapsTable";
 
 function formatDuration(secs: number | null): string {
   if (!secs) return "—";
@@ -290,6 +292,9 @@ export default async function ActivityDetailPage({
         <h1 className="flex-1 text-lg font-semibold truncate">
           {activity.name ?? (isWorkout ? "Workout" : isRun ? "Run" : "Activity")}
         </h1>
+        {isRun && activity.strava_activity_id && (
+          <RefreshStravaButton stravaActivityId={activity.strava_activity_id} />
+        )}
         <DeleteActivityButton activityId={activity.id} />
       </div>
 
@@ -301,6 +306,10 @@ export default async function ActivityDetailPage({
           day: "numeric",
         })}
       </div>
+
+      {activity.description && (
+        <p className="text-sm text-white/70 leading-relaxed -mt-2">{activity.description}</p>
+      )}
 
       {/* ── RUN DETAIL ─────────────────────────────────────────────────── */}
       {isRun && (
@@ -369,6 +378,13 @@ export default async function ActivityDetailPage({
                 <StatCard label="Temp" value={`${Math.round(activity.average_temp)}°C`} />
               )}
             </div>
+
+            {/* Laps (intervals) */}
+            {Array.isArray(activity.laps) && activity.laps.length > 0 && (
+              <div className="order-3 xl:order-none">
+                <LapsTable laps={activity.laps} units={units} />
+              </div>
+            )}
 
             {/* Splits */}
             {hasSplits(activity.splits) && (

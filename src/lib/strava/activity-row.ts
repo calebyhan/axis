@@ -48,6 +48,23 @@ export function buildActivityRow(userId: string, stravaId: number, a: Record<str
   }
   const distance: number = a.distance ?? 0;
 
+  const laps = Array.isArray(a.laps)
+    ? a.laps.map((l: Record<string, unknown>) => ({
+        lap_index: l.lap_index,
+        name: l.name ?? null,
+        distance: l.distance ?? 0,
+        moving_time: l.moving_time ?? 0,
+        elapsed_time: l.elapsed_time ?? 0,
+        average_speed: l.average_speed ?? 0,
+        average_heartrate: l.average_heartrate ?? null,
+        max_heartrate: l.max_heartrate ?? null,
+        total_elevation_gain: l.total_elevation_gain ?? null,
+        average_cadence: l.average_cadence ?? null,
+        average_watts: l.average_watts ?? null,
+        pace_zone: l.pace_zone ?? null,
+      }))
+    : null;
+
   const bestEfforts = Array.isArray(a.best_efforts)
     ? a.best_efforts.map((e: Record<string, unknown>) => ({
         name: e.name,
@@ -90,5 +107,7 @@ export function buildActivityRow(userId: string, stravaId: number, a: Record<str
     splits,
     best_efforts: bestEfforts,
     average_temp: a.average_temp ?? null,
+    description: a.description ?? null,
+    laps: laps && laps.length > 1 ? laps : null,
   };
 }
