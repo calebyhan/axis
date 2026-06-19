@@ -294,8 +294,8 @@ function ChartTooltip({
   );
 }
 
-function ElevationChart({ points, hasGrade, altMin, altMax }: { points: Point[]; hasGrade: boolean; altMin: number; altMax: number }) {
-  const { ComposedChart, Area, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } = use(rechartsModule);
+function ElevationChart({ points, hasGrade, altMin, altMax, markers }: { points: Point[]; hasGrade: boolean; altMin: number; altMax: number; markers: number[] }) {
+  const { ComposedChart, Area, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine, ResponsiveContainer } = use(rechartsModule);
   return (
     <ChartSection title="Elevation">
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
@@ -306,11 +306,14 @@ function ElevationChart({ points, hasGrade, altMin, altMax }: { points: Point[];
               <stop offset="95%" stopColor={CHART_ACCENT} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <XAxis dataKey="t" hide />
+          <XAxis dataKey="t" hide type="number" domain={["dataMin", "dataMax"]} />
           <CartesianGrid stroke="#1f1f1f" vertical={false} />
           <YAxis yAxisId="alt" tick={{ fill: "#666", fontSize: 10 }} tickLine={false} axisLine={false} domain={[altMin - 5, altMax + 5]} />
           {hasGrade && <YAxis yAxisId="grade" orientation="right" tick={{ fill: "#666", fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} domain={[-20, 20]} />}
           <Tooltip content={<ChartTooltip labelFormatter={(t: number) => formatTime(t)} valueFormatter={(v: number) => `${Math.round(v)} m`} />} />
+          {markers.map((x) => (
+            <ReferenceLine key={x} x={x} yAxisId="alt" stroke="rgba(255,255,255,0.2)" strokeDasharray="3 4" strokeWidth={1} />
+          ))}
           <Area yAxisId="alt" type="monotone" dataKey="altitude" stroke={CHART_ACCENT} strokeWidth={1.5} fill="url(#altGrad)" dot={false} connectNulls />
           {hasGrade && <Line yAxisId="grade" type="monotone" dataKey="grade_smooth" stroke="#f97316" strokeWidth={1} dot={false} connectNulls opacity={0.6} />}
         </ComposedChart>
@@ -331,12 +334,14 @@ function HRChart({
   hrMax,
   hrZones,
   zoneAreas,
+  markers,
 }: {
   points: Point[];
   hrMin: number;
   hrMax: number;
   hrZones: HRZone[] | null;
   zoneAreas: HRZoneArea[] | null;
+  markers: number[];
 }) {
   const { AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceArea, ReferenceLine, CartesianGrid, ResponsiveContainer } = use(rechartsModule);
   const visibleAreas = zoneAreas?.filter((zone) => zone.y2 > zone.y1) ?? [];
@@ -350,7 +355,7 @@ function HRChart({
               <stop offset="95%" stopColor="#f87171" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <XAxis dataKey="t" hide />
+          <XAxis dataKey="t" hide type="number" domain={["dataMin", "dataMax"]} />
           <CartesianGrid stroke="#1f1f1f" vertical={false} />
           <YAxis tick={{ fill: "#777", fontSize: 10 }} tickLine={false} axisLine={false} domain={[hrMin, hrMax]} />
           {visibleAreas.map((zone) => (
@@ -360,6 +365,9 @@ function HRChart({
             zone.max < hrMax && zone.max > hrMin
               ? <ReferenceLine key={`zone-line-${zone.label}`} y={zone.max} stroke={zone.fill} strokeOpacity={0.55} strokeDasharray="3 3" />
               : null
+          ))}
+          {markers.map((x) => (
+            <ReferenceLine key={x} x={x} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 4" strokeWidth={1} />
           ))}
           <Tooltip
             content={(
@@ -386,11 +394,13 @@ function PaceChart({
   units,
   paceZones,
   zoneAreas,
+  markers,
 }: {
   points: Point[];
   units: Units;
   paceZones: PaceZone[] | null;
   zoneAreas: PaceZoneArea[] | null;
+  markers: number[];
 }) {
   const { AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceArea, ReferenceLine, CartesianGrid, ResponsiveContainer } = use(rechartsModule);
   const paceUnit = units === "imperial" ? "min/mi" : "min/km";
@@ -411,7 +421,7 @@ function PaceChart({
               <stop offset="95%" stopColor="#a78bfa" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <XAxis dataKey="t" hide />
+          <XAxis dataKey="t" hide type="number" domain={["dataMin", "dataMax"]} />
           <CartesianGrid stroke="#1f1f1f" vertical={false} />
           <YAxis tick={{ fill: "#777", fontSize: 10 }} tickLine={false} axisLine={false} reversed tickFormatter={formatPaceLabel} domain={["dataMin - 0.3", "dataMax + 0.3"]} />
           {zoneAreas?.flatMap((zone) => zone.y2 > zone.y1 ? [
@@ -421,6 +431,9 @@ function PaceChart({
             zone.min > 0 && zone.min >= zone.y1 && zone.min <= zone.y2
               ? <ReferenceLine key={`pace-zone-line-${zone.label}`} y={zone.min} stroke={zone.color} strokeOpacity={0.5} strokeDasharray="3 3" />
               : null
+          ))}
+          {markers.map((x) => (
+            <ReferenceLine key={x} x={x} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 4" strokeWidth={1} />
           ))}
           <Tooltip
             content={(
@@ -479,8 +492,8 @@ function ZoneDurationChart({ title, data }: { title: string; data: ZoneDurationD
   );
 }
 
-function CadenceChart({ points }: { points: Point[] }) {
-  const { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } = use(rechartsModule);
+function CadenceChart({ points, markers }: { points: Point[]; markers: number[] }) {
+  const { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine, ResponsiveContainer } = use(rechartsModule);
   return (
     <ChartSection title="Cadence (spm)">
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
@@ -491,9 +504,12 @@ function CadenceChart({ points }: { points: Point[] }) {
               <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <XAxis dataKey="t" hide />
+          <XAxis dataKey="t" hide type="number" domain={["dataMin", "dataMax"]} />
           <CartesianGrid stroke="#1f1f1f" vertical={false} />
           <YAxis tick={{ fill: "#666", fontSize: 10 }} tickLine={false} axisLine={false} domain={["dataMin - 5", "dataMax + 5"]} />
+          {markers.map((x) => (
+            <ReferenceLine key={x} x={x} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 4" strokeWidth={1} />
+          ))}
           <Tooltip content={<ChartTooltip labelFormatter={(t: number) => formatTime(t)} valueFormatter={(v: number) => `${Math.round(v * 2)} spm`} />} />
           <Area type="monotone" dataKey="cadence" stroke="#34d399" strokeWidth={1.5} fill="url(#cadGrad)" dot={false} connectNulls />
         </AreaChart>
@@ -502,8 +518,8 @@ function CadenceChart({ points }: { points: Point[] }) {
   );
 }
 
-function PowerChart({ points }: { points: Point[] }) {
-  const { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } = use(rechartsModule);
+function PowerChart({ points, markers }: { points: Point[]; markers: number[] }) {
+  const { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine, ResponsiveContainer } = use(rechartsModule);
   return (
     <ChartSection title="Power (W)">
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
@@ -514,9 +530,12 @@ function PowerChart({ points }: { points: Point[] }) {
               <stop offset="95%" stopColor="#fbbf24" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <XAxis dataKey="t" hide />
+          <XAxis dataKey="t" hide type="number" domain={["dataMin", "dataMax"]} />
           <CartesianGrid stroke="#1f1f1f" vertical={false} />
           <YAxis tick={{ fill: "#666", fontSize: 10 }} tickLine={false} axisLine={false} />
+          {markers.map((x) => (
+            <ReferenceLine key={x} x={x} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 4" strokeWidth={1} />
+          ))}
           <Tooltip content={<ChartTooltip labelFormatter={(t: number) => formatTime(t)} valueFormatter={(v: number) => `${Math.round(v)} W`} />} />
           <Area type="monotone" dataKey="watts" stroke="#fbbf24" strokeWidth={1.5} fill="url(#pwrGrad)" dot={false} connectNulls />
         </AreaChart>
@@ -528,9 +547,11 @@ function PowerChart({ points }: { points: Point[] }) {
 export function RunStreams({
   stravaActivityId,
   units,
+  markers = [],
 }: {
   stravaActivityId: number;
   units: Units;
+  markers?: number[];
 }) {
   const { data: streamData, error, isLoading, mutate } = useSWR<StreamsData>(`/api/strava/streams/${stravaActivityId}`, fetcher);
   const { data: zonesData } = useSWR<{
@@ -591,13 +612,13 @@ export function RunStreams({
 
   return (
     <div className="flex flex-col gap-5">
-      {hasAlt && <ElevationChart points={points} hasGrade={hasGrade} altMin={altMin} altMax={altMax} />}
-      {hasHR && <HRChart points={points} hrMin={hrMin} hrMax={hrMax} hrZones={hrZones} zoneAreas={zoneAreas} />}
+      {hasAlt && <ElevationChart points={points} hasGrade={hasGrade} altMin={altMin} altMax={altMax} markers={markers} />}
+      {hasHR && <HRChart points={points} hrMin={hrMin} hrMax={hrMax} hrZones={hrZones} zoneAreas={zoneAreas} markers={markers} />}
       {hrZoneDurations && <ZoneDurationChart title="Time in HR Zones" data={hrZoneDurations} />}
-      {hasPace && <PaceChart points={points} units={units} paceZones={paceZones} zoneAreas={paceZoneAreas} />}
+      {hasPace && <PaceChart points={points} units={units} paceZones={paceZones} zoneAreas={paceZoneAreas} markers={markers} />}
       {paceZoneDurations && <ZoneDurationChart title={`Time in Pace Zones (${units === "imperial" ? "min/mi" : "min/km"})`} data={paceZoneDurations} />}
-      {hasCadence && <CadenceChart points={points} />}
-      {hasPower && <PowerChart points={points} />}
+      {hasCadence && <CadenceChart points={points} markers={markers} />}
+      {hasPower && <PowerChart points={points} markers={markers} />}
     </div>
   );
 }

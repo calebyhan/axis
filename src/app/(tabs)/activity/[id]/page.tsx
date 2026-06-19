@@ -4,7 +4,7 @@ export const metadata = { title: "Activity — Axis", description: "Activity det
 import { getActivityWithSets, getPreviousWorkoutByType } from "@/lib/queries/activity";
 import { getUserTimeZone, getUserUnits } from "@/lib/queries/profile";
 import { addMuscleTagSets, muscleTagSummaries } from "@/lib/muscle-tags";
-import { hasSplits } from "@/lib/splits";
+import { hasSplits, resolveSplitsForUnits } from "@/lib/splits";
 import { computeRunTrainingLoad } from "@/lib/training-load";
 import { formatZonedDate } from "@/lib/time-zone";
 import { MuscleHeatmap } from "@/components/heatmap/MuscleHeatmap";
@@ -276,6 +276,30 @@ export default async function ActivityDetailPage({
   const runLoad = isRun ? computeRunTrainingLoad(activity) : null;
   const hasRunPrimaryContent = isRun && Boolean(activity.summary_polyline || activity.strava_activity_id);
 
+  // Compute vertical marker positions (seconds from start) for chart lap/split lines
+  const chartMarkers: number[] = (() => {
+    if (Array.isArray(activity.laps) && activity.laps.length > 1) {
+      const markers: number[] = [];
+      let t = 0;
+      for (let i = 0; i < activity.laps.length - 1; i++) {
+        t += activity.laps[i].elapsed_time;
+        markers.push(t);
+      }
+      return markers;
+    }
+    if (hasSplits(activity.splits)) {
+      const resolved = resolveSplitsForUnits(activity.splits, units);
+      const markers: number[] = [];
+      let t = 0;
+      for (let i = 0; i < resolved.length - 1; i++) {
+        t += resolved[i].elapsed_time;
+        markers.push(t);
+      }
+      return markers;
+    }
+    return [];
+  })();
+
   return (
     <div className="page-shell flex flex-col gap-6">
       {/* Header */}
@@ -335,7 +359,7 @@ export default async function ActivityDetailPage({
                   <div className="text-xs text-muted uppercase tracking-wider mb-3">Charts</div>
                   <div className="card p-4">
                     <Suspense fallback={<div className="text-sm text-muted py-4 text-center">Loading charts…</div>}>
-                      <RunStreams stravaActivityId={activity.strava_activity_id} units={units} />
+                      <RunStreams stravaActivityId={activity.strava_activity_id} units={units} markers={chartMarkers} />
                     </Suspense>
                   </div>
                 </div>
@@ -434,7 +458,7 @@ export default async function ActivityDetailPage({
               <div className="order-5 xl:order-none">
                 <div className="text-xs text-muted uppercase tracking-wider mb-3">Heart Rate</div>
                 <div className="card p-4">
-                  <RunStreams stravaActivityId={activity.strava_activity_id} units={units} />
+                  <RunStreams stravaActivityId={activity.strava_activity_id} units={units} markers={chartMarkers} />
                 </div>
               </div>
             )}
