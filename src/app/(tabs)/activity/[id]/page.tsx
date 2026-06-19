@@ -97,7 +97,7 @@ function RunAchievements({ efforts, units }: { efforts: BestEffort[]; units: Uni
         </div>
       </div>
       <div className="card overflow-hidden">
-        <div className="hidden sm:grid grid-cols-[6rem_minmax(0,1fr)_6rem_7rem] px-3 py-2 text-[10px] text-muted uppercase tracking-wider border-b border-border">
+        <div className="hidden sm:grid grid-cols-[5rem_minmax(0,1fr)_5.5rem_6.5rem] gap-3 px-3 py-2 text-[10px] text-muted uppercase tracking-wider border-b border-border">
           <span>Medal</span>
           <span>Distance</span>
           <span className="text-right">Time</span>
@@ -113,7 +113,7 @@ function RunAchievements({ efforts, units }: { efforts: BestEffort[]; units: Uni
           return (
             <div
               key={`${effort.name}-${effort.pr_rank}`}
-              className={`grid gap-2 px-3 py-3 border-b border-border/50 last:border-0 sm:grid-cols-[6rem_minmax(0,1fr)_6rem_7rem] sm:items-center sm:gap-3 ${meta.row}`}
+              className={`grid gap-2 px-3 py-3 border-b border-border/50 last:border-0 sm:grid-cols-[5rem_minmax(0,1fr)_5.5rem_6.5rem] sm:items-center sm:gap-3 ${meta.row}`}
             >
               <div className="flex items-center gap-2">
                 <span className={`size-2.5 rounded-full ${meta.dot}`} aria-hidden="true" />
