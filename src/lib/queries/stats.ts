@@ -214,7 +214,7 @@ export async function getRunningPredictions() {
   const [activitiesRes, profileRes] = await Promise.all([
     supabase
       .from("activities")
-      .select("id, name, start_time, distance, duration, avg_pace, avg_heartrate, suffer_score, best_efforts")
+      .select("id, name, start_time, distance, duration, avg_pace, avg_heartrate, max_heartrate, suffer_score, best_efforts")
       .in("type", ["run", "manual_run"])
       .gte("start_time", cutoff)
       .order("start_time"),
@@ -242,10 +242,23 @@ export async function getRunningPredictions() {
 
   const paceZones = normalizePaceZones(profileRes.data?.pace_zones);
 
+  const activities = activitiesRes.data ?? [];
+  const observedMaxHR = activities.reduce(
+    (max, a) => (a.max_heartrate != null && a.max_heartrate > max ? a.max_heartrate : max),
+    0
+  );
+  const profileMaxHR = profileRes.data?.max_heart_rate ?? DEFAULT_MAX_HEART_RATE;
+  const maxHeartRate = Math.max(profileMaxHR, observedMaxHR);
+
   return {
-    activities: activitiesRes.data ?? [],
+    activities,
     hrZones: activeHRZones,
     paceZones,
+    maxHeartRate,
+    maxHeartRateSources: {
+      profile: profileMaxHR,
+      observed: observedMaxHR,
+    },
   };
 }
 

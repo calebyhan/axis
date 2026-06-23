@@ -65,11 +65,14 @@ export interface PredictionData {
     duration: number | null;
     avg_pace: number | null;
     avg_heartrate: number | null;
+    max_heartrate: number | null;
     suffer_score: number | null;
     best_efforts: BestEffort[] | null;
   }[];
   hrZones: HRZone[];
   paceZones: PaceZone[] | null;
+  maxHeartRate: number;
+  maxHeartRateSources: { profile: number; observed: number };
 }
 
 interface Props {

@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import { CHART_LINE_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
 import { classifyEffort } from "@/lib/effort-classification";
-import { estimateVDOT, computeVDOTTrend, type VDOTEffort, type VDOTTrend } from "@/lib/vdot";
+import { estimateVDOT, estimateVO2maxFromHR, computeVDOTTrend, type VDOTEffort, type VDOTTrend, type VO2maxEstimate } from "@/lib/vdot";
 import { formatPace } from "@/lib/units";
 import type { PredictionData } from "@/components/stats/StatsClient";
 import type { Units } from "@/types";
@@ -54,9 +54,10 @@ interface Props {
 
 export default function RunningPredictions({ predictionData, units }: Props) {
   const trend = useMemo(() => {
-    const { activities, hrZones, paceZones } = predictionData;
+    const { activities, hrZones, paceZones, maxHeartRate } = predictionData;
 
     const efforts: VDOTEffort[] = [];
+    const vo2maxEstimates: VO2maxEstimate[] = [];
     const prFloors = new Map<string, number>();
 
     const EFFORT_TO_RACE: Record<string, string> = {
@@ -98,20 +99,37 @@ export default function RunningPredictions({ predictionData, units }: Props) {
         }
       }
 
-      if (!bestVdot) continue;
+      if (bestVdot) {
+        efforts.push({
+          vdot: bestVdot,
+          weight: classification.vdotWeight,
+          date: activity.start_time,
+          activityId: activity.id,
+          distanceMeters: activity.distance ?? 0,
+          tier: classification.tier,
+          effortLabel: bestLabel,
+        });
+      }
 
-      efforts.push({
-        vdot: bestVdot,
-        weight: classification.vdotWeight,
-        date: activity.start_time,
-        activityId: activity.id,
-        distanceMeters: activity.distance ?? 0,
-        tier: classification.tier,
-        effortLabel: bestLabel,
-      });
+      if (activity.avg_heartrate && activity.distance && activity.duration) {
+        const vo2max = estimateVO2maxFromHR(
+          activity.avg_heartrate,
+          maxHeartRate,
+          activity.distance,
+          activity.duration
+        );
+        if (vo2max) {
+          vo2maxEstimates.push({
+            vo2max,
+            date: activity.start_time,
+            activityId: activity.id,
+            weight: classification.vdotWeight,
+          });
+        }
+      }
     }
 
-    return computeVDOTTrend(efforts, prFloors);
+    return computeVDOTTrend(efforts, prFloors, vo2maxEstimates);
   }, [predictionData]);
 
   if (!trend.current) {
@@ -139,13 +157,20 @@ export default function RunningPredictions({ predictionData, units }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* VDOT Header */}
+      {/* VDOT & VO2max Header */}
       <div className="card p-4">
-        <div className="flex items-baseline gap-3">
+        <div className="flex items-baseline gap-3 flex-wrap">
           <div>
             <span className="text-xs text-muted uppercase tracking-wider">VDOT</span>
             <span className="ml-2 text-2xl font-bold">{trend.current}</span>
           </div>
+          {trend.vo2max && (
+            <div className="border-l border-white/10 pl-3">
+              <span className="text-xs text-muted uppercase tracking-wider">Est. VO₂max</span>
+              <span className="ml-2 text-2xl font-bold">{trend.vo2max}</span>
+              <span className="ml-1 text-xs text-muted">ml/kg/min</span>
+            </div>
+          )}
           {trend.direction !== "insufficient" && (
             <span className={`text-sm font-medium ${dir.color}`}>
               {dir.arrow} {dir.label}
@@ -155,6 +180,12 @@ export default function RunningPredictions({ predictionData, units }: Props) {
         <p className="mt-1 text-xs text-muted">
           Based on {trend.qualityEffortCount} quality effort{trend.qualityEffortCount === 1 ? "" : "s"} (last 365 days)
           {" · "}Confidence: {CONFIDENCE_LABELS[trend.confidence]}
+          {trend.vo2max && ` · VO₂max from ${trend.vo2maxCount} run${trend.vo2maxCount === 1 ? "" : "s"} with HR`}
+          {" · "}Max HR: {predictionData.maxHeartRate} bpm
+          <span className="text-muted/60">
+            {" "}(profile {predictionData.maxHeartRateSources.profile}
+            {predictionData.maxHeartRateSources.observed > 0 && `, observed ${predictionData.maxHeartRateSources.observed}`})
+          </span>
         </p>
       </div>
 

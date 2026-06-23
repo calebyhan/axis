@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   estimateVDOT,
+  estimateVO2maxFromHR,
   predictRaceTime,
   predictAllRaceTimes,
   computeWeightedVDOT,
@@ -50,6 +51,33 @@ describe("estimateVDOT", () => {
     const vdot = estimateVDOT(5000, 60 * 60);
     expect(vdot).not.toBeNull();
     expect(vdot!).toBeLessThan(20);
+  });
+});
+
+describe("estimateVO2maxFromHR", () => {
+  it("returns a reasonable VO2max for a 5K at tempo HR", () => {
+    // 5K in 25 min, avg HR 170, max HR 190
+    const vo2max = estimateVO2maxFromHR(170, 190, 5000, 25 * 60);
+    expect(vo2max).not.toBeNull();
+    expect(vo2max!).toBeGreaterThanOrEqual(35);
+    expect(vo2max!).toBeLessThanOrEqual(55);
+  });
+
+  it("returns higher VO2max for faster pace at same HR", () => {
+    const slow = estimateVO2maxFromHR(165, 190, 5000, 30 * 60);
+    const fast = estimateVO2maxFromHR(165, 190, 5000, 22 * 60);
+    expect(slow).not.toBeNull();
+    expect(fast).not.toBeNull();
+    expect(fast!).toBeGreaterThan(slow!);
+  });
+
+  it("returns null for short distances", () => {
+    expect(estimateVO2maxFromHR(170, 190, 1000, 5 * 60)).toBeNull();
+  });
+
+  it("returns null for unreasonable HR fractions", () => {
+    expect(estimateVO2maxFromHR(80, 190, 5000, 25 * 60)).toBeNull();
+    expect(estimateVO2maxFromHR(200, 190, 5000, 25 * 60)).toBeNull();
   });
 });
 

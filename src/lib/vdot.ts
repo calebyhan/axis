@@ -175,6 +175,65 @@ export function computeWeightedVDOT(efforts: VDOTEffort[]): number | null {
   return Math.round((weightedSum / totalWeight) * 10) / 10;
 }
 
+// ── HR-Based VO2max Estimation ──────────────────────────────────────────────
+// Uses ACSM's %HRmax-to-%VO2max relationship combined with Daniels' oxygen
+// cost model. For each run: VO2max = oxygenCost(pace) / %VO2max_from_HR.
+// %VO2max ≈ 1.5472 × (%HRmax) − 0.5772  (Swain et al. 1994)
+
+const MIN_VO2MAX = 15;
+const MAX_VO2MAX = 90;
+
+export function estimateVO2maxFromHR(
+  avgHeartrate: number,
+  maxHeartRate: number,
+  distanceMeters: number,
+  durationSeconds: number
+): number | null {
+  if (distanceMeters < MIN_DISTANCE_METERS || durationSeconds < MIN_DURATION_SECONDS) return null;
+  if (avgHeartrate <= 0 || maxHeartRate <= 0) return null;
+
+  const hrFraction = avgHeartrate / maxHeartRate;
+  if (hrFraction < 0.5 || hrFraction > 1.0) return null;
+
+  const vo2maxFrac = 1.5472 * hrFraction - 0.5772;
+  if (vo2maxFrac <= 0.1) return null;
+
+  const velocityMPerMin = distanceMeters / (durationSeconds / 60);
+  const vo2 = oxygenCost(velocityMPerMin);
+  if (vo2 <= 0) return null;
+
+  const vo2max = vo2 / vo2maxFrac;
+  if (vo2max < MIN_VO2MAX || vo2max > MAX_VO2MAX) return null;
+
+  return Math.round(vo2max * 10) / 10;
+}
+
+export interface VO2maxEstimate {
+  vo2max: number;
+  date: string;
+  activityId: string;
+  weight: number;
+}
+
+export function computeWeightedVO2max(estimates: VO2maxEstimate[]): number | null {
+  if (estimates.length === 0) return null;
+
+  let totalWeight = 0;
+  let weightedSum = 0;
+  const now = Date.now();
+
+  for (const est of estimates) {
+    if (est.weight === 0) continue;
+    const daysSince = (now - new Date(est.date).getTime()) / (1000 * 60 * 60 * 24);
+    const w = est.weight * recencyWeight(daysSince);
+    weightedSum += est.vo2max * w;
+    totalWeight += w;
+  }
+
+  if (totalWeight === 0) return null;
+  return Math.round((weightedSum / totalWeight) * 10) / 10;
+}
+
 // ── VDOT Trend ──────────────────────────────────────────────────────────────
 
 export interface VDOTDataPoint {
@@ -187,6 +246,8 @@ export interface VDOTDataPoint {
 
 export interface VDOTTrend {
   current: number | null;
+  vo2max: number | null;
+  vo2maxCount: number;
   points: VDOTDataPoint[];
   smoothed: { date: string; vdot: number }[];
   direction: "improving" | "maintaining" | "declining" | "insufficient";
@@ -195,12 +256,16 @@ export interface VDOTTrend {
   qualityEffortCount: number;
 }
 
-export function computeVDOTTrend(efforts: VDOTEffort[], prFloors?: Map<string, number>): VDOTTrend {
+export function computeVDOTTrend(
+  efforts: VDOTEffort[],
+  prFloors?: Map<string, number>,
+  vo2maxEstimates?: VO2maxEstimate[]
+): VDOTTrend {
   const sorted = [...efforts].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 
-  const qualitySorted = sorted.filter((e) => e.tier !== "easy");
+  const qualitySorted = sorted.filter((e) => e.tier === "hard" || e.tier === "race");
 
   const points: VDOTDataPoint[] = qualitySorted.map((e) => ({
     date: e.date,
@@ -267,9 +332,9 @@ export function computeVDOTTrend(efforts: VDOTEffort[], prFloors?: Map<string, n
     else direction = "maintaining";
   }
 
-  const currentVDOT = computeWeightedVDOT(sorted);
+  const currentVDOT = computeWeightedVDOT(qualitySorted);
 
-  const longestQualityEffort = sorted.reduce(
+  const longestQualityEffort = qualitySorted.reduce(
     (max, e) => Math.max(max, e.distanceMeters),
     0
   );
@@ -278,13 +343,17 @@ export function computeVDOTTrend(efforts: VDOTEffort[], prFloors?: Map<string, n
     ? predictAllRaceTimes(currentVDOT, confidence, longestQualityEffort, prFloors)
     : [];
 
+  const vo2max = vo2maxEstimates ? computeWeightedVO2max(vo2maxEstimates) : null;
+
   return {
     current: currentVDOT,
+    vo2max,
+    vo2maxCount: vo2maxEstimates?.length ?? 0,
     points,
     smoothed,
     direction,
     predictions,
     confidence,
-    qualityEffortCount: sorted.length,
+    qualityEffortCount: qualitySorted.length,
   };
 }
