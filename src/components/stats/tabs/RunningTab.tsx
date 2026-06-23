@@ -14,8 +14,10 @@ import {
   CartesianGrid,
 } from "recharts";
 import { CHART_LINE_TOOLTIP_PROPS, CHART_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
+import RunningPredictions from "./RunningPredictions";
 import { Select } from "@/components/ui/Select";
 import { distanceUnit, formatDistance, formatPace } from "@/lib/units";
+import type { PredictionData } from "@/components/stats/StatsClient";
 import type { Units } from "@/types";
 
 function StatCard({ label, value }: { label: string; value: string }) {
@@ -37,6 +39,7 @@ interface Props {
   bestPace: number | null;
   avgHR: number | null;
   personalRecords: RunningPersonalRecord[];
+  predictionData: PredictionData;
   units: Units;
 }
 
@@ -79,6 +82,7 @@ export default function RunningTab({
   bestPace,
   avgHR,
   personalRecords,
+  predictionData,
   units,
 }: Props) {
   const [prFilter, setPrFilter] = useState("all");
@@ -108,6 +112,8 @@ export default function RunningTab({
 
   return (
     <div className="flex flex-col gap-5">
+      <RunningPredictions predictionData={predictionData} units={units} />
+
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <StatCard
           label={`Distance (${distanceUnit(units)})`}

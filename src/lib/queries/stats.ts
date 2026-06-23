@@ -21,6 +21,7 @@ import {
   normalizeHRZones,
 } from "@/lib/hr-zones";
 import { deriveWorkoutPersonalRecords, type WorkoutPersonalRecord, type WorkoutPrSetRow } from "@/lib/workout-prs";
+import { normalizePaceZones } from "@/lib/pace-zones";
 import type { MovementPattern, MuscleGroup, MuscleHeatmapDetails, MuscleTag } from "@/types";
 
 export type { WorkoutPersonalRecord };
@@ -203,6 +204,49 @@ export async function getRunningStats(range: TimeRange) {
     ...activity,
     date: zonedDateKey(activity.start_time, timeZone),
   }));
+}
+
+export async function getRunningPredictions() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [activitiesRes, profileRes] = await Promise.all([
+    supabase
+      .from("activities")
+      .select("id, name, start_time, distance, duration, avg_pace, avg_heartrate, suffer_score, best_efforts")
+      .in("type", ["run", "manual_run"])
+      .gte("start_time", cutoff)
+      .order("start_time"),
+    user
+      ? supabase
+          .from("profiles")
+          .select("hr_zones, hr_zone_method, max_heart_rate, strava_hr_zones, pace_zones")
+          .eq("id", user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+
+  if (activitiesRes.error) console.error("[query] getRunningPredictions activities failed", activitiesRes.error.message);
+  if (profileRes.error) console.error("[query] getRunningPredictions profile failed", profileRes.error.message);
+
+  const customHRZones = normalizeHRZones(profileRes.data?.hr_zones);
+  const stravaHRZones = normalizeHRZones(profileRes.data?.strava_hr_zones);
+  const maxHRZones = maxHeartRateToZones(profileRes.data?.max_heart_rate ?? DEFAULT_MAX_HEART_RATE) ?? DEFAULT_HR_ZONES;
+  const hrZoneMethod = normalizeHRZoneMethod(profileRes.data?.hr_zone_method) ?? (customHRZones ? "custom" : stravaHRZones ? "strava" : "max_hr");
+  const activeHRZones = hrZoneMethod === "custom"
+    ? customHRZones ?? maxHRZones
+    : hrZoneMethod === "strava"
+      ? stravaHRZones ?? maxHRZones
+      : maxHRZones;
+
+  const paceZones = normalizePaceZones(profileRes.data?.pace_zones);
+
+  return {
+    activities: activitiesRes.data ?? [],
+    hrZones: activeHRZones,
+    paceZones,
+  };
 }
 
 export async function getBodyWeightStats(range: TimeRange) {

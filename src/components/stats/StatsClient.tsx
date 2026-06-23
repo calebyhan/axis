@@ -11,6 +11,8 @@ import type { TimeRange } from "@/lib/stats-ranges";
 import type { StrengthBalanceSummary } from "@/lib/strength-balance";
 import type { TrainingLoadPoint } from "@/lib/training-load";
 import type { AdherenceWeek } from "@/lib/adherence";
+import type { HRZone } from "@/lib/hr-zones";
+import type { PaceZone } from "@/lib/pace-zones";
 import type { BestEffort, MuscleGroup, MuscleHeatmapDetails, Units } from "@/types";
 
 type Tab = "overview" | "workout" | "running" | "body" | "load" | "plan";
@@ -54,6 +56,22 @@ interface WorkoutSummary {
   strengthBalance: StrengthBalanceSummary;
 }
 
+export interface PredictionData {
+  activities: {
+    id: string;
+    name: string | null;
+    start_time: string;
+    distance: number | null;
+    duration: number | null;
+    avg_pace: number | null;
+    avg_heartrate: number | null;
+    suffer_score: number | null;
+    best_efforts: BestEffort[] | null;
+  }[];
+  hrZones: HRZone[];
+  paceZones: PaceZone[] | null;
+}
+
 interface Props {
   timeRange: TimeRange;
   initialVolumeData: { period: string; volume: number }[];
@@ -76,6 +94,7 @@ interface Props {
   adherence: AdherenceWeek[];
   planCalendarData: HistoricalPlanCalendarData;
   previousOverview: StatsOverviewSnapshot | null;
+  predictionData: PredictionData;
   units: Units;
 }
 
@@ -106,6 +125,7 @@ export function StatsClient({
   adherence,
   planCalendarData,
   previousOverview,
+  predictionData,
   units,
 }: Props) {
   const { push, refresh } = useRouter();
@@ -273,6 +293,7 @@ export function StatsClient({
             bestPace={bestPace}
             avgHR={avgHR}
             personalRecords={personalRecords}
+            predictionData={predictionData}
             units={units}
           />
         )}

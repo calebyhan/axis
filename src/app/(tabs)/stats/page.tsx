@@ -4,6 +4,7 @@ export const metadata = { title: "Stats — Axis", description: "Training trends
 import {
   getVolumeOverTime,
   getRunningStats,
+  getRunningPredictions,
   getBodyWeightStats,
   getWorkoutSummary,
   getWorkoutPersonalRecords,
@@ -39,6 +40,7 @@ export default async function StatsPage({
     adherence,
     planCalendarData,
     previousOverview,
+    predictionData,
     units,
     timeZone,
   ] = await Promise.all([
@@ -51,6 +53,7 @@ export default async function StatsPage({
     getAdherenceHistory(timeRange),
     timeRange === "all" ? getHistoricalPlanCalendarData(timeRange) : Promise.resolve(null),
     getPreviousStatsOverviewSnapshot(timeRange),
+    getRunningPredictions(),
     getUserUnits(),
     getUserTimeZone(),
   ]);
@@ -72,6 +75,7 @@ export default async function StatsPage({
         timeRange={timeRange}
         initialVolumeData={volumeData}
         initialRunningData={runningData}
+        predictionData={predictionData}
         initialBodyData={bodyData}
         workoutSummary={workoutSummary}
         workoutPersonalRecords={workoutPersonalRecords}
