@@ -332,7 +332,7 @@ export default async function ActivityDetailPage({
       </div>
 
       {activity.description && (
-        <p className="text-sm text-white/70 leading-relaxed -mt-2">{activity.description}</p>
+        <p className="text-sm text-white/70 leading-relaxed whitespace-pre-line -mt-2">{activity.description}</p>
       )}
 
       {/* ── RUN DETAIL ─────────────────────────────────────────────────── */}
