@@ -23,6 +23,7 @@ import type { DraftSaveStatus } from "@/context/SessionContext";
 import { ExerciseSearch } from "./ExerciseSearch";
 import { SetLogger } from "./SetLogger";
 import { RecentStatsPanel } from "./RecentStatsPanel";
+import { LastTimeStrip } from "./LastTimeStrip";
 import { SessionSummary } from "./SessionSummary";
 import { MiniHeatmap } from "@/components/heatmap/MiniHeatmap";
 import { BalanceScoreCard } from "@/components/strength/BalanceScoreCard";
@@ -541,7 +542,15 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
 
       <div className="flex-1 overflow-y-auto p-4 pb-nav flex flex-col gap-6">
         {step === "logging" && activeExercise && session && (
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col gap-3">
+            {activeExerciseRecord && (
+              <LastTimeStrip
+                exercise={activeExerciseRecord}
+                currentSetIndex={activeExercise.sets.length}
+                units={units}
+                onViewHistory={() => setUiState((prev) => ({ ...prev, showRecentStats: true }))}
+              />
+            )}
             <SetLogger
               key={[
                 activeExercise.exerciseId,
@@ -565,7 +574,11 @@ export function SessionFlow({ onClose, onComplete, initialUnits }: Props) {
         {session && session.exercises.some((e) => e.sets.length > 0) && (
           <div>
             <p className="text-xs text-muted mb-2 uppercase tracking-wide">Coverage</p>
-            <MiniHeatmap coverage={coverage} />
+            <div className="flex justify-center">
+              <div className="scale-110 origin-center">
+                <MiniHeatmap coverage={coverage} />
+              </div>
+            </div>
           </div>
         )}
 

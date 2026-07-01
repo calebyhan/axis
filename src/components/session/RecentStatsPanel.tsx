@@ -1,19 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { computeE1RM } from "@/lib/e1rm";
+import {
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { CHART_LINE_TOOLTIP_PROPS } from "@/components/stats/chartTheme";
+import { useExerciseHistory, type ExerciseSetRecord } from "@/hooks/useExerciseHistory";
 import { displayWeightToKg, kgToDisplayWeight, roundDisplayWeight, weightUnit } from "@/lib/units";
 import type { Exercise, Units } from "@/types";
 
-interface SetRecord {
-  session_date: string;
-  set_number: number;
-  reps: number;
-  weight: number;
-  rpe: number;
-  e1rm: number;
-}
+const HISTORY_PREVIEW_COUNT = 3;
+const HISTORY_EXPANDED_COUNT = 10;
+
+type SetRecord = ExerciseSetRecord;
 
 interface Props {
   exercise: Exercise;
@@ -24,49 +28,24 @@ interface Props {
 }
 
 export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSuggestion, onDismiss }: Props) {
-  const [{ sets, loading }, setSetsState] = useState<{ sets: SetRecord[]; loading: boolean }>({ sets: [], loading: true });
+  const { sets, sessions, loading } = useExerciseHistory(exercise.id);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from("session_sets")
-      .select(`
-        set_number, reps, weight, rpe, created_at,
-        activities!inner(start_time)
-      `)
-      .eq("exercise_id", exercise.id)
-      .order("created_at", { ascending: false })
-      .limit(50)
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("[RecentStatsPanel] Failed to load sets", error.message);
-          setSetsState((prev) => ({ ...prev, loading: false }));
-          return;
-        }
-        const mapped: SetRecord[] = (data ?? []).map((s: Record<string, unknown>) => ({
-          session_date: (s.activities as { start_time: string })?.start_time ?? s.created_at as string,
-          set_number: s.set_number as number,
-          reps: s.reps as number,
-          weight: s.weight as number,
-          rpe: s.rpe as number,
-          e1rm: computeE1RM(s.weight as number, s.reps as number),
-        }));
-        if (mapped.length === 0) {
-          onDismiss();
-          return;
-        }
-        setSetsState({ sets: mapped, loading: false });
-      });
+    if (!loading && sets.length === 0) onDismiss();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exercise.id]);
+  }, [loading, sets.length]);
 
-  // Group into sessions
-  const sessions = groupBySessions(sets);
   const lastSession = sessions[0] ?? [];
   const allTimeMax = sets.reduce<SetRecord | null>((best, s) => (!best || s.e1rm > best.e1rm ? s : best), null);
-  const last5E1RMs = sessions.slice(0, 5).map((sess) =>
-    Math.max(...sess.map((s) => s.e1rm))
-  );
+
+  const chartData = sessions
+    .slice(0, HISTORY_EXPANDED_COUNT)
+    .map((sess) => ({
+      date: sess[0].session_date,
+      e1rm: Math.max(...sess.map((s) => s.e1rm)),
+    }))
+    .reverse();
 
   // Suggestion
   const suggestion = computeSuggestion(sessions, displayWeightToKg(weightIncrement, units));
@@ -131,17 +110,87 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
               </div>
             )}
 
-            {/* e1RM trend sparkline (simple text for now) */}
-            {last5E1RMs.length > 1 && (
+            {/* e1RM trend chart */}
+            {chartData.length > 1 && (
               <div>
-                <p className="text-xs text-muted mb-1 uppercase tracking-wide">e1RM Trend (last {last5E1RMs.length})</p>
-                <div className="flex gap-2">
-                  {[...last5E1RMs].reverse().map((v, e1rmIdx) => (
-                    <span key={`e1rm-${v.toFixed(1)}-${e1rmIdx}`} className="text-sm text-white">
-                      {d(v).toFixed(0)}
-                      {e1rmIdx < last5E1RMs.length - 1 && <span className="text-muted"> &rarr;</span>}
-                    </span>
-                  ))}
+                <p className="text-xs text-muted mb-1 uppercase tracking-wide">e1RM Trend (last {chartData.length} sessions)</p>
+                <div className="h-32">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fill: "#666", fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value) => formatShortDate(value)}
+                      />
+                      <YAxis hide domain={["dataMin - 2", "dataMax + 2"]} />
+                      <Tooltip
+                        {...CHART_LINE_TOOLTIP_PROPS}
+                        labelFormatter={(value) => formatShortDate(String(value))}
+                        formatter={(value: number) => [`${d(value).toFixed(1)} ${unit}`, "e1RM"]}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="e1rm"
+                        stroke="var(--accent, #3B82F6)"
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: "var(--accent, #3B82F6)", strokeWidth: 0 }}
+                        activeDot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+
+            {/* Session history */}
+            {sessions.length > 1 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-muted uppercase tracking-wide">Session History</p>
+                  {sessions.length > HISTORY_PREVIEW_COUNT && (
+                    <button
+                      type="button"
+                      onClick={() => setHistoryExpanded((v) => !v)}
+                      className="text-xs text-accent hover:underline"
+                    >
+                      {historyExpanded ? "Show less" : `Show all ${sessions.length}`}
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-col gap-3">
+                  {sessions
+                    .slice(1, historyExpanded ? sessions.length : Math.min(HISTORY_PREVIEW_COUNT, sessions.length))
+                    .map((sess, idx) => {
+                      const best = sess.reduce((b, s) => (s.e1rm > b.e1rm ? s : b));
+                      const olderBest = sessions[idx + 2]
+                        ? sessions[idx + 2].reduce((b, s) => (s.e1rm > b.e1rm ? s : b))
+                        : null;
+                      const delta = olderBest ? best.e1rm - olderBest.e1rm : null;
+                      return (
+                        <div key={sess[0].session_date} className="border-t border-white/5 pt-3">
+                          <div className="flex items-center justify-between text-xs text-muted mb-1">
+                            <span>{formatFullDate(sess[0].session_date)}</span>
+                            {delta !== null && (
+                              <span className={delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-muted"}>
+                                {delta > 0 ? "+" : ""}
+                                {d(delta).toFixed(1)} {unit}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            {sess.map((s) => (
+                              <div key={`hist-set-${sess[0].session_date}-${s.set_number}`} className="grid grid-cols-[3.25rem_minmax(0,1fr)_3.75rem] gap-2 text-sm">
+                                <span className="text-muted">Set {s.set_number}</span>
+                                <span className="min-w-0 truncate">{d(s.weight)} {unit} × {s.reps} @ RPE {s.rpe}</span>
+                                <span className="text-right text-muted">{d(s.e1rm).toFixed(1)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             )}
@@ -163,22 +212,12 @@ export function RecentStatsPanel({ exercise, weightIncrement, units, onAcceptSug
   );
 }
 
-function groupBySessions(sets: SetRecord[]): SetRecord[][] {
-  const groups = new Map<string, SetRecord[]>();
-  for (const s of sets) {
-    const key = localDateKey(s.session_date);
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(s);
-  }
-  return Array.from(groups.values()).sort(
-    (a, b) =>
-      new Date(b[0].session_date).getTime() - new Date(a[0].session_date).getTime()
-  );
+function formatShortDate(value: string): string {
+  return new Date(value).toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
 }
 
-function localDateKey(value: string): string {
-  const date = new Date(value);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+function formatFullDate(value: string): string {
+  return new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function computeSuggestion(
